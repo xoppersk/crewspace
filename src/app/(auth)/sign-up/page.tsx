@@ -10,7 +10,7 @@ export default function SignupPage() {
   return (
     <AuthCard
       title="Create your account"
-      description="Start with email and password, or go passwordless."
+      description="Name, email, and a password — you're two minutes from your first workspace."
       footer={
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
