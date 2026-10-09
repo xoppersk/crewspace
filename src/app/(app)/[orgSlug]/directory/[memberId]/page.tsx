@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { requireOrgAccess } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { assignRegisterNumbers, formatRegisterNo } from "@/lib/members/register";
 import type { RoleOption } from "@/components/roles/role-select";
 import type { TeamMemberEntry } from "@/components/directory/member-teams-editor";
 import { MemberDetailClient } from "@/components/directory/member-detail-client";
@@ -120,7 +121,19 @@ export default async function MemberDetailPage({
     permissionCount: permCountByRole.get(r.id) ?? 0,
   }));
 
-  // Effective permissions for the member's role, grouped by resource.
+  // Register number: position in the org's full membership ordered by join
+  // date (the numbered civic register).
+  const { data: orgMembershipRows } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("org_id", org.id)
+    .order("joined_at", { ascending: true });
+  const registerNo = formatRegisterNo(
+    assignRegisterNumbers((orgMembershipRows ?? []).map((m) => m.id)).get(member.id) ?? 0,
+  );
+
+  // Effective permissions for the member's role, grouped by resource —
+  // plus the role's explicit Deny decisions (the register's tri-state).
   const { data: effectiveRows } = await supabase
     .from("role_permissions")
     .select("permission_key, permissions!inner(key, resource, label, description)")
@@ -133,6 +146,18 @@ export default async function MemberDetailPage({
       description: string | null;
     };
     return { key: p.key, resource: p.resource, label: p.label, description: p.description };
+  });
+  const { data: deniedRows } = await supabase
+    .from("role_permission_denies")
+    .select("permission_key, permissions!inner(key, label, description)")
+    .eq("role_id", member.role_id);
+  const deniedPermissions = (deniedRows ?? []).map((row) => {
+    const p = row.permissions as unknown as {
+      key: string;
+      label: string;
+      description: string | null;
+    };
+    return { key: p.key, label: p.label, description: p.description };
   });
 
   // Assignment history from the audit log.
@@ -177,6 +202,7 @@ export default async function MemberDetailPage({
         member={{
           membershipId: member.id,
           userId: member.user_id,
+          registerNo,
           fullName: member.profiles.full_name,
           avatarUrl: member.profiles.avatar_url,
           title: member.profiles.title,
@@ -195,6 +221,7 @@ export default async function MemberDetailPage({
         teamMembers={teamMembers}
         roles={roleOptions}
         effectivePermissions={effectivePermissions}
+        deniedPermissions={deniedPermissions}
         history={history}
       />
     </div>
