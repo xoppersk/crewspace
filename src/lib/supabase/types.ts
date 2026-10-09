@@ -191,6 +191,27 @@ export interface Database {
         };
         Relationships: [];
       };
+      role_permission_denies: {
+        Row: {
+          role_id: string;
+          permission_key: string;
+          denied_at: string;
+          denied_by: string | null;
+        };
+        Insert: {
+          role_id: string;
+          permission_key: string;
+          denied_at?: string;
+          denied_by?: string | null;
+        };
+        Update: {
+          role_id?: string;
+          permission_key?: string;
+          denied_at?: string;
+          denied_by?: string | null;
+        };
+        Relationships: [];
+      };
       memberships: {
         Row: {
           id: string;
