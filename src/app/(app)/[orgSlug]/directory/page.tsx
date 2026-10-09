@@ -28,6 +28,7 @@ type MemberRow = {
   is_active: boolean;
   last_active_at: string | null;
   joined_at: string;
+  deactivated_at: string | null;
   profiles: {
     id: string;
     full_name: string;
@@ -53,6 +54,7 @@ export default async function DirectoryPage({
 }) {
   const { orgSlug } = await params;
   const filters = parseDirectoryFilters(await searchParams);
+  const view = (await searchParams).view === "cards" ? "cards" : "table";
   const supabase = await createClient();
 
   const { data: org } = await supabase
@@ -123,7 +125,7 @@ export default async function DirectoryPage({
   let query = supabase
     .from("memberships")
     .select(
-      `id, user_id, role_id, is_active, last_active_at, joined_at,
+      `id, user_id, role_id, is_active, last_active_at, joined_at, deactivated_at,
        profiles!inner(id, full_name, avatar_url, title, timezone),
        roles!inner(id, name, system_key, color)`,
       { count: "exact" },
@@ -206,6 +208,7 @@ export default async function DirectoryPage({
       isActive: row.is_active,
       lastActiveAt: row.last_active_at,
       joinedAt: row.joined_at,
+      deactivatedAt: row.deactivated_at,
       roleId: row.role_id,
       roleName: row.roles.name,
       roleSystemKey: row.roles.system_key,
@@ -230,6 +233,7 @@ export default async function DirectoryPage({
     if (filters.status !== "all") next.set("status", filters.status);
     if (filters.onlineOnly) next.set("online", "1");
     if (filters.sort !== "name") next.set("sort", filters.sort);
+    if (view === "cards") next.set("view", "cards");
     if (page > 1) next.set("page", String(page));
     const qs = next.toString();
     return `/${orgSlug}/directory${qs ? `?${qs}` : ""}`;
@@ -238,7 +242,7 @@ export default async function DirectoryPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Directory</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Directory</h1>
         <p className="text-sm text-muted-foreground">
           {describeDirectoryFilters(filters, teamName, roleName)} — {resultSummary}
         </p>
@@ -267,6 +271,7 @@ export default async function DirectoryPage({
           teamMembers={teamMembers}
           leadMembershipByTeam={leadMembershipByTeam}
           onlineOnly={filters.onlineOnly}
+          view={view}
         />
       </Suspense>
 
