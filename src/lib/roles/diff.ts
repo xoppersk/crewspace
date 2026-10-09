@@ -29,6 +29,74 @@ export function isDiffEmpty(diff: PermissionDiff): boolean {
 }
 
 /**
+ * Tri-state permission decisions (Flagship UI Designs artifact — the
+ * register's Allow / Deny / Inherit control).
+ */
+export type PermissionState = "allow" | "deny" | "inherit";
+
+export interface PermissionDecisions {
+  allow: string[];
+  deny: string[];
+}
+
+/** Splits a key → state record into sorted allow/deny key lists. */
+export function decisionsFromStates(
+  states: Record<string, PermissionState>,
+): PermissionDecisions {
+  const allow = Object.entries(states)
+    .filter(([, state]) => state === "allow")
+    .map(([key]) => key)
+    .sort();
+  const deny = Object.entries(states)
+    .filter(([, state]) => state === "deny")
+    .map(([key]) => key)
+    .sort();
+  return { allow, deny };
+}
+
+/** Builds a key → state record from saved allow/deny key lists. */
+export function statesFromDecisions(decisions: PermissionDecisions): Record<string, PermissionState> {
+  const states: Record<string, PermissionState> = {};
+  for (const key of decisions.allow) states[key] = "allow";
+  for (const key of decisions.deny) states[key] = "deny";
+  return states;
+}
+
+export interface PermissionStateDiff {
+  allowAdded: string[];
+  allowRemoved: string[];
+  denyAdded: string[];
+  denyRemoved: string[];
+}
+
+/** Diffs two tri-state decision sets (sorted outputs, stable rendering). */
+export function diffPermissionStates(
+  baseline: PermissionDecisions,
+  next: PermissionDecisions,
+): PermissionStateDiff {
+  const beforeAllow = new Set(baseline.allow);
+  const afterAllow = new Set(next.allow);
+  const beforeDeny = new Set(baseline.deny);
+  const afterDeny = new Set(next.deny);
+  return {
+    allowAdded: [...afterAllow].filter((k) => !beforeAllow.has(k)).sort(),
+    allowRemoved: [...beforeAllow].filter((k) => !afterAllow.has(k)).sort(),
+    denyAdded: [...afterDeny].filter((k) => !beforeDeny.has(k)).sort(),
+    denyRemoved: [...beforeDeny].filter((k) => !afterDeny.has(k)).sort(),
+  };
+}
+
+/** True when no allow/deny decision changed — the review bar stays hidden. */
+export function isStateDiffEmpty(diff: PermissionStateDiff): boolean {
+  return (
+    diff.allowAdded.length === 0 &&
+    diff.allowRemoved.length === 0 &&
+    diff.denyAdded.length === 0 &&
+    diff.denyRemoved.length === 0
+  );
+}
+
+/**
  * Plain-language summary for the review bar, e.g. "+2 added, −1 removed".
  * Always pairs counts with words — status is never color-alone.
  */

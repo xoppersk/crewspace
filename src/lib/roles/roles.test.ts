@@ -9,7 +9,13 @@ import {
 } from "@/lib/roles/actions";
 import { groupCatalog } from "@/lib/roles/catalog";
 import { diffPermissionKeys, diffSummary } from "@/lib/roles/diff";
-import { createRoleSchema } from "@/lib/roles/validation";
+import {
+  decisionsFromStates,
+  diffPermissionStates,
+  isStateDiffEmpty,
+  statesFromDecisions,
+} from "@/lib/roles/diff";
+import { createRoleSchema, permissionDecisionsSchema } from "@/lib/roles/validation";
 
 // ---------------------------------------------------------------------------
 // Mocks: requireOrgAccess is the permission choke point; the "forged call as
@@ -96,6 +102,89 @@ describe("diffPermissionKeys", () => {
   it("summarizes in plain language (never color-alone)", () => {
     expect(diffSummary({ added: ["x", "y"], removed: ["z"] })).toBe("+2 added, −1 removed");
     expect(diffSummary({ added: [], removed: [] })).toBe("No changes");
+  });
+});
+
+describe("permissionDecisionsSchema", () => {
+  const roleId = "00000000-0000-4000-8000-000000000000";
+
+  it("accepts disjoint allow and deny sets", () => {
+    const parsed = permissionDecisionsSchema.safeParse({
+      roleId,
+      allow: ["members:read"],
+      deny: ["audit:export"],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a key that is both allowed and denied", () => {
+    const parsed = permissionDecisionsSchema.safeParse({
+      roleId,
+      allow: ["members:read"],
+      deny: ["members:read"],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects unknown permission keys", () => {
+    const parsed = permissionDecisionsSchema.safeParse({
+      roleId,
+      allow: ["not:a-key"],
+      deny: [],
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("tri-state permission decisions", () => {
+  it("splits key → state records into sorted allow/deny lists", () => {
+    const { allow, deny } = decisionsFromStates({
+      "teams:create": "allow",
+      "audit:export": "deny",
+      "members:read": "allow",
+    });
+    expect(allow).toEqual(["members:read", "teams:create"]);
+    expect(deny).toEqual(["audit:export"]);
+  });
+
+  it("treats absent keys as inherit (neither allow nor deny)", () => {
+    const { allow, deny } = decisionsFromStates({});
+    expect(allow).toEqual([]);
+    expect(deny).toEqual([]);
+  });
+
+  it("round-trips through statesFromDecisions", () => {
+    const decisions = { allow: ["members:read"], deny: ["audit:export"] };
+    expect(statesFromDecisions(decisions)).toEqual({
+      "members:read": "allow",
+      "audit:export": "deny",
+    });
+  });
+
+  it("diffs allow and deny changes separately", () => {
+    const diff = diffPermissionStates(
+      { allow: ["members:read"], deny: [] },
+      { allow: [], deny: ["audit:export"] },
+    );
+    expect(diff.allowRemoved).toEqual(["members:read"]);
+    expect(diff.denyAdded).toEqual(["audit:export"]);
+    expect(diff.allowAdded).toEqual([]);
+    expect(diff.denyRemoved).toEqual([]);
+    expect(isStateDiffEmpty(diff)).toBe(false);
+  });
+
+  it("reports an empty diff when nothing changed", () => {
+    const decisions = { allow: ["members:read"], deny: ["audit:export"] };
+    expect(isStateDiffEmpty(diffPermissionStates(decisions, decisions))).toBe(true);
+  });
+
+  it("detects a deny lifted back to inherit", () => {
+    const diff = diffPermissionStates(
+      { allow: [], deny: ["audit:export"] },
+      { allow: [], deny: [] },
+    );
+    expect(diff.denyRemoved).toEqual(["audit:export"]);
+    expect(isStateDiffEmpty(diff)).toBe(false);
   });
 });
 

@@ -33,6 +33,8 @@ export const createRoleSchema = z.object({
   name: roleNameSchema,
   description: roleDescriptionSchema,
   permissionKeys: permissionKeysSchema,
+  /** Explicit Deny decisions for the new role (optional). */
+  denyKeys: permissionKeysSchema.optional().default([]),
   /** Active membership ids to assign the new role to (optional). */
   assignMembershipIds: z.array(z.string().uuid()).optional().default([]),
 });
@@ -41,6 +43,24 @@ export const updateRolePermissionsSchema = z.object({
   roleId: z.string().uuid(),
   permissionKeys: permissionKeysSchema,
 });
+
+/**
+ * Tri-state permission decisions (Flagship UI Designs artifact — the
+ * register's Allow / Deny / Inherit control). `allow` grants the keys,
+ * `deny` records explicit denials, and keys in neither follow the
+ * organization baseline. A key can never be both allowed and denied.
+ */
+export const permissionDecisionsSchema = z
+  .object({
+    roleId: z.string().uuid(),
+    allow: permissionKeysSchema,
+    deny: permissionKeysSchema,
+  })
+  .refine((d) => d.allow.every((key) => !d.deny.includes(key)), {
+    message: "A permission cannot be both allowed and denied.",
+  });
+
+export type PermissionDecisionsInput = z.infer<typeof permissionDecisionsSchema>;
 
 export const updateRoleMetaSchema = z.object({
   roleId: z.string().uuid(),

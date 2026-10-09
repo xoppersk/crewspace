@@ -4,13 +4,19 @@ import { revalidatePath } from "next/cache";
 
 import { writeAudit } from "@/lib/audit";
 import { requireOrgAccess } from "@/lib/permissions";
-import { diffPermissionKeys, type PermissionDiff } from "@/lib/roles/diff";
+import {
+  diffPermissionStates,
+  isStateDiffEmpty,
+  type PermissionDecisions,
+  type PermissionDiff,
+  type PermissionStateDiff,
+} from "@/lib/roles/diff";
 import {
   assignRoleSchema,
   createRoleSchema,
+  permissionDecisionsSchema,
   roleNameSchema,
   updateRoleMetaSchema,
-  updateRolePermissionsSchema,
 } from "@/lib/roles/validation";
 
 /**
@@ -95,7 +101,7 @@ export async function createRole(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role details." };
   }
-  const { name, description, permissionKeys, assignMembershipIds } = parsed.data;
+  const { name, description, permissionKeys, denyKeys, assignMembershipIds } = parsed.data;
 
   // Assignment is a separate privilege — check it before writing anything.
   if (assignMembershipIds.length > 0) {
@@ -131,6 +137,17 @@ export async function createRole(
     if (permError) return { ok: false, error: toErrorMessage(permError) };
   }
 
+  if (denyKeys.length > 0) {
+    const { error: denyError } = await supabase.from("role_permission_denies").insert(
+      denyKeys.map((permission_key) => ({
+        role_id: role.id,
+        permission_key,
+        denied_by: user.id,
+      })),
+    );
+    if (denyError) return { ok: false, error: toErrorMessage(denyError) };
+  }
+
   let assignedCount = 0;
   for (const membershipId of assignMembershipIds) {
     const result = await assignMembershipToRole(supabase, orgId, user.id, membershipId, role.id);
@@ -142,7 +159,11 @@ export async function createRole(
     targetType: "role",
     targetId: role.id,
     targetLabel: role.name,
-    metadata: { permissionCount: permissionKeys.length, assignedCount },
+    metadata: {
+      permissionCount: permissionKeys.length,
+      denyCount: denyKeys.length,
+      assignedCount,
+    },
   });
 
   revalidatePath(`/${orgSlug}/roles`);
@@ -153,15 +174,22 @@ export async function createRole(
 // updateRolePermissions
 // ---------------------------------------------------------------------------
 
-export async function updateRolePermissions(
+// updateRolePermissionStates (tri-state: Allow / Deny / Inherit)
+// ---------------------------------------------------------------------------
+// The register's decision model (Flagship UI Designs artifact — Crewspace
+// signature UI): Allow grants the key (role_permissions), Deny records an
+// explicit denial (role_permission_denies), Inherit leaves the key in
+// neither table so the organization baseline applies.
+
+export async function updateRolePermissionStates(
   orgId: string,
   orgSlug: string,
   roleId: string,
-  permissionKeys: string[],
-): Promise<RoleActionResult<{ diff: PermissionDiff; affectedCount: number }>> {
+  decisions: PermissionDecisions,
+): Promise<RoleActionResult<{ diff: PermissionStateDiff; affectedCount: number }>> {
   const { user, supabase } = await requireOrgAccess(orgId, "roles:update");
 
-  const parsed = updateRolePermissionsSchema.safeParse({ roleId, permissionKeys });
+  const parsed = permissionDecisionsSchema.safeParse({ roleId, ...decisions });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid permissions." };
   }
@@ -170,14 +198,22 @@ export async function updateRolePermissions(
   if (!role) return { ok: false, error: "Role not found." };
   if (role.is_system) return rejectSystemRole("edit");
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("role_permissions")
-    .select("permission_key")
-    .eq("role_id", roleId);
-  if (fetchError) return { ok: false, error: toErrorMessage(fetchError) };
+  const [{ data: existingAllow, error: allowError }, { data: existingDeny, error: denyError }] =
+    await Promise.all([
+      supabase.from("role_permissions").select("permission_key").eq("role_id", roleId),
+      supabase.from("role_permission_denies").select("permission_key").eq("role_id", roleId),
+    ]);
+  if (allowError) return { ok: false, error: toErrorMessage(allowError) };
+  if (denyError) return { ok: false, error: toErrorMessage(denyError) };
 
-  const baseline = (existing ?? []).map((row) => row.permission_key);
-  const diff = diffPermissionKeys(baseline, parsed.data.permissionKeys);
+  const baseline: PermissionDecisions = {
+    allow: (existingAllow ?? []).map((row) => row.permission_key),
+    deny: (existingDeny ?? []).map((row) => row.permission_key),
+  };
+  const diff = diffPermissionStates(baseline, {
+    allow: parsed.data.allow,
+    deny: parsed.data.deny,
+  });
 
   const { count: affectedCount } = await supabase
     .from("memberships")
@@ -186,22 +222,39 @@ export async function updateRolePermissions(
     .eq("role_id", roleId)
     .eq("is_active", true);
 
-  if (diff.added.length === 0 && diff.removed.length === 0) {
+  if (isStateDiffEmpty(diff)) {
     return { ok: true, diff, affectedCount: affectedCount ?? 0 };
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteAllowError } = await supabase
     .from("role_permissions")
     .delete()
     .eq("role_id", roleId);
-  if (deleteError) return { ok: false, error: toErrorMessage(deleteError) };
+  if (deleteAllowError) return { ok: false, error: toErrorMessage(deleteAllowError) };
 
-  if (parsed.data.permissionKeys.length > 0) {
+  const { error: deleteDenyError } = await supabase
+    .from("role_permission_denies")
+    .delete()
+    .eq("role_id", roleId);
+  if (deleteDenyError) return { ok: false, error: toErrorMessage(deleteDenyError) };
+
+  if (parsed.data.allow.length > 0) {
     const { error: insertError } = await supabase.from("role_permissions").insert(
-      parsed.data.permissionKeys.map((permission_key) => ({
+      parsed.data.allow.map((permission_key) => ({
         role_id: roleId,
         permission_key,
         granted_by: user.id,
+      })),
+    );
+    if (insertError) return { ok: false, error: toErrorMessage(insertError) };
+  }
+
+  if (parsed.data.deny.length > 0) {
+    const { error: insertError } = await supabase.from("role_permission_denies").insert(
+      parsed.data.deny.map((permission_key) => ({
+        role_id: roleId,
+        permission_key,
+        denied_by: user.id,
       })),
     );
     if (insertError) return { ok: false, error: toErrorMessage(insertError) };
@@ -211,13 +264,39 @@ export async function updateRolePermissions(
     targetType: "role",
     targetId: roleId,
     targetLabel: role.name,
-    diff: { added: diff.added, removed: diff.removed },
+    diff: {
+      added: diff.allowAdded,
+      removed: diff.allowRemoved,
+      denied: diff.denyAdded,
+      undenied: diff.denyRemoved,
+    },
     metadata: { affectedMemberCount: affectedCount ?? 0 },
   });
 
   revalidatePath(`/${orgSlug}/roles`);
   revalidatePath(`/${orgSlug}/roles/${roleId}`);
   return { ok: true, diff, affectedCount: affectedCount ?? 0 };
+}
+
+export async function updateRolePermissions(
+  orgId: string,
+  orgSlug: string,
+  roleId: string,
+  permissionKeys: string[],
+): Promise<RoleActionResult<{ diff: PermissionDiff; affectedCount: number }>> {
+  const result = await updateRolePermissionStates(orgId, orgSlug, roleId, {
+    allow: permissionKeys,
+    deny: [],
+  });
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    diff: {
+      added: result.diff.allowAdded,
+      removed: result.diff.allowRemoved,
+    },
+    affectedCount: result.affectedCount,
+  };
 }
 
 // ---------------------------------------------------------------------------
