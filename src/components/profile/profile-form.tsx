@@ -51,6 +51,7 @@ export function ProfileForm({
   userEmail,
   profile,
   role,
+  roleGrant,
   permissions,
   receivedInvites,
 }: {
@@ -59,6 +60,7 @@ export function ProfileForm({
   userEmail: string;
   profile: ProfileValues;
   role: { name: string; description: string | null; isSystem: boolean };
+  roleGrant: { by: string; at: string } | null;
   permissions: string[];
   receivedInvites: ReceivedInvitation[];
 }) {
@@ -131,7 +133,7 @@ export function ProfileForm({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">My profile</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">My profile</h1>
         <p className="text-muted-foreground">
           How you appear to teammates, and what you can do here.
         </p>
@@ -248,7 +250,7 @@ export function ProfileForm({
                   Change email
                 </Button>
               </div>
-              {emailMessage ? <p className="text-sm text-emerald-600">{emailMessage}</p> : null}
+              {emailMessage ? <p className="text-sm text-success">{emailMessage}</p> : null}
               {emailError ? (
                 <p role="alert" className="text-sm font-medium text-destructive">
                   {emailError}
@@ -259,7 +261,7 @@ export function ProfileForm({
         </TabsContent>
 
         <TabsContent value="access" className="flex flex-col gap-4">
-          <MyAccessPanel permissions={permissions} roleName={role.name} />
+          <MyAccessPanel permissions={permissions} roleName={role.name} roleGrant={roleGrant} />
 
           <Card>
             <CardHeader>
@@ -318,7 +320,7 @@ export function ProfileForm({
         <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-3">
           <p className="flex-1 text-sm font-medium">
             {saved ? (
-              <span className="flex items-center gap-1.5 text-emerald-600">
+              <span className="flex items-center gap-1.5 text-success">
                 <Check className="size-4" /> Profile saved.
               </span>
             ) : (
