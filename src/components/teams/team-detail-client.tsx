@@ -72,7 +72,7 @@ export function TeamDetailClient({
       {/* Header */}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">{team.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{team.name}</h1>
           {team.isArchived ? (
             <Badge variant="outline" className="gap-1">
               <Archive className="size-3" aria-hidden /> Archived
@@ -456,7 +456,7 @@ function SettingsTab({
             </Select>
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+          {message ? <p className="text-sm text-success">{message}</p> : null}
           <div>
             <Button onClick={handleSave} disabled={!dirty || pending} className="min-h-11 sm:min-h-9">
               {pending ? "Saving…" : "Save changes"}
