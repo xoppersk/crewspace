@@ -26,6 +26,7 @@ export function DirectoryClient({
   teamMembers,
   leadMembershipByTeam,
   onlineOnly,
+  view = "table",
 }: {
   members: DirectoryMember[];
   orgId: string;
@@ -37,6 +38,8 @@ export function DirectoryClient({
   teamMembers: Record<string, TeamMemberEntry[]>;
   leadMembershipByTeam: Record<string, string | null>;
   onlineOnly: boolean;
+  /** Desktop layout: table (default) or cards (UI-DESIGN.md §2.7). */
+  view?: "table" | "cards";
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openMember, setOpenMember] = useState<DirectoryMember | null>(null);
@@ -70,16 +73,28 @@ export function DirectoryClient({
 
   return (
     <>
-      <MemberTable
-        members={members}
-        selected={selected}
-        onToggleSelect={toggleSelect}
-        onToggleSelectAll={toggleSelectAll}
-        onOpenMember={setOpenMember}
-        canBulk={canBulk}
-        onlineOnly={onlineOnly}
-      />
-      <MemberCards members={members} onOpenMember={setOpenMember} onlineOnly={onlineOnly} />
+      {view === "cards" ? (
+        <MemberCards
+          members={members}
+          onOpenMember={setOpenMember}
+          onlineOnly={onlineOnly}
+          desktop
+        />
+      ) : (
+        <MemberTable
+          members={members}
+          selected={selected}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
+          onOpenMember={setOpenMember}
+          canBulk={canBulk}
+          onlineOnly={onlineOnly}
+        />
+      )}
+      {/* Mobile always stacks cards. */}
+      <div className="md:hidden">
+        <MemberCards members={members} onOpenMember={setOpenMember} onlineOnly={onlineOnly} />
+      </div>
 
       <BulkActionBar
         orgId={orgId}

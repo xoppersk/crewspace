@@ -38,11 +38,11 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
       variant="outline"
       className={cn(
         "gap-1.5",
-        isActive ? "border-emerald-500/40 text-emerald-700" : "border-red-500/40 text-red-700",
+        isActive ? "border-success/40 text-success" : "border-destructive/40 text-destructive",
       )}
     >
       <span
-        className={cn("size-1.5 rounded-full", isActive ? "bg-emerald-500" : "bg-red-500")}
+        className={cn("size-1.5 rounded-full", isActive ? "bg-success" : "bg-destructive")}
         aria-hidden
       />
       {isActive ? "Active" : "Deactivated"}
@@ -143,11 +143,14 @@ export function MemberDrawer({
             </SheetHeader>
 
             {!member.isActive ? (
-              <div className="rounded-lg border border-red-500/30 bg-red-50 p-3 text-sm dark:bg-red-950/30">
-                <p className="font-medium text-red-800 dark:text-red-200">
-                  This member is deactivated
+              <div className="border border-warning/40 bg-warning-soft p-3 text-sm">
+                <p className="font-medium text-warning">
+                  Deactivated
+                  {member.deactivatedAt
+                    ? ` — access stopped on ${new Date(member.deactivatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                    : " — access stopped"}
                 </p>
-                <p className="mt-0.5 text-red-700/80 dark:text-red-300/80">
+                <p className="mt-0.5 text-muted-foreground">
                   They can&rsquo;t access the organization. Their role and teams are preserved.
                 </p>
                 {canDeactivate && !isSelf ? (

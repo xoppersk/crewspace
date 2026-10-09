@@ -10,7 +10,7 @@ import { RoleBadge } from "@/components/roles/role-badge";
 import type { RoleOption } from "@/components/roles/role-select";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import { usePresence } from "@/components/presence/presence-provider";
-import { formatAbsoluteTime, formatRelativeTime } from "@/lib/datetime";
+import { formatAbsoluteDate, formatAbsoluteTime, formatRelativeTime } from "@/lib/datetime";
 import {
   deactivateMember,
   reactivateMember,
@@ -100,6 +100,7 @@ export function MemberDetailClient({
     isActive: boolean;
     lastActiveAt: string | null;
     joinedAt: string;
+    deactivatedAt: string | null;
     roleId: string;
     roleName: string;
     roleSystemKey: string | null;
@@ -146,9 +147,9 @@ export function MemberDetailClient({
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{member.fullName}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{member.fullName}</h1>
             {isOnline(member.userId) ? (
-              <span className="flex items-center gap-1.5 text-sm text-emerald-700">
+              <span className="flex items-center gap-1.5 text-sm text-success">
                 <PresenceDot userId={member.userId} /> Online
               </span>
             ) : null}
@@ -160,14 +161,14 @@ export function MemberDetailClient({
               className={cn(
                 "gap-1.5",
                 member.isActive
-                  ? "border-emerald-500/40 text-emerald-700"
-                  : "border-red-500/40 text-red-700",
+                  ? "border-success/40 text-success"
+                  : "border-destructive/40 text-destructive",
               )}
             >
               <span
                 className={cn(
                   "size-1.5 rounded-full",
-                  member.isActive ? "bg-emerald-500" : "bg-red-500",
+                  member.isActive ? "bg-success" : "bg-destructive",
                 )}
                 aria-hidden
               />
@@ -183,9 +184,14 @@ export function MemberDetailClient({
       </div>
 
       {!member.isActive ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-50 p-4 text-sm dark:bg-red-950/30">
-          <p className="font-medium text-red-800 dark:text-red-200">This member is deactivated</p>
-          <p className="mt-0.5 text-red-700/80 dark:text-red-300/80">
+        <div className="border border-warning/40 bg-warning-soft p-4 text-sm">
+          <p className="font-medium text-warning">
+            Deactivated
+            {member.deactivatedAt
+              ? ` — access stopped on ${formatAbsoluteDate(member.deactivatedAt)}`
+              : " — access stopped"}
+          </p>
+          <p className="mt-0.5 text-muted-foreground">
             They can&rsquo;t access the organization. Their role and teams are preserved for reactivation.
           </p>
           {canDeactivate && !isSelf ? (

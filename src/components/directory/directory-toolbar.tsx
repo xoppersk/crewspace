@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, Search, Wifi } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, Search, Table2, Wifi } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";import {
   Select,
   SelectContent,
   SelectItem,
@@ -45,6 +44,7 @@ export function DirectoryToolbar({
   const status = searchParams.get("status") ?? "all";
   const online = searchParams.get("online") === "1";
   const sort = searchParams.get("sort") ?? "name";
+  const view = searchParams.get("view") === "cards" ? "cards" : "table";
 
   const [draft, setDraft] = useState(q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +109,36 @@ export function DirectoryToolbar({
             <SelectItem value="newest">Newest</SelectItem>
           </SelectContent>
         </Select>
+        {/* View toggle — desktop only (UI-DESIGN.md §2.7) */}
+        <div
+          role="group"
+          aria-label="Directory layout"
+          className="hidden rounded-md border p-0.5 md:flex"
+        >
+          {(
+            [
+              { value: "table", label: "Table", icon: Table2 },
+              { value: "cards", label: "Cards", icon: LayoutGrid },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => push({ view: option.value === "table" ? null : option.value })}
+              aria-pressed={view === option.value}
+              aria-label={`${option.label} view`}
+              title={`${option.label} view`}
+              className={cn(
+                "flex min-h-9 items-center rounded px-2.5 transition-colors",
+                view === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <option.icon className="size-4" aria-hidden />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -173,7 +203,7 @@ export function DirectoryToolbar({
           className={cn(
             "flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors",
             online
-              ? "border-emerald-500/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              ? "border-success/50 bg-success-soft text-success  "
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -183,7 +213,7 @@ export function DirectoryToolbar({
 
         <span className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500" aria-hidden />
+            <span className="size-2 rounded-full bg-success" aria-hidden />
             {onlineCount} online
           </span>
           <span aria-hidden>·</span>
@@ -288,8 +318,8 @@ function FilterList({
 
 export function OnlineBadge({ count }: { count: number }) {
   return (
-    <Badge variant="outline" className="gap-1.5 border-emerald-500/40">
-      <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+    <Badge variant="outline" className="gap-1.5 border-success/40">
+      <span className="size-1.5 rounded-full bg-success" aria-hidden />
       {count} online
       <span className="sr-only">members currently online</span>
     </Badge>

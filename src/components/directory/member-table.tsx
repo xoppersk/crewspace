@@ -64,7 +64,7 @@ export function MemberTable({
                   }}
                   onChange={onToggleSelectAll}
                   aria-label="Select all members on this page"
-                  className="size-4 cursor-pointer accent-indigo-600"
+                  className="size-4 cursor-pointer accent-primary"
                 />
               </TableHead>
             ) : null}
@@ -92,7 +92,7 @@ export function MemberTable({
                     checked={selected.has(member.membershipId)}
                     onChange={() => onToggleSelect(member.membershipId)}
                     aria-label={`Select ${member.fullName}`}
-                    className="size-4 cursor-pointer accent-indigo-600"
+                    className="size-4 cursor-pointer accent-primary"
                   />
                 </TableCell>
               ) : null}
@@ -105,7 +105,14 @@ export function MemberTable({
                     showPresence
                   />
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{member.fullName}</p>
+                    <p className="flex items-center gap-2 truncate font-medium">
+                      {member.fullName}
+                      {!member.isActive ? (
+                        <span className="shrink-0 rounded-full border border-warning/40 bg-warning-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-warning">
+                          Deactivated
+                        </span>
+                      ) : null}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {member.title ?? "No title"}
                     </p>
@@ -138,7 +145,7 @@ export function MemberTable({
                   <span
                     className={cn(
                       "size-2 rounded-full",
-                      member.isActive ? "bg-emerald-500" : "bg-red-500",
+                      member.isActive ? "bg-success" : "bg-destructive",
                     )}
                     aria-hidden
                   />
@@ -174,22 +181,29 @@ export function MemberTable({
 /**
  * MemberCards — mobile stacked cards (the same data, no horizontal scroll).
  * Bulk select stays desktop-only per the brief; cards are tap-to-open.
+ * On desktop this renders as a 2-col grid when the view toggle selects cards.
  */
 export function MemberCards({
   members,
   onOpenMember,
   onlineOnly,
+  desktop = false,
 }: {
   members: DirectoryMember[];
   onOpenMember: (member: DirectoryMember) => void;
   onlineOnly: boolean;
+  desktop?: boolean;
 }) {
   const { isOnline } = usePresence();
   const visible = onlineOnly ? members.filter((m) => isOnline(m.userId)) : members;
 
   return (
-    <ul className="flex flex-col gap-2 md:hidden">
-      {visible.map((member) => (
+    <ul
+      className={cn(
+        "flex flex-col gap-2",
+        desktop && "hidden md:grid md:grid-cols-2 lg:grid-cols-3",
+      )}
+    >      {visible.map((member) => (
         <li key={member.membershipId}>
           <button
             type="button"
@@ -211,7 +225,7 @@ export function MemberCards({
                 <span
                   className={cn(
                     "size-2 shrink-0 rounded-full",
-                    member.isActive ? "bg-emerald-500" : "bg-red-500",
+                    member.isActive ? "bg-success" : "bg-destructive",
                   )}
                   aria-hidden
                 />
