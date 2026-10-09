@@ -152,6 +152,7 @@ export interface DirectoryMember {
   isActive: boolean;
   lastActiveAt: string | null;
   joinedAt: string;
+  deactivatedAt: string | null;
   roleId: string;
   roleName: string;
   roleSystemKey: string | null;
