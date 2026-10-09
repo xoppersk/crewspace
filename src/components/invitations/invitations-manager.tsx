@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { FileUp, Loader2, MailPlus, MoreHorizontal, Send, Undo2 } from "lucide-react";
+import { FileUp, MailPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -16,16 +16,10 @@ import {
 } from "@/lib/invitations/actions";
 import { EmptyState } from "@/components/app/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExpiryCountdown } from "@/components/invitations/countdown";
+import { RoleSeal } from "@/components/crew/role-seal";
 import { InvitationDrawer } from "@/components/invitations/invitation-drawer";
 import { InviteDialog } from "@/components/invitations/invite-dialog";
 import { CsvImport } from "@/components/invitations/csv-import";
@@ -125,11 +119,15 @@ export function InvitationsManager({ initial }: { initial: InvitePageData }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Invitations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Invite teammates, resend or revoke pending invites, and import in bulk.
+          <p className="type-label uppercase tracking-[0.17em] text-muted-foreground">
+            Crewspace / Letters of appointment
+          </p>
+          <h1 className="type-display mt-1">Invitations</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Track pending access, resend safely, revoke stale links, and resolve import
+            errors.
           </p>
         </div>
         {data.canInvite ? (
@@ -138,7 +136,7 @@ export function InvitationsManager({ initial }: { initial: InvitePageData }) {
               <FileUp className="size-4" /> Bulk import
             </Button>
             <Button onClick={() => setInviteOpen(true)} className="min-h-11">
-              <MailPlus className="size-4" /> Invite members
+              <MailPlus className="size-4" /> Invite member
             </Button>
           </div>
         ) : null}
@@ -176,54 +174,60 @@ export function InvitationsManager({ initial }: { initial: InvitePageData }) {
                 }
               />
             ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden overflow-x-auto rounded-lg border md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                        <th className="px-4 py-3 font-medium">Email</th>
-                        <th className="px-4 py-3 font-medium">Invited by</th>
-                        <th className="px-4 py-3 font-medium">Role</th>
-                        <th className="px-4 py-3 font-medium">Teams</th>
-                        <th className="px-4 py-3 font-medium">Sent</th>
-                        <th className="px-4 py-3 font-medium">Expires</th>
-                        <th className="px-4 py-3 text-right font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visible.map((inv) => (
-                        <InvitationTableRow
-                          key={inv.id}
-                          invitation={inv}
-                          orgId={data.context.id}
-                          canManage={data.canManage}
-                          onSelect={() => setSelected(inv)}
-                          onChanged={refresh}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile cards */}
-                <ul className="flex flex-col gap-3 md:hidden">
-                  {visible.map((inv) => (
-                    <InvitationCard
-                      key={inv.id}
-                      invitation={inv}
-                      orgId={data.context.id}
-                      canManage={data.canManage}
-                      onSelect={() => setSelected(inv)}
-                      onChanged={refresh}
-                    />
-                  ))}
-                </ul>
-              </>
+              <div className="appointment-list">
+                {visible.map((inv) => (
+                  <AppointmentLetter
+                    key={inv.id}
+                    invitation={inv}
+                    orgId={data.context.id}
+                    canManage={data.canManage}
+                    onSelect={() => setSelected(inv)}
+                    onChanged={refresh}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Appointment policy */}
+      <div>
+        <div className="flex items-baseline justify-between border-b border-foreground pb-2">
+          <h2 className="text-sm font-bold uppercase tracking-[0.17em]">Appointment policy</h2>
+          <span className="text-xs text-muted-foreground">Invitations expire after 7 days</span>
+        </div>
+        <Card className="mt-4 rounded-none">
+          <CardContent className="pt-2">
+            <ul className="flex flex-col divide-y divide-border">
+              <li className="grid grid-cols-[2.5rem_1fr_auto] items-start gap-3 py-3">
+                <span className="grid size-8 place-items-center border-b-2 border-primary font-mono text-[11px] font-bold" aria-hidden>
+                  01
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Role is fixed at issue</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Withdraw and reissue to change an appointed role.
+                  </span>
+                </span>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">Policy</span>
+              </li>
+              <li className="grid grid-cols-[2.5rem_1fr_auto] items-start gap-3 py-3">
+                <span className="grid size-8 place-items-center border-b-2 border-primary font-mono text-[11px] font-bold" aria-hidden>
+                  02
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Every action is audited</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Resends and withdrawals record actor and time.
+                  </span>
+                </span>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">Governance</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
 
       <InviteDialog
         open={inviteOpen}
@@ -299,7 +303,12 @@ function useRowActions(invitation: InvitationListItem, orgId: string, onChanged:
   return { pending, confirmRevoke, setConfirmRevoke, error, doResend, doCopyLink, doRevoke };
 }
 
-function InvitationTableRow({
+/**
+ * AppointmentLetter — the artifact's letter of appointment (Flagship UI
+ * Designs): numbered letter, identity + role seal, the fixed appointment
+ * copy, a "{status} · expires {date}" line, and Resend / Withdraw actions.
+ */
+function AppointmentLetter({
   invitation: inv,
   orgId,
   canManage,
@@ -312,137 +321,88 @@ function InvitationTableRow({
   onSelect: () => void;
   onChanged: () => void;
 }) {
+  const actions = useRowActions(inv, orgId, onChanged);
+  const number = `INV-${inv.id.replace(/-/g, "").slice(0, 4).toUpperCase()}`;
+  const statusLabel =
+    inv.status === "pending"
+      ? "Pending"
+      : inv.status === "accepted"
+        ? "Accepted"
+        : inv.status === "expired"
+          ? "Expired"
+          : "Revoked";
+  const expiryDate = new Date(inv.expires_at).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const withdrawn = inv.status === "revoked" || inv.status === "expired";
+  // Captured once per mount — the "expiring soon" highlight doesn't need a ticking clock.
+  const [now] = useState(() => Date.now());
+  const urgent =
+    inv.status === "pending" &&
+    new Date(inv.expires_at).getTime() - now < 48 * 60 * 60 * 1000;
+
   return (
-    <tr className="cursor-pointer border-b align-middle last:border-0 hover:bg-muted/40" onClick={onSelect}>
-      <td className="px-4 py-3 font-medium">{inv.email}</td>
-      <td className="px-4 py-3 text-muted-foreground">{inv.inviter_name}</td>
-      <td className="px-4 py-3">
-        <Badge variant="secondary">{inv.role_name}</Badge>
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {inv.team_names.length ? inv.team_names.join(", ") : "—"}
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {new Date(inv.created_at).toLocaleDateString()}
-      </td>
-      <td className="px-4 py-3">
-        {inv.status === "pending" ? (
-          <ExpiryCountdown expiresAt={inv.expires_at} />
-        ) : (
-          <span className="text-muted-foreground">
-            {inv.status === "accepted" && inv.accepted_at
-              ? `Accepted ${new Date(inv.accepted_at).toLocaleDateString()}`
-              : inv.status}
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-        {canManage && inv.status === "pending" ? (
-          <RowActionMenu invitation={inv} orgId={orgId} onChanged={onChanged} />
+    <article className={`appointment-letter${withdrawn ? " is-withdrawn" : ""}`}>
+      <span className="appointment-number">{number}</span>
+      <div className="min-w-0">
+        <h4>
+          <button
+            type="button"
+            onClick={onSelect}
+            className="min-w-0 truncate text-left hover:underline"
+          >
+            {inv.email}
+          </button>
+          <RoleSeal>{inv.role_name}</RoleSeal>
+        </h4>
+        <p>Invitation to join the organization with the appointed role shown above.</p>
+        <div className={`appointment-expiry${urgent ? " urgent" : ""}`}>
+          {statusLabel} · expires {expiryDate}
+        </div>
+        {actions.error ? (
+          <p role="alert" className="mt-1 text-xs text-destructive">
+            {actions.error}
+          </p>
         ) : null}
-      </td>
-    </tr>
-  );
-}
-
-function InvitationCard({
-  invitation: inv,
-  orgId,
-  canManage,
-  onSelect,
-  onChanged,
-}: {
-  invitation: InvitationListItem;
-  orgId: string;
-  canManage: boolean;
-  onSelect: () => void;
-  onChanged: () => void;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex w-full flex-col gap-2 rounded-lg border p-4 text-left active:bg-muted/40"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 break-all font-medium">{inv.email}</p>
-          {canManage && inv.status === "pending" ? (
-            <span onClick={(e) => e.stopPropagation()}>
-              <RowActionMenu invitation={inv} orgId={orgId} onChanged={onChanged} />
-            </span>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="secondary">{inv.role_name}</Badge>
-          <span>by {inv.inviter_name}</span>
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Sent {new Date(inv.created_at).toLocaleDateString()}</span>
-          {inv.status === "pending" ? <ExpiryCountdown expiresAt={inv.expires_at} /> : <span>{inv.status}</span>}
-        </div>
-      </button>
-    </li>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Action menu — resend / revoke / copy link (invitations:manage only)
-// ---------------------------------------------------------------------------
-
-function RowActionMenu({
-  invitation,
-  orgId,
-  onChanged,
-}: {
-  invitation: InvitationListItem;
-  orgId: string;
-  onChanged: () => void;
-}) {
-  const actions = useRowActions(invitation, orgId, onChanged);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-11" aria-label={`Actions for ${invitation.email}`}>
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={actions.pending !== null}
-          onClick={() => void actions.doResend()}
-          className="min-h-11"
-        >
-          {actions.pending === "resend" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          Resend
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={actions.pending !== null}
-          onClick={() => void actions.doCopyLink()}
-          className="min-h-11"
-        >
-          {actions.pending === "copy" ? <Loader2 className="size-4 animate-spin" /> : null}
-          Copy invite link
-        </DropdownMenuItem>
-        {actions.confirmRevoke ? (
-          <DropdownMenuItem
-            onClick={() => void actions.doRevoke()}
-            className="min-h-11 text-destructive focus:text-destructive"
-          >
-            {actions.pending === "revoke" ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
-            Confirm revoke
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            onClick={() => actions.setConfirmRevoke(true)}
-            className="min-h-11 text-destructive focus:text-destructive"
-          >
-            <Undo2 className="size-4" /> Revoke
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </div>
+      <div className="appointment-actions">
+        {canManage && inv.status === "pending" ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={actions.pending !== null}
+              onClick={() => void actions.doResend()}
+              className="min-h-11"
+            >
+              {actions.pending === "resend" ? "Resending…" : "Resend"}
+            </Button>
+            {actions.confirmRevoke ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={actions.pending !== null}
+                onClick={() => void actions.doRevoke()}
+                className="min-h-11 text-destructive"
+              >
+                {actions.pending === "revoke" ? "Withdrawing…" : "Confirm withdraw"}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => actions.setConfirmRevoke(true)}
+                className="min-h-11"
+              >
+                Withdraw
+              </Button>
+            )}
+          </>
+        ) : null}
+      </div>
+    </article>
   );
 }
 
