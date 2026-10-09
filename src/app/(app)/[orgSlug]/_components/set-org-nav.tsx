@@ -37,10 +37,19 @@ const NAV_DEFS: NavDef[] = [
 /**
  * Runs inside the [orgSlug] layout: publishes the permission-filtered nav
  * into the (app) shell and marks the org switcher active. Items the viewer
- * lacks permission for are hidden (not disabled) — except Audit, which a
- * later phase renders in a locked state on direct navigation.
+ * lacks permission for are hidden (not disabled) — except Audit, which
+ * appears with a lock icon and renders the locked state on direct
+ * navigation (UI-DESIGN.md §2.4 / §2.15).
  */
-export function SetOrgNav({ slug, permissions }: { slug: string; permissions: string[] }) {
+export function SetOrgNav({
+  slug,
+  permissions,
+  pendingInvites = 0,
+}: {
+  slug: string;
+  permissions: string[];
+  pendingInvites?: number;
+}) {
   const { setNavItems, setActiveOrgSlug } = useShell();
 
   useEffect(() => {
@@ -50,15 +59,23 @@ export function SetOrgNav({ slug, permissions }: { slug: string; permissions: st
       href: `/${slug}/${def.path}`,
       label: def.label,
       icon: def.icon,
-      badge: def.badge,
+      badge: def.path === "invitations" ? pendingInvites : def.badge,
     }));
+    if (!permissions.includes("audit:read")) {
+      items.push({
+        href: `/${slug}/audit`,
+        label: "Audit log",
+        icon: ScrollText,
+        locked: true,
+      });
+    }
     setNavItems(items);
     setActiveOrgSlug(slug);
     return () => {
       setNavItems([]);
       setActiveOrgSlug(null);
     };
-  }, [slug, permissions, setNavItems, setActiveOrgSlug]);
+  }, [slug, permissions, pendingInvites, setNavItems, setActiveOrgSlug]);
 
   return null;
 }
