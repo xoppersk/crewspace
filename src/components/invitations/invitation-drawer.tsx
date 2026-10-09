@@ -132,8 +132,8 @@ export function InvitationDrawer({
   }
 
   const statusBadge: Record<string, string> = {
-    pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    pending: "bg-warning-soft text-warning ",
+    accepted: "bg-success-soft text-success",
     expired: "bg-muted text-muted-foreground",
     revoked: "bg-destructive/10 text-destructive",
   };
@@ -296,7 +296,7 @@ export function InvitationDrawer({
 
 function EventDot({ action }: { action: string }) {
   if (action === "invitation.accepted" || action === "membership.created") {
-    return <CheckCircle2 className="size-3 text-emerald-600" />;
+    return <CheckCircle2 className="size-3 text-success" />;
   }
   if (action === "invitation.revoked") {
     return <Undo2 className="size-3 text-destructive" />;

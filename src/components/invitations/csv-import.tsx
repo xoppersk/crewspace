@@ -256,7 +256,7 @@ export function CsvImport({
                       <CheckCircle2 className="size-3.5" /> {counts.valid} valid
                     </Badge>
                     {counts.warning > 0 ? (
-                      <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
+                      <Badge variant="outline" className="border-warning/50 text-warning ">
                         <AlertTriangle className="size-3.5" /> {counts.warning} warnings
                       </Badge>
                     ) : null}
@@ -369,8 +369,8 @@ export function CsvImport({
 }
 
 function RowStatusIcon({ status }: { status: "valid" | "warning" | "error" }) {
-  if (status === "valid") return <CheckCircle2 className="size-4 text-emerald-600" aria-label="Valid" />;
-  if (status === "warning") return <AlertTriangle className="size-4 text-amber-600" aria-label="Warning" />;
+  if (status === "valid") return <CheckCircle2 className="size-4 text-success" aria-label="Valid" />;
+  if (status === "warning") return <AlertTriangle className="size-4 text-warning" aria-label="Warning" />;
   return <XCircle className="size-4 text-destructive" aria-label="Error" />;
 }
 
