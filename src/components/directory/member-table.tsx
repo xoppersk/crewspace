@@ -2,7 +2,6 @@
 
 import { ChevronRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -11,17 +10,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RoleSeal } from "@/components/crew/role-seal";
 import { RoleBadge } from "@/components/roles/role-badge";
 import { usePresence } from "@/components/presence/presence-provider";
-import { formatAbsoluteTime, formatRelativeTime } from "@/lib/datetime";
 import type { DirectoryMember } from "@/lib/members/summaries";
 import { cn } from "@/lib/utils";
 
 import { MemberAvatar } from "./member-avatar";
 
 /**
- * MemberTable — desktop directory table (25/page, server-paginated).
+ * MemberTable — the personnel register (Flagship UI Designs artifact).
+ * Desktop directory table (25/page, server-paginated) with the register
+ * columns: No. · Member / appointed role · Status.
  * Bulk-select checkbox column appears when `canBulk`. Row click opens the
  * member drawer. `onlineOnly` is a client-side presence filter applied to the
  * fetched page (presence lives in the realtime channel, not the DB).
@@ -68,11 +68,9 @@ export function MemberTable({
                 />
               </TableHead>
             ) : null}
-            <TableHead>Member</TableHead>
-            <TableHead>Teams</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last active</TableHead>
+            <TableHead className="w-24 font-mono">No.</TableHead>
+            <TableHead>Member / appointed role</TableHead>
+            <TableHead className="w-32">Status</TableHead>
             <TableHead className="w-10">
               <span className="sr-only">Open</span>
             </TableHead>
@@ -96,6 +94,7 @@ export function MemberTable({
                   />
                 </TableCell>
               ) : null}
+              <TableCell className="font-mono text-sm tnum">{member.registerNo}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <MemberAvatar
@@ -105,13 +104,9 @@ export function MemberTable({
                     showPresence
                   />
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 truncate font-medium">
-                      {member.fullName}
-                      {!member.isActive ? (
-                        <span className="shrink-0 rounded-full border border-warning/40 bg-warning-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-warning">
-                          Deactivated
-                        </span>
-                      ) : null}
+                    <p className="flex flex-wrap items-center gap-2 truncate">
+                      <span className="truncate text-sm font-semibold">{member.fullName}</span>
+                      <RoleSeal>{member.roleName}</RoleSeal>
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {member.title ?? "No title"}
@@ -120,47 +115,9 @@ export function MemberTable({
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex max-w-48 flex-wrap gap-1">
-                  {member.teamNames.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  ) : (
-                    member.teamNames.slice(0, 2).map((name) => (
-                      <Badge key={name} variant="secondary" className="text-[11px]">
-                        {name}
-                      </Badge>
-                    ))
-                  )}
-                  {member.teamNames.length > 2 ? (
-                    <Badge variant="secondary" className="text-[11px]">
-                      +{member.teamNames.length - 2}
-                    </Badge>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell>
-                <RoleBadge roleName={member.roleName} systemKey={member.roleSystemKey} />
-              </TableCell>
-              <TableCell>
-                <span className="flex items-center gap-1.5 text-sm">
-                  <span
-                    className={cn(
-                      "size-2 rounded-full",
-                      member.isActive ? "bg-success" : "bg-destructive",
-                    )}
-                    aria-hidden
-                  />
+                <span className="text-sm">
                   {member.isActive ? "Active" : "Deactivated"}
                 </span>
-              </TableCell>
-              <TableCell>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {formatRelativeTime(member.lastActiveAt)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{formatAbsoluteTime(member.lastActiveAt)}</TooltipContent>
-                </Tooltip>
               </TableCell>
               <TableCell>
                 <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
@@ -221,6 +178,9 @@ export function MemberCards({
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
+                <span className="font-mono text-xs text-muted-foreground tnum">
+                  {member.registerNo}
+                </span>
                 <span className="truncate font-medium">{member.fullName}</span>
                 <span
                   className={cn(

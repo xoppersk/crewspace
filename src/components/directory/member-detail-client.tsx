@@ -3,31 +3,32 @@
 import { useState } from "react";
 import { ShieldCheck, UserX } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoleBadge } from "@/components/roles/role-badge";
+import { RoleSeal } from "@/components/crew/role-seal";
 import type { RoleOption } from "@/components/roles/role-select";
-import { PresenceDot } from "@/components/presence/presence-dot";
-import { usePresence } from "@/components/presence/presence-provider";
-import { formatAbsoluteDate, formatAbsoluteTime, formatRelativeTime } from "@/lib/datetime";
+import { formatAbsoluteDate } from "@/lib/datetime";
 import {
   deactivateMember,
   reactivateMember,
   removeMember,
   updateMemberRole,
 } from "@/lib/members/actions";
-import { cn } from "@/lib/utils";
 
-import { MemberAvatar } from "./member-avatar";
-import { LocalTime } from "./local-time";
-import { TypeToConfirmDialog } from "./type-to-confirm-dialog";
 import { RoleChangeDialog } from "./role-change-dialog";
+import { TypeToConfirmDialog } from "./type-to-confirm-dialog";
 import { MemberTeamsEditor, type MemberTeamEntry, type TeamMemberEntry } from "./member-teams-editor";
 
 export interface EffectivePermission {
   key: string;
   resource: string;
+  label: string;
+  description: string | null;
+}
+
+export interface DeniedPermission {
+  key: string;
   label: string;
   description: string | null;
 }
@@ -66,11 +67,33 @@ function historySentence(entry: RoleHistoryEntry, memberName: string): string {
   }
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length > 1 && parts[0] && parts[1]) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return (parts[0] ?? "?").slice(0, 2).toUpperCase();
+}
+
+/** "October 6, 2026 · 8:42 AM" — the artifact's event timestamp. */
+function formatEventTime(iso: string): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${day} · ${time}`;
+}
+
 /**
- * MemberDetailClient — the full member profile page body. Read-only for
- * viewers without admin permissions: the Admin actions card and all change
- * controls only render when the viewer holds the relevant key (layer 1);
- * Server Actions re-check everything (layer 2).
+ * MemberDetailClient — the personnel register entry (Flagship UI Designs
+ * artifact, Crewspace member detail): kicker header, the stamped
+ * member-register hero, then the Access record and Recent access events
+ * cards. Administration (teams, role change, deactivate/remove) follows
+ * below for viewers with the relevant keys; Server Actions re-check
+ * everything (layer 2).
  */
 export function MemberDetailClient({
   orgId,
@@ -83,6 +106,7 @@ export function MemberDetailClient({
   teamMembers,
   roles,
   effectivePermissions,
+  deniedPermissions,
   history,
 }: {
   orgId: string;
@@ -92,6 +116,7 @@ export function MemberDetailClient({
   member: {
     membershipId: string;
     userId: string;
+    registerNo: string;
     fullName: string;
     avatarUrl: string | null;
     title: string | null;
@@ -110,9 +135,9 @@ export function MemberDetailClient({
   teamMembers: Record<string, TeamMemberEntry[]>;
   roles: RoleOption[];
   effectivePermissions: EffectivePermission[];
+  deniedPermissions: DeniedPermission[];
   history: RoleHistoryEntry[];
 }) {
-  const { isOnline } = usePresence();
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
@@ -124,64 +149,98 @@ export function MemberDetailClient({
   const isSelf = member.userId === currentUserId;
   const showAdminActions = (canChangeRole || canDeactivate) && !isSelf;
 
-  const grouped = new Map<string, EffectivePermission[]>();
-  for (const p of effectivePermissions) {
-    const list = grouped.get(p.resource) ?? [];
-    list.push(p);
-    grouped.set(p.resource, list);
+  const currentRoleOption = roles.find((r) => r.id === member.roleId);
+  const joinedLabel = new Date(member.joinedAt).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const statusDate = member.lastActiveAt ?? member.joinedAt;
+  const statusDateLabel = new Date(statusDate).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  interface FeedRow {
+    badge: string;
+    title: string;
+    sub: string;
+    time: string;
   }
 
-  const currentRoleOption = roles.find((r) => r.id === member.roleId);
+  const accessRows: FeedRow[] = [
+    ...teams.map((team, i) => ({
+      badge: String(i + 1).padStart(2, "0"),
+      title: team.name,
+      sub: team.isLead ? "Team membership · Team lead" : "Team membership",
+      time: `Since ${joinedLabel}`,
+    })),
+    ...effectivePermissions.map((p, i) => ({
+      badge: String(teams.length + i + 1).padStart(2, "0"),
+      title: p.label,
+      sub: p.description ?? `Granted by the ${member.roleName} role`,
+      time: "Allowed",
+    })),
+    ...deniedPermissions.map((p, i) => ({
+      badge: String(teams.length + effectivePermissions.length + i + 1).padStart(2, "0"),
+      title: p.label,
+      sub: p.description ?? `Denied by the ${member.roleName} role`,
+      time: "Denied",
+    })),
+  ];
+
+  const eventRows: FeedRow[] = [
+    ...(member.lastActiveAt
+      ? [
+          {
+            badge: initials(member.fullName),
+            title: "Signed in",
+            sub: "Last active session",
+            time: formatEventTime(member.lastActiveAt),
+          },
+        ]
+      : []),
+    ...history.map((entry) => ({
+      badge: initials(entry.actorName),
+      title: historySentence(entry, member.fullName),
+      sub: ACTION_LABELS[entry.action] ?? entry.action,
+      time: formatEventTime(entry.createdAt),
+    })),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <MemberAvatar
-          name={member.fullName}
-          avatarUrl={member.avatarUrl}
-          userId={member.userId}
-          size="lg"
-          showPresence
-          className="scale-150"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">{member.fullName}</h1>
-            {isOnline(member.userId) ? (
-              <span className="flex items-center gap-1.5 text-sm text-success">
-                <PresenceDot userId={member.userId} /> Online
-              </span>
-            ) : null}
-          </div>
-          <p className="text-muted-foreground">{member.title ?? "No title set"}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                "gap-1.5",
-                member.isActive
-                  ? "border-success/40 text-success"
-                  : "border-destructive/40 text-destructive",
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  member.isActive ? "bg-success" : "bg-destructive",
-                )}
-                aria-hidden
-              />
-              {member.isActive ? "Active" : "Deactivated"}
-            </Badge>
-            <RoleBadge roleName={member.roleName} systemKey={member.roleSystemKey} />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Joined {formatAbsoluteTime(member.joinedAt)} · Last active{" "}
-            {formatRelativeTime(member.lastActiveAt)}
-          </p>
-        </div>
+      {/* Header — the personnel register */}
+      <div className="border-b-2 border-foreground pb-4">
+        <p className="type-label uppercase tracking-[0.17em] text-muted-foreground">
+          Personnel register / Member {member.registerNo}
+        </p>
+        <h1 className="type-display mt-1">Member detail</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Identity, appointed role, and the access record for this register entry.
+        </p>
       </div>
+
+      {/* Member register hero */}
+      <section className="member-register" aria-label={`${member.fullName}, Member ${member.registerNo}`}>
+        <span className="register-avatar" aria-hidden>
+          {initials(member.fullName)}
+        </span>
+        <div className="min-w-0">
+          <h2 className="truncate">{member.fullName}</h2>
+          <p className="register-sub">
+            <span className="truncate">{member.title ?? "No title set"}</span>
+            <RoleSeal>{member.roleName}</RoleSeal>
+          </p>
+          {member.bio ? (
+            <p className="mt-1 truncate text-xs text-muted-foreground">{member.bio}</p>
+          ) : null}
+        </div>
+        <span className={`member-status-line${member.isActive ? "" : " inactive"}`}>
+          ● {member.isActive ? "Active" : "Deactivated"} · last active {statusDateLabel}
+        </span>
+      </section>
 
       {!member.isActive ? (
         <div className="border border-warning/40 bg-warning-soft p-4 text-sm">
@@ -208,29 +267,95 @@ export function MemberDetailClient({
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* About */}
-        <Card>
+        {/* Access record */}
+        <Card className="rounded-none">
           <CardHeader>
-            <CardTitle className="text-base">About</CardTitle>
+            <CardTitle className="text-sm font-bold uppercase tracking-[0.13em]">
+              Access record
+            </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            <p className="text-muted-foreground">
-              {member.bio ?? "No bio yet."}
-            </p>
-            <div className="flex items-center justify-between border-t pt-3">
-              <span className="text-muted-foreground">Timezone</span>
-              <span className="flex items-center gap-2">
-                <LocalTime timezone={member.timezone} />
-                <span className="text-xs text-muted-foreground">{member.timezone}</span>
-              </span>
-            </div>
+          <CardContent>
+            {accessRows.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                No teams and no decided permissions — this entry inherits the organization
+                baseline everywhere.
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {accessRows.map((row, index) => (
+                  <li key={index} className="grid grid-cols-[2.5rem_1fr_auto] items-start gap-3 py-3">
+                    <span
+                      className="grid size-8 place-items-center border-b-2 border-primary font-mono text-[11px] font-bold"
+                      aria-hidden
+                    >
+                      {row.badge}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-snug">{row.title}</span>
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                        {row.sub}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                      {row.time}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
-        {/* Teams */}
-        <Card>
+        {/* Recent access events */}
+        <Card className="rounded-none">
           <CardHeader>
-            <CardTitle className="text-base">Teams</CardTitle>
+            <CardTitle className="text-sm font-bold uppercase tracking-[0.13em]">
+              Recent access events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {eventRows.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">No recorded events yet.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {eventRows.map((row, index) => (
+                  <li key={index} className="grid grid-cols-[2.5rem_1fr_auto] items-start gap-3 py-3">
+                    <span
+                      className="grid size-8 place-items-center border-b-2 border-primary font-mono text-[11px] font-bold"
+                      aria-hidden
+                    >
+                      {row.badge}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-snug">{row.title}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{row.sub}</span>
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                      {row.time}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Administration — teams, role, and lifecycle actions (gated) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-none">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold uppercase tracking-[0.13em]">Teams</CardTitle>
+            {canChangeRole && !isSelf ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-9"
+                onClick={() => setRoleDialogOpen(true)}
+              >
+                <ShieldCheck className="size-4" aria-hidden /> Change role
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent>
             <MemberTeamsEditor
@@ -243,84 +368,19 @@ export function MemberDetailClient({
               teamMembers={teamMembers}
               canManage={canManageTeams}
             />
-          </CardContent>
-        </Card>
-
-        {/* Role & access */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Role & access</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Current role</span>
-                <RoleBadge roleName={member.roleName} systemKey={member.roleSystemKey} />
-              </div>
-              {canChangeRole && !isSelf ? (
-                <Button variant="outline" size="sm" className="min-h-9" onClick={() => setRoleDialogOpen(true)}>
-                  <ShieldCheck className="size-4" aria-hidden /> Change role
-                </Button>
-              ) : null}
-            </div>
-
-            <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Effective permissions ({effectivePermissions.length})
-              </h3>
-              {effectivePermissions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">This role grants no permissions.</p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[...grouped.entries()].map(([resource, perms]) => (
-                    <div key={resource} className="rounded-lg border p-3">
-                      <p className="mb-1.5 text-xs font-semibold tracking-wide uppercase">{resource}</p>
-                      <ul className="flex flex-col gap-1">
-                        {perms.map((p) => (
-                          <li key={p.key} className="text-sm" title={p.description ?? undefined}>
-                            {p.label}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Assignment history
-              </h3>
-              {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recorded changes.</p>
-              ) : (
-                <ul className="flex flex-col">
-                  {history.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="flex items-baseline justify-between gap-3 border-t py-2 text-sm first:border-t-0"
-                    >
-                      <span>{historySentence(entry, member.fullName)}</span>
-                      <span
-                        className="shrink-0 text-xs text-muted-foreground tabular-nums"
-                        title={formatAbsoluteTime(entry.createdAt)}
-                      >
-                        {formatRelativeTime(entry.createdAt)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className="mt-4 flex items-center gap-2 border-t pt-4">
+              <span className="text-sm text-muted-foreground">Current role</span>
+              <RoleBadge roleName={member.roleName} systemKey={member.roleSystemKey} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Admin actions */}
         {showAdminActions ? (
-          <Card className="border-destructive/30 lg:col-span-2">
+          <Card className="rounded-none border-destructive/30">
             <CardHeader>
-              <CardTitle className="text-base text-destructive">Admin actions</CardTitle>
+              <CardTitle className="text-sm font-bold uppercase tracking-[0.13em] text-destructive">
+                Admin actions
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {member.isActive ? (
