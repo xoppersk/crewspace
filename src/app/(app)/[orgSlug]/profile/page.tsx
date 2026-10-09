@@ -30,12 +30,37 @@ export default async function ProfilePage({
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("role_id")
+    .select("id, role_id")
     .eq("org_id", org.id)
     .eq("user_id", user.id)
     .eq("is_active", true)
     .maybeSingle();
   if (!membership) notFound();
+
+  // "Granted by <name> on <date>" attribution (UI-DESIGN.md §2.17): the
+  // latest role assignment event for this membership, from the audit log.
+  let roleGrant: { by: string; at: string } | null = null;
+  const { data: grantEvent } = await supabase
+    .from("audit_log")
+    .select("actor_id, created_at")
+    .eq("org_id", org.id)
+    .eq("target_type", "membership")
+    .eq("target_id", membership.id)
+    .in("action", ["membership.role_changed", "membership.created"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (grantEvent) {
+    const { data: grantActor } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", grantEvent.actor_id)
+      .maybeSingle();
+    roleGrant = {
+      by: grantActor?.full_name ?? "Someone",
+      at: grantEvent.created_at,
+    };
+  }
 
   const [{ data: role }, { data: permissionData }, { data: profile }] = await Promise.all([
     supabase
@@ -87,6 +112,7 @@ export default async function ProfilePage({
         description: role?.description ?? null,
         isSystem: role?.is_system ?? false,
       }}
+      roleGrant={roleGrant}
       permissions={(permissionData ?? []) as string[]}
       receivedInvites={receivedInvites}
     />
