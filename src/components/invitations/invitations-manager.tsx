@@ -3,8 +3,10 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { FileUp, Loader2, MailPlus, MoreHorizontal, Send, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
+  copyInvitationLink,
   getInvitePageData,
   resendInvitation,
   revokeInvitation,
@@ -125,8 +127,8 @@ export function InvitationsManager({ initial }: { initial: InvitePageData }) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Invitations</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-semibold tracking-tight">Invitations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Invite teammates, resend or revoke pending invites, and import in bulk.
           </p>
         </div>
@@ -267,8 +269,11 @@ function useRowActions(invitation: InvitationListItem, orgId: string, onChanged:
     setPending("copy");
     setError(null);
     try {
-      const { acceptUrl } = await resendInvitation(orgId, invitation.id);
+      const { acceptUrl } = await copyInvitationLink(orgId, invitation.id);
       await navigator.clipboard.writeText(acceptUrl);
+      toast.success("Invite link copied", {
+        description: "This is a fresh link — the previous one no longer works. No new email was sent.",
+      });
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not copy the link.");
