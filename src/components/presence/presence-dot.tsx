@@ -19,7 +19,7 @@ export function PresenceDot({
   return (
     <span
       className={cn(
-        "inline-flex size-2.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-background",
+        "inline-flex size-2.5 shrink-0 items-center justify-center rounded-full bg-success ring-2 ring-background",
         className,
       )}
       aria-hidden="true"
