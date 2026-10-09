@@ -62,7 +62,7 @@ export function AppSidebar({
         {collapsed ? (
           <span className="text-sm font-bold">S</span>
         ) : (
-          <span className="truncate font-semibold tracking-tight">Sevyn App Starter</span>
+          <span className="truncate font-semibold tracking-tight">Crewspace</span>
         )}
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -89,7 +89,7 @@ export function AppSidebarMobile({ open, onOpenChange }: { open: boolean; onOpen
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b p-4 text-left">
-          <SheetTitle>Sevyn App Starter</SheetTitle>
+          <SheetTitle>Crewspace</SheetTitle>
         </SheetHeader>
         <SidebarNav onNavigate={() => onOpenChange(false)} />
       </SheetContent>
