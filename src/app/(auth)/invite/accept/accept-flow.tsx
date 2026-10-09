@@ -7,7 +7,19 @@ import { CheckCircle2, Loader2, LogOut, MailWarning, ShieldAlert, TimerOff } fro
 
 import { createClient } from "@/lib/supabase/client";
 import { acceptInvitation, getInvitationByToken, type InvitationPreview } from "@/lib/invitations/actions";
+import { RoleBadge } from "@/components/roles/role-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -200,8 +212,8 @@ export function AcceptFlow() {
     return (
       <StateBlock
         icon={<TimerOff className="size-6 text-muted-foreground" />}
-        title="This invitation expired"
-        body="Invitations last 7 days. Ask the person who invited you to resend it — they'll get a fresh link in one click."
+        title="This invitation is no longer valid"
+        body="It expired before it was accepted — no account was created and no access was granted. Ask the person who invited you to send a fresh invitation."
       />
     );
   }
@@ -219,7 +231,7 @@ export function AcceptFlow() {
   if (state === "already-accepted") {
     return (
       <StateBlock
-        icon={<CheckCircle2 className="size-6 text-emerald-600" />}
+        icon={<CheckCircle2 className="size-6 text-success" />}
         title="You've already accepted this invitation"
         body="You're all set — head to the workspace."
         action={
@@ -240,8 +252,8 @@ export function AcceptFlow() {
   if (state === "success" && preview) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <span className="flex size-14 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="size-7 text-emerald-600" />
+        <span className="flex size-14 items-center justify-center rounded-full bg-success-soft">
+          <CheckCircle2 className="size-7 text-success" />
         </span>
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Welcome to {preview.orgName}</h2>
@@ -277,16 +289,16 @@ export function AcceptFlow() {
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">You&rsquo;ve been invited to</p>
           <h2 className="truncate text-lg font-semibold tracking-tight">{preview.orgName}</h2>
-          <p className="text-sm text-muted-foreground">Invited by {preview.inviterName}</p>
+          <p className="text-sm text-muted-foreground">{preview.inviterName} invited you</p>
         </div>
       </div>
 
       {/* Offered role + what it means */}
-      <div className="rounded-lg border p-4">
+      <div className="border p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium">
-            Role: <span className="font-semibold">{preview.roleName}</span>
-          </p>
+          <div className="flex items-center gap-2">
+            <RoleBadge roleName={preview.roleName} />
+          </div>
           <ExpiryCountdown expiresAt={preview.expiresAt} />
         </div>
         {preview.roleDescription ? (
@@ -296,7 +308,7 @@ export function AcceptFlow() {
           <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
             {preview.permissionLabels.slice(0, 3).map((label) => (
               <li key={label} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
                 <span>{label}</span>
               </li>
             ))}
@@ -379,6 +391,7 @@ export function AcceptFlow() {
           <Button onClick={onAccept} className="min-h-11 w-full">
             Accept invitation
           </Button>
+          <DeclineButton orgName={preview.orgName} />
         </div>
       ) : null}
 
@@ -414,5 +427,47 @@ function StateBlock({
       <p className="text-sm text-muted-foreground">{body}</p>
       {action ? <div className="mt-2 w-full">{action}</div> : null}
     </div>
+  );
+}
+
+/**
+ * Decline (UI-DESIGN.md §2.3): secondary action with a confirm step. Declining
+ * records nothing — the invitation simply stays pending for the admin.
+ */
+function DeclineButton({ orgName }: { orgName: string }) {
+  const [declined, setDeclined] = useState(false);
+
+  if (declined) {
+    return (
+      <div className="border bg-muted/40 px-4 py-3 text-center">
+        <p className="text-sm font-medium">Invitation declined</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Nothing was recorded — {orgName} can invite you again any time.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" className="w-full text-muted-foreground">
+          Decline
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Decline this invitation?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Declining records nothing — the invitation stays pending on {orgName}&rsquo;s side,
+            and they can invite you again later.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep invitation</AlertDialogCancel>
+          <AlertDialogAction onClick={() => setDeclined(true)}>Decline</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
