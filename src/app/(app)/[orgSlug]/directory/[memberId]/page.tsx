@@ -185,6 +185,7 @@ export default async function MemberDetailPage({
           isActive: member.is_active,
           lastActiveAt: member.last_active_at,
           joinedAt: member.joined_at,
+          deactivatedAt: member.deactivated_at,
           roleId: member.role_id,
           roleName: member.roles.name,
           roleSystemKey: member.roles.system_key,
