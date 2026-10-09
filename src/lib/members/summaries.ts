@@ -145,6 +145,8 @@ export function summarizeBulkAction(
 export interface DirectoryMember {
   membershipId: string;
   userId: string;
+  /** Org-wide register number ("042") — the numbered civic register. */
+  registerNo: string;
   fullName: string;
   avatarUrl: string | null;
   title: string | null;
