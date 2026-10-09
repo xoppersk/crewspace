@@ -645,8 +645,48 @@ export async function resendInvitation(
   return { ok: true, acceptUrl, expiresAt: expiresAt.toISOString() };
 }
 
-/** Revokes a pending (or expired) invitation — it can never be accepted. */
-export async function revokeInvitation(orgId: string, invitationId: string): Promise<{ ok: true }> {
+/**
+ * Generates a fresh invite link and copies it — without re-sending the
+ * email and without bumping the resend counter. Only the token hash is
+ * stored, so a copyable link is always a fresh one: the previous link
+ * stops working. The UI says so out loud.
+ */
+export async function copyInvitationLink(
+  orgId: string,
+  invitationId: string,
+): Promise<{ ok: true; acceptUrl: string }> {
+  const { supabase } = await requireOrgAccess(orgId, "invitations:manage");
+
+  const { data: invitation } = await supabase
+    .from("invitations")
+    .select("id, status")
+    .eq("id", invitationId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (!invitation) throw new Error("Invitation not found.");
+  if (invitation.status === "accepted") {
+    throw new Error("This invitation was already accepted — nothing to copy.");
+  }
+  if (invitation.status === "revoked") {
+    throw new Error("Revoked invitations cannot be copied. Send a new invitation instead.");
+  }
+
+  const { raw, tokenHash } = issueInvitationToken();
+  const expiresAt = invitationExpiresAt();
+  const { error } = await supabase
+    .from("invitations")
+    .update({
+      token_hash: tokenHash,
+      expires_at: expiresAt.toISOString(),
+      status: "pending",
+    })
+    .eq("id", invitation.id);
+  if (error) throw new Error("Could not generate a link. Try again.");
+
+  return { ok: true, acceptUrl: invitationAcceptUrl(raw, appUrl()) };
+}
+
+/** Revokes a pending (or expired) invitation — it can never be accepted. */export async function revokeInvitation(orgId: string, invitationId: string): Promise<{ ok: true }> {
   const { user, supabase } = await requireOrgAccess(orgId, "invitations:manage");
 
   const { data: invitation } = await supabase
