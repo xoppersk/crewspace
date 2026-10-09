@@ -66,7 +66,7 @@ export default async function RolesPage({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Roles</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>
           <p className="text-sm text-muted-foreground">
             Who can do what. System roles are locked — clone one to make your own.
           </p>
@@ -108,8 +108,8 @@ export default async function RolesPage({
         {customRoles.length === 0 ? (
           <EmptyState
             icon={ShieldCheck}
-            title="No custom roles yet"
-            description="Create a role tailored to your team — pick exactly the permissions it needs."
+            title="No custom roles"
+            description="Create one for a real job title — pick exactly the permissions it needs."
             action={
               canCreate ? (
                 <Button asChild>
