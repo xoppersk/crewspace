@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ChevronDown, Copy, Minus, Plus, Users } from "lucide-react";
+import { ChevronDown, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -16,48 +15,61 @@ import {
   type CatalogPermission,
   type ResourceGroup,
 } from "@/lib/roles/catalog";
-import { diffPermissionKeys, isDiffEmpty } from "@/lib/roles/diff";
+import {
+  decisionsFromStates,
+  diffPermissionStates,
+  isStateDiffEmpty,
+  statesFromDecisions,
+  type PermissionDecisions,
+  type PermissionState,
+} from "@/lib/roles/diff";
 
 /**
  * PermissionMatrix — the Crewspace differentiator, in the Signature UI's
- * register language: uppercase group titles with rule counts, rows that
- * state each permission's effect in plain language, and the dark review bar
- * ("Changes ready · affects N members").
+ * register language (Flagship UI Designs artifact): uppercase group titles
+ * with rule counts, rows that state each permission's effect in plain
+ * language, an Allow / Deny / Inherit segmented control with text labels
+ * and an explicit selected state on every row, and the dark review bar
+ * ("Changes ready · affects N members" + "Review changes").
  *
- * Resources as grouped rows (Organization, Members, Teams, Roles,
- * Invitations, Audit log, Settings, Billing); actions as toggle cells with
- * plain-language tooltips. System roles render read-only with a
- * "Clone to customize" affordance; custom roles get a sticky
- * "Review changes" bar showing the diff (+2/−1 keys) and the affected-member
- * count. Confirm applies via the parent's server action.
+ * Decision model: Allow grants the key, Deny records an explicit denial,
+ * Inherit leaves the key undecided so the organization baseline applies.
+ * System roles render read-only with a "Clone to customize" affordance;
+ * custom roles get the dark review bar once a decision changes.
  *
- * Keyboard: every toggle is a native switch (Tab + Space), plus arrow-key
- * group navigation across the whole matrix. Touch: ≥44px targets on mobile,
- * where the matrix collapses to an accordion (one resource group open at a
- * time). Status is never color-alone: counts are always paired with words
- * and icons.
+ * Keyboard: every control is a native button group (Tab + arrows).
+ * Touch: ≥44px targets on mobile, where the matrix collapses to an
+ * accordion (one resource group open at a time). Status is never
+ * color-alone: selected buttons carry a "✓ " prefix plus the label text.
  */
+
+const STATES: PermissionState[] = ["allow", "deny", "inherit"];
+const STATE_LABELS: Record<PermissionState, string> = {
+  allow: "Allow",
+  deny: "Deny",
+  inherit: "Inherit",
+};
 
 export interface PermissionMatrixProps {
   catalog: ResourceGroup[];
-  /** The saved key set — the diff baseline. */
-  initialKeys: string[];
-  /** System roles: locked toggles + clone affordance. */
+  /** The saved decisions — the diff baseline. */
+  initialDecisions: PermissionDecisions;
+  /** System roles: locked controls + clone affordance. */
   readOnly?: boolean;
   /** Controlled mode (role wizard): hides the review bar. */
-  value?: string[];
-  onValueChange?: (keys: string[]) => void;
+  value?: Record<string, PermissionState>;
+  onValueChange?: (states: Record<string, PermissionState>) => void;
   /** Active memberships holding the role — shown in the review bar. */
   affectedMemberCount?: number;
-  /** Detail mode: called with the edited key set on Confirm. */
-  onConfirm?: (nextKeys: string[]) => Promise<{ ok: boolean; error?: string }>;
+  /** Detail mode: called with the edited decisions on "Review changes". */
+  onConfirm?: (decisions: PermissionDecisions) => Promise<{ ok: boolean; error?: string }>;
   confirmLabel?: string;
   onCloneRequest?: () => void;
 }
 
 export function PermissionMatrix({
   catalog,
-  initialKeys,
+  initialDecisions,
   readOnly = false,
   value,
   onValueChange,
@@ -66,7 +78,7 @@ export function PermissionMatrix({
   confirmLabel = "Review changes",
   onCloneRequest,
 }: PermissionMatrixProps) {
-  const [internalKeys, setInternalKeys] = useState<string[]>(initialKeys);
+  const [overrides, setOverrides] = useState<Record<string, PermissionState>>({});
   const [openResource, setOpenResource] = useState<string | null>(
     catalog[0]?.resource ?? null,
   );
@@ -75,27 +87,51 @@ export function PermissionMatrix({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const controlled = value !== undefined;
-  const keys = controlled ? value : internalKeys;
+  const baselineStates = useMemo(() => statesFromDecisions(initialDecisions), [initialDecisions]);
 
-  const diff = useMemo(() => diffPermissionKeys(initialKeys, keys), [initialKeys, keys]);
-  const dirty = !readOnly && !isDiffEmpty(diff) && onConfirm !== undefined;
+  // Reset local edits whenever the saved baseline changes (e.g. the parent
+  // revalidates after a successful save).
+  const baselineKey = JSON.stringify(initialDecisions);
+  const [lastBaselineKey, setLastBaselineKey] = useState(baselineKey);
+  if (lastBaselineKey !== baselineKey) {
+    setLastBaselineKey(baselineKey);
+    setOverrides({});
+  }
 
-  function setKeys(next: string[]) {
+  const states = useMemo(() => {
+    if (controlled) return value;
+    const merged = { ...baselineStates };
+    for (const [key, decision] of Object.entries(overrides)) {
+      if (decision === "inherit") {
+        delete merged[key];
+      } else {
+        merged[key] = decision;
+      }
+    }
+    return merged;
+  }, [controlled, value, baselineStates, overrides]);
+
+  const diff = useMemo(
+    () =>
+      diffPermissionStates(decisionsFromStates(baselineStates), decisionsFromStates(states)),
+    [baselineStates, states],
+  );
+  const dirty = !readOnly && !isStateDiffEmpty(diff) && onConfirm !== undefined;
+
+  function setDecision(key: string, decision: PermissionState) {
+    if (readOnly) return;
     if (controlled) {
+      const next = { ...states };
+      if (decision === "inherit") {
+        delete next[key];
+      } else {
+        next[key] = decision;
+      }
       onValueChange?.(next);
     } else {
-      setInternalKeys(next);
+      setOverrides((prev) => ({ ...prev, [key]: decision }));
     }
     setConfirmError(null);
-  }
-
-  function toggle(key: string) {
-    if (readOnly) return;
-    setKeys(keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]);
-  }
-
-  function discard() {
-    setKeys(initialKeys);
   }
 
   async function confirm() {
@@ -103,13 +139,13 @@ export function PermissionMatrix({
     setConfirming(true);
     setConfirmError(null);
     try {
-      const result = await onConfirm(keys);
+      const result = await onConfirm(decisionsFromStates(states));
       if (!result.ok) {
         setConfirmError(result.error ?? "Couldn't save changes. Try again.");
-      } else {
-        // Success: the parent revalidates, so fresh initialKeys arrive and
-        // the bar disappears. Sync local state in case it doesn't.
-        if (!controlled) setInternalKeys(keys);
+      } else if (!controlled) {
+        // Success: clear local edits — the parent revalidates and the fresh
+        // baseline arrives, so the bar disappears.
+        setOverrides({});
       }
     } catch (error) {
       setConfirmError(error instanceof Error ? error.message : "Couldn't save changes.");
@@ -118,19 +154,19 @@ export function PermissionMatrix({
     }
   }
 
-  // Arrow-key group navigation across every switch in the matrix.
+  // Arrow-key navigation across every permission-state button.
   function onMatrixKeyDown(event: React.KeyboardEvent) {
     if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
     const target = event.target as HTMLElement;
-    if (!target.hasAttribute("data-matrix-switch")) return;
-    const switches = Array.from(
-      containerRef.current?.querySelectorAll<HTMLElement>("[data-matrix-switch]") ?? [],
+    if (!target.hasAttribute("data-permission-button")) return;
+    const buttons = Array.from(
+      containerRef.current?.querySelectorAll<HTMLElement>("[data-permission-button]") ?? [],
     );
-    const index = switches.indexOf(target);
+    const index = buttons.indexOf(target);
     if (index === -1) return;
     event.preventDefault();
     const delta = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
-    const next = switches[(index + delta + switches.length) % switches.length];
+    const next = buttons[(index + delta + buttons.length) % buttons.length];
     next?.focus();
   }
 
@@ -157,9 +193,9 @@ export function PermissionMatrix({
             <GroupSection
               key={group.resource}
               group={group}
-              keys={keys}
+              states={states}
               readOnly={readOnly}
-              onToggle={toggle}
+              onDecision={setDecision}
             />
           ))}
         </div>
@@ -168,7 +204,7 @@ export function PermissionMatrix({
         <div className="md:hidden">
           {catalog.map((group) => {
             const open = openResource === group.resource;
-            const enabled = group.permissions.filter((p) => keys.includes(p.key)).length;
+            const decided = group.permissions.filter((p) => states[p.key] !== undefined).length;
             return (
               <div key={group.resource} className="border-b last:border-b-0">
                 <button
@@ -180,7 +216,7 @@ export function PermissionMatrix({
                   <span className="flex items-center gap-2">
                     <span className="text-sm font-semibold">{group.label}</span>
                     <span className="text-xs text-muted-foreground">
-                      {enabled} of {group.permissions.length} on
+                      {decided} of {group.permissions.length} decided
                     </span>
                   </span>
                   <ChevronDown
@@ -193,9 +229,9 @@ export function PermissionMatrix({
                       <MobilePermissionRow
                         key={permission.key}
                         permission={permission}
-                        checked={keys.includes(permission.key)}
+                        decision={states[permission.key] ?? "inherit"}
                         readOnly={readOnly}
-                        onToggle={() => toggle(permission.key)}
+                        onDecision={(decision) => setDecision(permission.key, decision)}
                       />
                     ))}
                   </div>
@@ -205,49 +241,22 @@ export function PermissionMatrix({
           })}
         </div>
 
-        {/* Sticky review bar — the dark signature bar */}
+        {/* Dark review bar — the signature bar. Appears when a decision changes. */}
         {dirty ? (
           <div
             aria-live="polite"
-            className="sticky bottom-4 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 bg-foreground px-4 py-3 text-white shadow-lg"
+            className="sticky bottom-4 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-sm bg-foreground px-4 py-3 text-white shadow-lg"
           >
-            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-semibold">Changes ready</span>
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-white/80">
-                <span className="inline-flex items-center gap-1.5">
-                  {diff.added.length > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-emerald-300">
-                      <Plus className="size-3.5" /> {diff.added.length} added
-                    </span>
-                  ) : null}
-                  {diff.removed.length > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-red-300">
-                      <Minus className="size-3.5" /> {diff.removed.length} removed
-                    </span>
-                  ) : null}
-                </span>
-                {typeof affectedMemberCount === "number" ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Users className="size-3.5" />
-                    Affects {affectedMemberCount} member{affectedMemberCount === 1 ? "" : "s"}
-                  </span>
-                ) : null}
-              </span>
+            <span className="text-sm font-semibold">
+              Changes ready · affects {affectedMemberCount ?? 0} member
+              {(affectedMemberCount ?? 0) === 1 ? "" : "s"}
+            </span>
+            <div className="flex items-center gap-2">
               {confirmError ? (
-                <p role="alert" className="w-full text-sm text-red-300">
+                <p role="alert" className="text-sm text-red-300">
                   {confirmError}
                 </p>
               ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                onClick={discard}
-                disabled={confirming}
-                className="text-white hover:bg-white/10 hover:text-white"
-              >
-                Discard
-              </Button>
               <Button
                 onClick={confirm}
                 disabled={confirming}
@@ -265,32 +274,29 @@ export function PermissionMatrix({
 
 function GroupSection({
   group,
-  keys,
+  states,
   readOnly,
-  onToggle,
+  onDecision,
 }: {
   group: ResourceGroup;
-  keys: string[];
+  states: Record<string, PermissionState>;
   readOnly: boolean;
-  onToggle: (key: string) => void;
+  onDecision: (key: string, decision: PermissionState) => void;
 }) {
-  const enabled = group.permissions.filter((p) => keys.includes(p.key)).length;
   return (
     <section aria-label={group.label} className="border-t-2 border-foreground pt-2 pb-4">
       <div className="register-group-title px-1 pb-1">
         <span>{group.label}</span>
-        <span className="text-muted-foreground">
-          {enabled} of {group.permissions.length} rules
-        </span>
+        <span className="text-muted-foreground">{group.permissions.length} rules</span>
       </div>
       <div>
         {group.permissions.map((permission) => (
           <DesktopPermissionRow
             key={permission.key}
             permission={permission}
-            checked={keys.includes(permission.key)}
+            decision={states[permission.key] ?? "inherit"}
             readOnly={readOnly}
-            onToggle={() => onToggle(permission.key)}
+            onDecision={(decision) => onDecision(permission.key, decision)}
           />
         ))}
       </div>
@@ -313,97 +319,99 @@ function PermissionLabel({ permission }: { permission: CatalogPermission }) {
   );
 }
 
-function DesktopPermissionRow({
-  permission,
-  checked,
+/**
+ * The register's Allow / Deny / Inherit segmented control — text labels
+ * with an explicit selected state (Flagship UI Designs artifact).
+ */
+function PermissionStateControl({
+  decision,
   readOnly,
-  onToggle,
+  onDecision,
+  label,
 }: {
-  permission: CatalogPermission;
-  checked: boolean;
+  decision: PermissionState;
   readOnly: boolean;
-  onToggle: () => void;
+  onDecision: (decision: PermissionState) => void;
+  label: string;
 }) {
   return (
-    <label
-      className={cn(
-        "grid grid-cols-[1fr_auto] items-center gap-4 border-b px-1 py-3",
-        !readOnly && "cursor-pointer",
-      )}
+    <span
+      className="permission-state"
+      role="group"
+      aria-label={`${label} access decision`}
     >
+      {STATES.map((state) => (
+        <button
+          key={state}
+          type="button"
+          data-permission-button=""
+          disabled={readOnly}
+          aria-pressed={decision === state}
+          aria-label={`${STATE_LABELS[state]}: ${label}`}
+          className={decision === state ? "selected" : undefined}
+          onClick={() => onDecision(state)}
+        >
+          {STATE_LABELS[state]}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+function DesktopPermissionRow({
+  permission,
+  decision,
+  readOnly,
+  onDecision,
+}: {
+  permission: CatalogPermission;
+  decision: PermissionState;
+  readOnly: boolean;
+  onDecision: (decision: PermissionState) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b px-1 py-3">
       <span className="flex min-w-0 flex-col gap-0.5">
         <PermissionLabel permission={permission} />
         {permission.description ? (
           <span className="text-xs text-muted-foreground">{permission.description}</span>
         ) : null}
       </span>
-      {readOnly ? (
-        <span
-          role="img"
-          aria-label={checked ? "Granted (locked)" : "Not granted (locked)"}
-          className={cn(
-            "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-bold",
-            checked ? "border-success text-success" : "border-muted-foreground/30 text-muted-foreground/50",
-          )}
-        >
-          {checked ? "✓" : "–"}
-        </span>
-      ) : (
-        <Switch
-          data-matrix-switch=""
-          checked={checked}
-          onCheckedChange={onToggle}
-          aria-label={permission.label}
-        />
-      )}
-    </label>
+      <PermissionStateControl
+        decision={decision}
+        readOnly={readOnly}
+        onDecision={onDecision}
+        label={permission.label}
+      />
+    </div>
   );
 }
 
 function MobilePermissionRow({
   permission,
-  checked,
+  decision,
   readOnly,
-  onToggle,
+  onDecision,
 }: {
   permission: CatalogPermission;
-  checked: boolean;
+  decision: PermissionState;
   readOnly: boolean;
-  onToggle: () => void;
+  onDecision: (decision: PermissionState) => void;
 }) {
   return (
-    <label
-      className={cn(
-        "flex min-h-[44px] w-full items-center justify-between gap-4 px-1 py-2.5",
-        !readOnly && "cursor-pointer active:bg-muted/50",
-      )}
-    >
+    <div className="flex min-h-[44px] w-full flex-col justify-center gap-2 px-1 py-2.5">
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="text-sm font-semibold">{permission.label}</span>
         {permission.description ? (
           <span className="text-xs text-muted-foreground">{permission.description}</span>
         ) : null}
       </span>
-      {readOnly ? (
-        <span
-          role="img"
-          aria-label={checked ? "Granted (locked)" : "Not granted (locked)"}
-          className={cn(
-            "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
-            checked ? "border-success text-success" : "border-muted-foreground/30 text-muted-foreground/50",
-          )}
-        >
-          {checked ? "✓" : "–"}
-        </span>
-      ) : (
-        <Switch
-          data-matrix-switch=""
-          checked={checked}
-          onCheckedChange={onToggle}
-          aria-label={permission.label}
-          className="shrink-0"
-        />
-      )}
-    </label>
+      <PermissionStateControl
+        decision={decision}
+        readOnly={readOnly}
+        onDecision={onDecision}
+        label={permission.label}
+      />
+    </div>
   );
 }

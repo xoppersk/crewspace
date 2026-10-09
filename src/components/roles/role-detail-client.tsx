@@ -23,17 +23,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useOrg } from "@/app/(app)/[orgSlug]/org-context";
 import { HintBar } from "@/components/crew/hint-bar";
 import { RoleSeal } from "@/components/crew/role-seal";
-import { updateRoleMeta, updateRolePermissions } from "@/lib/roles/actions";
+import { updateRoleMeta, updateRolePermissionStates } from "@/lib/roles/actions";
 import { DeleteRoleButton } from "./delete-role-button";
 import { PermissionMatrix } from "./permission-matrix";
 import type { ResourceGroup } from "@/lib/roles/catalog";
+import type { PermissionDecisions } from "@/lib/roles/diff";
 import { RoleBadge } from "./role-badge";
 
 /**
- * Role detail screen — the Signature UI: the permission register.
+ * Role detail screen — the Signature UI: the permission register
+ * (Flagship UI Designs artifact).
  *
- * Topline: role name + seal (org · member count), top-actions (Duplicate,
- * Role history), hint bar stating the register's rule, then the permission
+ * Topline: role name + seal ("Member name · Member NNN", the register's
+ * identity mark) + member count; top-actions (Duplicate, Role history);
+ * hint bar stating the register's rule verbatim; then the permission
  * register card ("N shown · 18 total") with grouped rule sections and the
  * dark review bar. Members with this role + danger zone follow.
  */
@@ -43,6 +46,7 @@ export interface RoleMember {
   userId: string;
   name: string;
   title: string | null;
+  registerNo: string;
 }
 
 export interface RoleDetailData {
@@ -56,7 +60,7 @@ export interface RoleDetailData {
 export function RoleDetailClient({
   role,
   catalog,
-  initialKeys,
+  initialDecisions,
   affectedMemberCount,
   members,
   canEdit,
@@ -64,7 +68,7 @@ export function RoleDetailClient({
 }: {
   role: RoleDetailData;
   catalog: ResourceGroup[];
-  initialKeys: string[];
+  initialDecisions: PermissionDecisions;
   affectedMemberCount: number;
   members: RoleMember[];
   canEdit: boolean;
@@ -74,9 +78,12 @@ export function RoleDetailClient({
   const router = useRouter();
 
   const totalPermissions = catalog.reduce((n, g) => n + g.permissions.length, 0);
+  // The seal names the register's identity: the longest-standing member
+  // holding this role ("Maya Jordan · Member 042" in the signature).
+  const sealMember = members[0] ?? null;
 
-  async function handleConfirm(nextKeys: string[]) {
-    const result = await updateRolePermissions(org.id, org.slug, role.id, nextKeys);
+  async function handleConfirm(decisions: PermissionDecisions) {
+    const result = await updateRolePermissionStates(org.id, org.slug, role.id, decisions);
     if (result.ok) router.refresh();
     return result.ok
       ? { ok: true as const }
@@ -115,9 +122,13 @@ export function RoleDetailClient({
               <Badge variant="outline" className="uppercase tracking-wide">Custom</Badge>
             )}
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{role.name}</h1>
+          <h1 className="type-display mt-2">{role.name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <RoleSeal>{org.name}</RoleSeal>
+            {sealMember ? (
+              <RoleSeal>
+                {sealMember.name} · Member {sealMember.registerNo}
+              </RoleSeal>
+            ) : null}
             <span>
               {affectedMemberCount} member{affectedMemberCount === 1 ? "" : "s"}
             </span>
@@ -139,11 +150,10 @@ export function RoleDetailClient({
         </div>
       </div>
 
-      {/* Hint bar */}
+      {/* Hint bar — the register's rule, verbatim from the signature UI. */}
       <HintBar>
-        {role.isSystem || !canEdit
-          ? "Each permission states its effect in plain language. System roles are read-only — duplicate this role to customize it."
-          : "Each permission states its effect in plain language. Toggle a permission to grant it — the review bar shows exactly who is affected before anything changes."}
+        Each permission states its effect. Allow grants access, Deny blocks it, and Inherit
+        follows the organization baseline.
       </HintBar>
 
       {/* Permission register */}
@@ -157,7 +167,7 @@ export function RoleDetailClient({
           </div>
           <PermissionMatrix
             catalog={catalog}
-            initialKeys={initialKeys}
+            initialDecisions={initialDecisions}
             readOnly={role.isSystem || !canEdit}
             affectedMemberCount={affectedMemberCount}
             onConfirm={canEdit && !role.isSystem ? handleConfirm : undefined}
@@ -187,6 +197,9 @@ export function RoleDetailClient({
                     href={`/${org.slug}/directory/${member.userId}`}
                     className="flex items-center gap-3 py-2.5"
                   >
+                    <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground tnum">
+                      {member.registerNo}
+                    </span>
                     <Avatar className="size-8">
                       <AvatarFallback>
                         {member.name

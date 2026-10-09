@@ -16,6 +16,10 @@ import { useOrg } from "@/app/(app)/[orgSlug]/org-context";
 import { createRole } from "@/lib/roles/actions";
 import { PermissionMatrix } from "./permission-matrix";
 import type { ResourceGroup } from "@/lib/roles/catalog";
+import {
+  decisionsFromStates,
+  type PermissionState,
+} from "@/lib/roles/diff";
 import { RoleBadge } from "./role-badge";
 
 /**
@@ -61,19 +65,26 @@ export function RoleWizard({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [startFrom, setStartFrom] = useState<string>(cloneFromId ?? "blank");
-  const [keys, setKeys] = useState<string[]>(
-    () => systemRoles.find((r) => r.id === cloneFromId)?.keys ?? [],
-  );
+  const [decisions, setDecisions] = useState<Record<string, PermissionState>>(() => {
+    const states: Record<string, PermissionState> = {};
+    for (const key of systemRoles.find((r) => r.id === cloneFromId)?.keys ?? []) {
+      states[key] = "allow";
+    }
+    return states;
+  });
   const [assignIds, setAssignIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const nameValid = name.trim().length >= 2;
+  const { allow: allowKeys, deny: denyKeys } = decisionsFromStates(decisions);
 
   function pickStartFrom(value: string) {
     setStartFrom(value);
     const source = systemRoles.find((r) => r.id === value);
-    setKeys(source ? source.keys : []);
+    const states: Record<string, PermissionState> = {};
+    for (const key of source?.keys ?? []) states[key] = "allow";
+    setDecisions(states);
   }
 
   const groupedSummary = useMemo(
@@ -81,10 +92,11 @@ export function RoleWizard({
       catalog
         .map((group) => ({
           label: group.label,
-          entries: group.permissions.filter((p) => keys.includes(p.key)),
+          allowed: group.permissions.filter((p) => decisions[p.key] === "allow"),
+          denied: group.permissions.filter((p) => decisions[p.key] === "deny"),
         }))
-        .filter((group) => group.entries.length > 0),
-    [catalog, keys],
+        .filter((group) => group.allowed.length > 0 || group.denied.length > 0),
+    [catalog, decisions],
   );
 
   function toggleAssign(membershipId: string) {
@@ -101,7 +113,8 @@ export function RoleWizard({
     const result = await createRole(org.id, org.slug, {
       name: name.trim(),
       description: description.trim(),
-      permissionKeys: keys,
+      permissionKeys: allowKeys,
+      denyKeys,
       assignMembershipIds: assignIds,
     });
     setCreating(false);
@@ -226,13 +239,13 @@ export function RoleWizard({
           <CardContent>
             <PermissionMatrix
               catalog={catalog}
-              initialKeys={[]}
-              value={keys}
-              onValueChange={setKeys}
+              initialDecisions={{ allow: [], deny: [] }}
+              value={decisions}
+              onValueChange={setDecisions}
             />
             <p className="mt-3 text-xs text-muted-foreground">
-              {keys.length} of {catalog.reduce((n, g) => n + g.permissions.length, 0)} permissions
-              selected.
+              {allowKeys.length} allowed · {denyKeys.length} denied ·{" "}
+              {catalog.reduce((n, g) => n + g.permissions.length, 0)} total permissions.
             </p>
           </CardContent>
         </Card>
@@ -253,7 +266,8 @@ export function RoleWizard({
               </div>
               {groupedSummary.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No permissions selected — this role grants nothing. Go back to add some.
+                  No permissions decided — this role inherits the organization baseline
+                  everywhere. Go back to set Allow or Deny decisions.
                 </p>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -263,7 +277,7 @@ export function RoleWizard({
                         {group.label}
                       </p>
                       <ul className="mt-1 flex flex-col gap-1">
-                        {group.entries.map((entry) => (
+                        {group.allowed.map((entry) => (
                           <li key={entry.key} className="flex items-start gap-2 text-sm">
                             <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden />
                             <span>
@@ -271,6 +285,17 @@ export function RoleWizard({
                               {entry.description ? (
                                 <span className="text-muted-foreground"> — {entry.description}</span>
                               ) : null}
+                            </span>
+                          </li>
+                        ))}
+                        {group.denied.map((entry) => (
+                          <li key={entry.key} className="flex items-start gap-2 text-sm">
+                            <span className="mt-0.5 size-3.5 shrink-0 text-destructive" aria-hidden>
+                              ✕
+                            </span>
+                            <span>
+                              <span className="font-medium">{entry.label}</span>
+                              <span className="text-muted-foreground"> — denied</span>
                             </span>
                           </li>
                         ))}
