@@ -63,7 +63,7 @@ export function OwnershipTransferCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {done ? (
-          <p className="text-sm text-emerald-600" role="status">
+          <p className="text-sm text-success" role="status">
             Ownership transferred. You are now an admin — the new owner can transfer it
             back if needed.
           </p>
@@ -85,7 +85,7 @@ export function OwnershipTransferCard({
               </Select>
             </div>
 
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm">
               <p className="font-semibold">Before you continue, know what happens:</p>
               <ul className="mt-1.5 list-disc space-y-1 pl-5 text-muted-foreground">
                 <li>

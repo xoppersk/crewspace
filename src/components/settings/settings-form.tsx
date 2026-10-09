@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Lock, X } from "lucide-react";
 
 import {
   INVITE_POLICY_OPTIONS,
@@ -97,9 +97,11 @@ function Field({
 function DomainChips({
   value,
   onChange,
+  readOnly = false,
 }: {
   value: string[];
   onChange: (domains: string[]) => void;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +140,7 @@ function DomainChips({
               aria-label={`Remove ${domain}`}
               onClick={() => onChange(value.filter((d) => d !== domain))}
               className="rounded-full text-muted-foreground hover:text-foreground"
+              disabled={readOnly}
             >
               <X className="size-3" />
             </button>
@@ -163,6 +166,7 @@ function DomainChips({
           placeholder={value.length === 0 ? "example.com" : ""}
           aria-label="Add an allowed email domain"
           className="min-w-32 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          disabled={readOnly}
         />
       </div>
       {error ? (
@@ -213,6 +217,7 @@ export function SettingsForm({
   roleOptions,
   usage,
   ownership,
+  readOnly = false,
 }: {
   orgId: string;
   orgSlug: string;
@@ -220,6 +225,11 @@ export function SettingsForm({
   roleOptions: { id: string; name: string; isSystem: boolean }[];
   usage: SettingsUsage;
   ownership: SettingsOwnership;
+  /**
+   * Read-only mode (UI-DESIGN.md §2.16): viewers without `settings:manage`
+   * see every tab with fields disabled and an explanatory banner.
+   */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [form, setForm] = useState<SettingsInitial>(initial);
@@ -284,11 +294,21 @@ export function SettingsForm({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Organization settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-semibold tracking-tight">Organization settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Identity, member policy, security, and your plan.
         </p>
       </div>
+
+      {readOnly ? (
+        <div className="flex gap-2.5 border bg-muted/40 p-3 text-sm" role="note">
+          <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">You&apos;re viewing read-only.</span>{" "}
+            Only owners and admins can change these settings.
+          </p>
+        </div>
+      ) : null}
 
       <Tabs defaultValue="general">
         <TabsList className="w-full justify-start overflow-x-auto">
@@ -307,14 +327,29 @@ export function SettingsForm({
             <CardContent className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
                 <Label>Logo</Label>
-                <ImageUpload
-                  bucket="org-logos"
-                  path={`${orgId}/logo.png`}
-                  currentUrl={form.logo_url}
-                  fallbackLabel={form.name}
-                  shape="square"
-                  onUploaded={(url) => set("logo_url", url)}
-                />
+                {readOnly ? (
+                  form.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.logo_url}
+                      alt={`${form.name} logo`}
+                      className="size-20 rounded-lg border object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-20 items-center justify-center rounded-lg border bg-muted text-xl font-semibold">
+                      {form.name.slice(0, 1).toUpperCase()}
+                    </span>
+                  )
+                ) : (
+                  <ImageUpload
+                    bucket="org-logos"
+                    path={`${orgId}/logo.png`}
+                    currentUrl={form.logo_url}
+                    fallbackLabel={form.name}
+                    shape="square"
+                    onUploaded={(url) => set("logo_url", url)}
+                  />
+                )}
               </div>
               <Field
                 label="Organization name"
@@ -326,6 +361,8 @@ export function SettingsForm({
                   value={form.name}
                   maxLength={80}
                   onChange={(e) => set("name", e.target.value)}
+                  disabled={readOnly}
+                  title={readOnly ? "Only owners and admins can change this" : undefined}
                 />
               </Field>
               <Field
@@ -339,14 +376,16 @@ export function SettingsForm({
                   maxLength={48}
                   onChange={(e) => set("slug", e.target.value.toLowerCase())}
                   className="font-mono"
+                  disabled={readOnly}
+                  title={readOnly ? "Only owners and admins can change this" : undefined}
                 />
               </Field>
               {slugRenamed ? (
                 <div
                   role="alert"
-                  className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+                  className="flex gap-2.5 rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm"
                 >
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
                   <p>
                     <span className="font-semibold">Renaming changes your workspace URL.</span>{" "}
                     Links to /{initial.slug} — bookmarks, invitation emails, shared pages — will
@@ -357,7 +396,7 @@ export function SettingsForm({
             </CardContent>
           </Card>
 
-          {ownership.canTransfer ? (
+          {ownership.canTransfer && !readOnly ? (
             <OwnershipTransferCard
               orgId={orgId}
               orgSlug={orgSlug}
@@ -382,6 +421,7 @@ export function SettingsForm({
                 <Select
                   value={form.default_role_id}
                   onValueChange={(value) => set("default_role_id", value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger id="settings-default-role">
                     <SelectValue placeholder="Choose a role" />
@@ -408,6 +448,8 @@ export function SettingsForm({
                   onValueChange={(value) =>
                     set("invite_policy", value as SettingsInitial["invite_policy"])
                   }
+                  disabled={readOnly}
+                  aria-label="Who can invite new members"
                 >
                   {INVITE_POLICY_OPTIONS.map((option) => (
                     <label
@@ -434,6 +476,7 @@ export function SettingsForm({
                 <DomainChips
                   value={form.allowed_domains}
                   onChange={(domains) => set("allowed_domains", domains)}
+                  readOnly={readOnly}
                 />
                 <p className="text-xs text-muted-foreground">
                   Invitations and joins are limited to these domains. Empty means anyone can join
@@ -452,6 +495,7 @@ export function SettingsForm({
                   id="settings-verify"
                   checked={form.require_email_verification}
                   onCheckedChange={(checked) => set("require_email_verification", checked)}
+                  disabled={readOnly}
                 />
               </div>
             </CardContent>
@@ -473,6 +517,7 @@ export function SettingsForm({
                 <Select
                   value={form.session_timeout_minutes}
                   onValueChange={(value) => set("session_timeout_minutes", value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger id="settings-timeout" className="w-56">
                     <SelectValue />
@@ -501,6 +546,7 @@ export function SettingsForm({
                   id="settings-reauth"
                   checked={form.require_reauth_destructive}
                   onCheckedChange={(checked) => set("require_reauth_destructive", checked)}
+                  disabled={readOnly}
                 />
               </div>
 
@@ -558,7 +604,8 @@ export function SettingsForm({
         </TabsContent>
       </Tabs>
 
-      {/* Sticky dirty-state save bar */}
+      {/* Sticky dirty-state save bar (hidden in read-only mode) */}
+      {readOnly ? null : (
       <div
         aria-live="polite"
         className={cn(
@@ -569,7 +616,7 @@ export function SettingsForm({
         <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-3">
           <p className="flex-1 text-sm font-medium">
             {saved ? (
-              <span className="flex items-center gap-1.5 text-emerald-600">
+              <span className="flex items-center gap-1.5 text-success">
                 <Check className="size-4" /> Settings saved.
               </span>
             ) : (
@@ -590,6 +637,7 @@ export function SettingsForm({
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }
