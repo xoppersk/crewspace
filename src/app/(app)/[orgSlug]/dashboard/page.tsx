@@ -1,199 +1,96 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 import { requireOrgAccess } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
-import { assignRegisterNumbers, formatRegisterNo } from "@/lib/members/register";
-import {
-  buildDirectoryClauses,
-  directoryPageRange,
-  DIRECTORY_PAGE_SIZE,
-  parseDirectoryFilters,
-  type DirectoryClause,
-} from "@/lib/members/filters";
-import type { DirectoryMember } from "@/lib/members/summaries";
-import type { RoleOption } from "@/components/roles/role-select";
-import { DirectoryClient } from "@/components/directory/directory-client";
-import { DirectoryToolbar } from "@/components/directory/directory-toolbar";
-import type { TeamMemberEntry } from "@/components/directory/member-teams-editor";
+import { formatAuditSentence } from "@/lib/audit/sentences";
+import { formatRegisterNo } from "@/lib/members/register";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-
-type MemberRow = {
-  id: string;
-  user_id: string;
-  role_id: string;
-  is_active: boolean;
-  last_active_at: string | null;
-  joined_at: string;
-  deactivated_at: string | null;
-  profiles: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    title: string | null;
-    timezone: string;
-  };
-  roles: { id: string; name: string; system_key: string | null; color: string };
-};
+import { Card, CardContent } from "@/components/ui/card";
+import { MemberDashboard } from "@/components/dashboard/member-dashboard";
 
 /**
- * Member directory — the flagship screen (APP-FLOW §3, DESIGN-BRIEF §4).
- * Server Component: parses URL filters, runs the paginated query (25/page),
- * and hands rows to the client shell for table/cards, bulk select, and the
- * member drawer.
+ * Dashboard — "Membership overview" (Flagship UI Designs artifact, Crewspace).
+ *
+ * Admin view (any admin-ish permission): the organization register at a
+ * glance — four KPI cards (Active members / Appointed roles / Pending
+ * invitations / Deactivated), the membership-composition stacked bar with
+ * its register ledger, and the recent register changes feed drawn from the
+ * live audit log.
+ *
+ * Member view: welcome header, "My access" summary, "Who's online" strip,
+ * and the viewer's teams.
  */
-export default async function DirectoryPage({
+const ADMIN_KEYS = [
+  "members:invite",
+  "members:change_role",
+  "members:deactivate",
+  "invitations:manage",
+  "teams:create",
+  "teams:manage",
+  "roles:create",
+  "roles:assign",
+  "audit:read",
+];
+
+/** Fallback role colors from the artifact's membership chart. */
+const ROLE_COLOR_FALLBACKS = ["#1e2530", "#334fc7", "#60739a", "#8a94a4", "#c6cbd2"];
+
+/** "October 6 · 3:18 PM" — the artifact's feed timestamp. */
+function formatFeedTime(iso: string): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${day} · ${time}`;
+}
+
+/** Short category label for an audit action ("3:18 PM · Role assignment"). */
+function auditCategory(action: string): string {
+  const [domain, event] = action.split(".");
+  const words: Record<string, string> = {
+    membership: "Membership",
+    invitation: "Invitation",
+    role: "Role",
+    team: "Team",
+    audit: "Audit",
+    org: "Organization",
+    settings: "Settings",
+  };
+  const domainLabel = words[domain as keyof typeof words] ?? domain;
+  const eventLabel = event ? event.replace(/_/g, " ") : "";
+  return `${domainLabel}${eventLabel ? ` ${eventLabel}` : ""}`;
+}
+
+export default async function DashboardPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { orgSlug } = await params;
-  const filters = parseDirectoryFilters(await searchParams);
-  const view = (await searchParams).view === "cards" ? "cards" : "table";
   const supabase = await createClient();
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("slug", orgSlug)
     .maybeSingle();
   if (!org) notFound();
 
-  const { user, permissions } = await requireOrgAccess(org.id, "members:read");
+  const { user, permissions, membership } = await requireOrgAccess(org.id, "org:read");
+  const isAdminView = permissions.some((key) => ADMIN_KEYS.includes(key));
 
-  // Filter option data: roles (with permission + member counts for the
-  // RoleSelect) and non-archived teams.
-  const [{ data: roleRows }, { data: teamRows }] = await Promise.all([
-    supabase
-      .from("roles")
-      .select("id, name, system_key, color")
-      .eq("org_id", org.id)
-      .order("name"),
-    supabase
-      .from("teams")
-      .select("id, name, lead_membership_id")
-      .eq("org_id", org.id)
-      .eq("is_archived", false)
-      .order("name"),
-  ]);
-  const roles = roleRows ?? [];
-  const teams = teamRows ?? [];
-
-  const roleIds = roles.map((r) => r.id);
-  const [{ data: rolePermRows }, { data: roleMemberRows }] = await Promise.all([
-    roleIds.length > 0
-      ? supabase.from("role_permissions").select("role_id").in("role_id", roleIds)
-      : Promise.resolve({ data: [] as { role_id: string }[] }),
-    supabase.from("memberships").select("role_id").eq("org_id", org.id),
-  ]);
-  const permCountByRole = new Map<string, number>();
-  for (const row of rolePermRows ?? []) {
-    permCountByRole.set(row.role_id, (permCountByRole.get(row.role_id) ?? 0) + 1);
-  }
-  const memberCountByRole = new Map<string, number>();
-  for (const row of roleMemberRows ?? []) {
-    memberCountByRole.set(row.role_id, (memberCountByRole.get(row.role_id) ?? 0) + 1);
-  }
-
-  const roleOptions: RoleOption[] = roles.map((r) => ({
-    id: r.id,
-    name: r.name,
-    systemKey: r.system_key,
-    permissionCount: permCountByRole.get(r.id) ?? 0,
-    memberCount: memberCountByRole.get(r.id) ?? 0,
-  }));
-
-  // Team filter needs the membership ids first (team_memberships join).
-  let teamMemberIds: string[] | null = null;
-  if (filters.teamId !== "all") {
-    const { data: tmRows } = await supabase
-      .from("team_memberships")
-      .select("membership_id, teams!inner(id, org_id)")
-      .eq("teams.org_id", org.id)
-      .eq("team_id", filters.teamId);
-    teamMemberIds = (tmRows ?? []).map((r) => r.membership_id);
-  }
-  const forceEmpty = teamMemberIds !== null && teamMemberIds.length === 0;
-
-  // Build the member query from the pure clause list.
-  const clauses = buildDirectoryClauses(filters);
-  let query = supabase
-    .from("memberships")
-    .select(
-      `id, user_id, role_id, is_active, last_active_at, joined_at, deactivated_at,
-       profiles!inner(id, full_name, avatar_url, title, timezone),
-       roles!inner(id, name, system_key, color)`,
-      { count: "exact" },
-    )
-    .eq("org_id", org.id);
-
-  for (const clause of clauses) {
-    query = applyClause(query, clause);
-  }
-  if (teamMemberIds && teamMemberIds.length > 0) {
-    query = query.in("id", teamMemberIds);
-  }
-
-  const { from, to } = directoryPageRange(filters.page);
-  const { data, count, error } = forceEmpty
-    ? { data: [], count: 0, error: null }
-    : await query.range(from, to);
-  if (error) throw error;
-
-  const rows = (data ?? []) as unknown as MemberRow[];
-  const memberIds = rows.map((r) => r.id);
-
-  // Team memberships for the page's members (pills) + lead map + names for
-  // the drawer's successor picker.
-  const { data: tmData } =
-    memberIds.length > 0
-      ? await supabase
-          .from("team_memberships")
-          .select("team_id, membership_id, teams!inner(id, name, lead_membership_id)")
-          .in("membership_id", memberIds)
-      : { data: [] as { team_id: string; membership_id: string; teams: unknown }[] };
-
-  const teamIdsByMember = new Map<string, { id: string; name: string }[]>();
-  const leadMembershipByTeam: Record<string, string | null> = {};
-  const allTeamIds = new Set<string>();
-  for (const tm of tmData ?? []) {
-    const team = tm.teams as unknown as { id: string; name: string; lead_membership_id: string | null };
-    allTeamIds.add(team.id);
-    leadMembershipByTeam[team.id] = team.lead_membership_id;
-    const list = teamIdsByMember.get(tm.membership_id) ?? [];
-    list.push({ id: team.id, name: team.name });
-    teamIdsByMember.set(tm.membership_id, list);
-  }
-
-  // All teams (incl. archived) for the lead map, so the drawer knows leads.
-  const { data: allTeamsData } = await supabase
-    .from("teams")
-    .select("id, lead_membership_id")
-    .eq("org_id", org.id);
-  for (const t of allTeamsData ?? []) {
-    if (!(t.id in leadMembershipByTeam)) leadMembershipByTeam[t.id] = t.lead_membership_id;
-  }
-
-  // Team rosters (for the successor picker): members of the page members' teams.
-  const teamMembers: Record<string, TeamMemberEntry[]> = {};
-  if (allTeamIds.size > 0) {
-    const { data: rosterData } = await supabase
-      .from("team_memberships")
-      .select("team_id, membership_id, memberships!inner(profiles!inner(full_name))")
-      .in("team_id", [...allTeamIds]);
-    for (const r of rosterData ?? []) {
-      const fullName = (
-        r.memberships as unknown as { profiles: { full_name: string } }
-      ).profiles.full_name;
-      const list = teamMembers[r.team_id] ?? [];
-      list.push({ membershipId: r.membership_id, fullName });
-      teamMembers[r.team_id] = list;
-    }
+  if (!isAdminView) {
+    return (
+      <MemberDashboard
+        orgId={org.id}
+        orgSlug={orgSlug}
+        orgName={org.name}
+        userId={user.id}
+        membershipId={membership.id}
+        permissions={permissions}
+      />
+    );
   }
 
   // Register numbers are org-wide: position in the full membership ordered
@@ -203,251 +100,255 @@ export default async function DirectoryPage({
     .select("id, is_active")
     .eq("org_id", org.id)
     .order("joined_at", { ascending: true });
-  const registerByMembershipId = assignRegisterNumbers(
-    (orgMembershipRows ?? []).map((m) => m.id),
-  );
-
-  const members: DirectoryMember[] = rows.map((row) => {
-    const memberTeams = teamIdsByMember.get(row.id) ?? [];
-    return {
-      membershipId: row.id,
-      userId: row.user_id,
-      registerNo: formatRegisterNo(registerByMembershipId.get(row.id) ?? 0),
-      fullName: row.profiles.full_name,
-      avatarUrl: row.profiles.avatar_url,
-      title: row.profiles.title,
-      timezone: row.profiles.timezone,
-      isActive: row.is_active,
-      lastActiveAt: row.last_active_at,
-      joinedAt: row.joined_at,
-      deactivatedAt: row.deactivated_at,
-      roleId: row.role_id,
-      roleName: row.roles.name,
-      roleSystemKey: row.roles.system_key,
-      roleColor: row.roles.color,
-      teamIds: memberTeams.map((t) => t.id),
-      teamNames: memberTeams.map((t) => t.name),
-    };
-  });
-
-  // Register summary: pending invitations (oldest expiry) for the KPI row.
-  const { data: pendingInvites } = await supabase
-    .from("invitations")
-    .select("expires_at")
-    .eq("org_id", org.id)
-    .eq("status", "pending")
-    .order("expires_at", { ascending: true })
-    .limit(1);
-  const oldestExpiry = pendingInvites?.[0]?.expires_at
-    ? new Date(pendingInvites[0].expires_at).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-      })
-    : null;
-  const { count: pendingCount } = await supabase
-    .from("invitations")
-    .select("id", { count: "exact", head: true })
-    .eq("org_id", org.id)
-    .eq("status", "pending");
-  const activeCount = (orgMembershipRows ?? []).filter((m) => m.is_active).length;
+  const activeMemberships = (orgMembershipRows ?? []).filter((m) => m.is_active);
+  const activeCount = activeMemberships.length;
   const deactivatedCount = (orgMembershipRows ?? []).length - activeCount;
-  const customRoleCount = roles.filter((r) => !r.system_key).length;
+  const lastRegisterNo = formatRegisterNo(Math.max(1, (orgMembershipRows ?? []).length));
+
+  const [{ count: pendingCount }, { data: roleRows }, { data: activeRoleRows }] =
+    await Promise.all([
+      supabase
+        .from("invitations")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", org.id)
+        .eq("status", "pending"),
+      supabase.from("roles").select("id, name, system_key, color").eq("org_id", org.id),
+      supabase.from("memberships").select("role_id").eq("org_id", org.id).eq("is_active", true),
+    ]);
+
+  const memberCountByRole = new Map<string, number>();
+  for (const row of activeRoleRows ?? []) {
+    memberCountByRole.set(row.role_id, (memberCountByRole.get(row.role_id) ?? 0) + 1);
+  }
+  const roles = (roleRows ?? [])
+    .map((r, index) => ({
+      id: r.id,
+      name: r.name,
+      systemKey: r.system_key,
+      color: r.color || ROLE_COLOR_FALLBACKS[index % ROLE_COLOR_FALLBACKS.length],
+      count: memberCountByRole.get(r.id) ?? 0,
+    }))
+    .sort((a, b) => {
+      if (a.systemKey === "owner") return -1;
+      if (b.systemKey === "owner") return 1;
+      return b.count - a.count;
+    });
+  const baselineRole = roles.find((r) => r.name.toLowerCase() === "member") ?? roles[roles.length - 1];
+
+  // Latest 6 audit events for the recent register changes feed.
+  const { data: auditRows } = await supabase
+    .from("audit_log")
+    .select("id, action, actor_id, target_label, diff, metadata, created_at")
+    .eq("org_id", org.id)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  const actorIds = [...new Set((auditRows ?? []).map((r) => r.actor_id))];
+  const { data: actorProfiles } =
+    actorIds.length > 0
+      ? await supabase.from("profiles").select("id, full_name").in("id", actorIds)
+      : { data: [] as { id: string; full_name: string }[] };
+  const actorNameById = new Map((actorProfiles ?? []).map((p) => [p.id, p.full_name]));
+
+  const feed = (auditRows ?? []).map((r, index) => ({
+    id: r.id,
+    badge: String(index + 1).padStart(2, "0"),
+    sentence: formatAuditSentence(actorNameById.get(r.actor_id) ?? "Someone", {
+      action: r.action,
+      targetLabel: r.target_label,
+      diff: r.diff as Record<string, unknown> | null,
+      metadata: r.metadata as Record<string, unknown> | null,
+    }),
+    category: auditCategory(r.action),
+    time: formatFeedTime(r.created_at),
+  }));
+
   const canInvite = permissions.includes("members:invite");
 
-  const summaryKpis = [
+  const kpis = [
     {
       label: "Active members",
       value: activeCount,
-      caption: `Across ${teams.length} team${teams.length === 1 ? "" : "s"}`,
+      caption: `Register 001–${lastRegisterNo}`,
+      href: `/${orgSlug}/directory`,
+    },
+    {
+      label: "Appointed roles",
+      value: roles.length,
+      caption: "Every member accounted for",
+      href: `/${orgSlug}/roles`,
     },
     {
       label: "Pending invitations",
       value: pendingCount ?? 0,
-      caption: oldestExpiry ? `Oldest expires ${oldestExpiry}` : "None pending",
-    },
-    {
-      label: "Custom roles",
-      value: customRoleCount,
-      caption: "Reviewed this month",
+      caption: "Outside active headcount",
+      href: `/${orgSlug}/invitations`,
     },
     {
       label: "Deactivated",
       value: deactivatedCount,
       caption: "History preserved",
+      href: `/${orgSlug}/directory?status=deactivated`,
     },
   ];
-  // Sort is fully server-side (PostgREST orders on the joined profile row).
-  const totalCount = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / DIRECTORY_PAGE_SIZE));
-  const resultSummary = `${totalCount} ${totalCount === 1 ? "member" : "members"}${filters.page > 1 ? ` · page ${filters.page} of ${totalPages}` : ""}`;
-
-  const pageParams = (page: number) => {
-    const next = new URLSearchParams();
-    if (filters.q) next.set("q", filters.q);
-    if (filters.teamId !== "all") next.set("team", filters.teamId);
-    if (filters.roleId !== "all") next.set("role", filters.roleId);
-    if (filters.status !== "all") next.set("status", filters.status);
-    if (filters.onlineOnly) next.set("online", "1");
-    if (filters.sort !== "name") next.set("sort", filters.sort);
-    if (view === "cards") next.set("view", "cards");
-    if (page > 1) next.set("page", String(page));
-    const qs = next.toString();
-    return `/${orgSlug}/directory${qs ? `?${qs}` : ""}`;
-  };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      {/* Header — the organization register */}
       <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-4">
         <div>
           <p className="type-label uppercase tracking-[0.17em] text-muted-foreground">
-            Crewspace / Personnel register
+            Crewspace / Organization register
           </p>
-          <h1 className="type-display mt-1">Directory</h1>
+          <h1 className="type-display mt-1">Membership overview</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Find people quickly, understand their access, and open a focused member detail
-            drawer. {resultSummary}.
+            Headcount and appointed roles are reconciled to the same active directory that ends
+            at Member {lastRegisterNo}.
           </p>
         </div>
         {canInvite ? (
           <Button asChild>
-            <Link href={`/${orgSlug}/invitations`}>Invite member</Link>
+            <Link href={`/${orgSlug}/invitations`}>
+              <UserPlus className="size-4" /> Invite member
+            </Link>
           </Button>
         ) : null}
       </div>
 
-      <Suspense fallback={<Skeleton className="h-24 w-full rounded-lg" />}>
-        <DirectoryToolbar
-          teams={teams.map((t) => ({ id: t.id, name: t.name }))}
-          roles={roles.map((r) => ({ id: r.id, name: r.name }))}
-          resultSummary={resultSummary}
-        />
-      </Suspense>
-
-      <Suspense
-        key={JSON.stringify(filters)}
-        fallback={<DirectorySkeleton />}
-      >
-        <DirectoryClient
-          members={members}
-          orgId={org.id}
-          orgSlug={orgSlug}
-          currentUserId={user.id}
-          permissions={permissions}
-          roles={roleOptions}
-          teams={teams.map((t) => ({ id: t.id, name: t.name }))}
-          teamMembers={teamMembers}
-          leadMembershipByTeam={leadMembershipByTeam}
-          onlineOnly={filters.onlineOnly}
-          view={view}
-        />
-      </Suspense>
-
-      {/* Register summary — the artifact's KPI row */}
-      <div className="mt-2">
-        <div className="flex items-baseline justify-between border-b border-foreground pb-2">
-          <h2 className="text-sm font-bold uppercase tracking-[0.17em]">Register summary</h2>
-          <span className="text-xs text-muted-foreground">
-            {new Date().toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-px border bg-border lg:grid-cols-4">
-          {summaryKpis.map((kpi) => (
-            <div key={kpi.label} className="flex flex-col gap-1 bg-card p-4">
-              <span className="type-label uppercase tracking-wide text-muted-foreground">
-                {kpi.label}
-              </span>
-              <span className="font-mono text-2xl font-medium tnum">{kpi.value}</span>
-              <span className="text-xs text-muted-foreground">{kpi.caption}</span>
-            </div>
-          ))}
-        </div>
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-px border bg-border lg:grid-cols-4">
+        {kpis.map((kpi) => (
+          <Link
+            key={kpi.label}
+            href={kpi.href}
+            className="flex flex-col gap-1 bg-card p-4 transition-colors hover:bg-primary-soft"
+          >
+            <span className="type-label uppercase tracking-wide text-muted-foreground">
+              {kpi.label}
+            </span>
+            <span className="font-mono text-2xl font-medium tnum">{kpi.value}</span>
+            <span className="text-xs text-muted-foreground">{kpi.caption}</span>
+          </Link>
+        ))}
       </div>
 
-      {totalPages > 1 ? (
-        <nav aria-label="Directory pages" className="flex items-center justify-between">
-          <Button asChild variant="outline" disabled={filters.page <= 1} className="min-h-11 sm:min-h-9">
-            <Link
-              href={pageParams(filters.page - 1)}
-              aria-disabled={filters.page <= 1}
-              tabIndex={filters.page <= 1 ? -1 : undefined}
-              className={filters.page <= 1 ? "pointer-events-none opacity-50" : undefined}
-            >
-              <ChevronLeft className="size-4" aria-hidden /> Previous
-            </Link>
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            Page {filters.page} of {totalPages}
-          </span>
-          {filters.page < totalPages ? (
-            <Button asChild variant="outline" className="min-h-11 sm:min-h-9">
-              <Link href={pageParams(filters.page + 1)}>
-                Next <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
+      {/* Membership composition */}
+      <Card className="rounded-none border-t-[3px] border-t-foreground">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-[0.08em]">
+                Membership composition
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Active directory · members by appointed role
+              </p>
+            </div>
+            <span className="font-mono text-xs text-muted-foreground tnum">
+              Members · {activeCount}
+            </span>
+          </div>
+
+          {roles.length > 0 ? (
+            <>
+              <div
+                className="mt-4 flex h-[42px] w-full overflow-hidden"
+                role="img"
+                aria-label={roles.map((r) => `${r.name} ${r.count}`).join(", ")}
+              >
+                {roles.map((role) => (
+                  <span
+                    key={role.id}
+                    title={`${role.name}: ${role.count} members`}
+                    className="h-full"
+                    style={{
+                      width: `${activeCount > 0 ? (role.count / activeCount) * 100 : 0}%`,
+                      backgroundColor: role.color,
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex justify-between font-mono text-[11px] text-muted-foreground tnum">
+                <span>0</span>
+                <span>{activeCount} members</span>
+              </div>
+              <ul className="mt-3 flex flex-col divide-y divide-border">
+                {roles.map((role) => (
+                  <li
+                    key={role.id}
+                    className="flex items-center gap-3 py-2 text-sm"
+                  >
+                    <span
+                      className="size-2.5 shrink-0"
+                      style={{ backgroundColor: role.color }}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">{role.name}</span>
+                    <span className="font-mono text-sm tnum">{role.count}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 border-t border-border pt-4 text-sm">
+                <strong className="font-semibold">
+                  Member {lastRegisterNo} closes a {activeCount}-person register
+                  {baselineRole ? `; ${baselineRole.count} hold the baseline ${baselineRole.name} role` : ""}.
+                </strong>
+                <span className="mt-1 block font-mono text-xs text-muted-foreground tnum">
+                  {roles.map((r) => r.count).join(" + ")} = {activeCount} active members
+                </span>
+              </p>
+            </>
           ) : (
-            <span className="w-24" aria-hidden />
+            <p className="mt-4 text-sm text-muted-foreground">
+              No roles defined yet — create one to start composing the register.
+            </p>
           )}
-        </nav>
-      ) : null}
+        </CardContent>
+      </Card>
 
-      {/* Mobile "load more" replaces the pagination controls on small screens */}
-      {totalPages > 1 && filters.page < totalPages ? (
-        <Button asChild variant="outline" className="min-h-11 w-full md:hidden">
-          <Link href={pageParams(filters.page + 1)}>Load more members</Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Bind one pure clause to the Supabase query builder. Generic over the
- * builder type so chained calls keep their inferred types.
- */
-function applyClause<TQuery>(query: TQuery, clause: DirectoryClause): TQuery {
-  const q = query as unknown as {
-    or: (filters: string, opts: { referencedTable: string }) => TQuery;
-    eq: (column: string, value: string | boolean) => TQuery;
-    order: (
-      column: string,
-      opts: { ascending: boolean; nullsFirst?: boolean; referencedTable?: string },
-    ) => TQuery;
-  };
-  switch (clause.type) {
-    case "search":
-      // profiles.email (citext, 00013) is searchable under the same RLS as
-      // the profile row itself — no extra policy needed.
-      return q.or(
-        `full_name.ilike.${clause.pattern},title.ilike.${clause.pattern},email.ilike.${clause.pattern}`,
-        {
-          referencedTable: "profiles",
-        },
-      );
-    case "role":
-      return q.eq("role_id", clause.roleId);
-    case "isActive":
-      return q.eq("is_active", clause.value);
-    case "team":
-      // Handled before the query (team_memberships join) — never reaches here.
-      return query;
-    case "order":
-      if (clause.column === "name") {
-        return q.order("full_name", { referencedTable: "profiles", ascending: true });
-      }
-      return q.order(clause.column, { ascending: clause.ascending, nullsFirst: false });
-  }
-}
-
-function DirectorySkeleton() {
-  return (
-    <div className="flex flex-col gap-2" aria-label="Loading members">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <Skeleton key={i} className="h-16 w-full rounded-lg" />
-      ))}
+      {/* Recent register changes */}
+      <div>
+        <div className="flex items-baseline justify-between border-b border-foreground pb-2">
+          <h2 className="text-sm font-bold uppercase tracking-[0.17em]">
+            Recent register changes
+          </h2>
+          <span className="text-xs text-muted-foreground">Permanent audit record</span>
+        </div>
+        <Card className="mt-4 rounded-none">
+          <CardContent className="pt-2">
+            {feed.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No register changes yet — invitations, role assignments, and permission
+                updates will appear here.
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {feed.map((item) => (
+                  <li key={item.id} className="grid grid-cols-[2.5rem_1fr_auto] items-start gap-3 py-3">
+                    <span
+                      className="grid size-8 place-items-center border-b-2 border-primary font-mono text-[11px] font-bold text-foreground"
+                      aria-hidden
+                    >
+                      {item.badge}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-snug">
+                        {item.sentence}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {item.category}
+                      </span>
+                    </span>
+                    <time className="shrink-0 font-mono text-[11px] text-muted-foreground tnum">
+                      {item.time}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
