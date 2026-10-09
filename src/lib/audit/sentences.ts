@@ -14,7 +14,7 @@
  *   membership.created       diff: { role: "Member" }, metadata: { via: "invitation" | "manual" }
  *   team.member_added        target = member name, diff: { team: "Design" }
  *   team.lead_changed        diff: { team: "Design", lead: { from, to } }
- *   role.permissions_changed diff: { added: string[], removed: string[] }
+ *   role.permissions_changed diff: { added: string[], removed: string[] } (+ denied/undenied for explicit Deny decisions)
  *   invitation.sent          target = email, diff: { role: "Manager" }
  *   invitation.bulk_sent     diff: { count: n }  (or { sent, failed })
  *   settings.updated         diff: { field: { from, to }, ... }
@@ -167,9 +167,13 @@ const FORMATTERS: Record<string, Formatter> = {
     const d = diffOf(event);
     const added = Array.isArray(d.added) ? d.added.length : 0;
     const removed = Array.isArray(d.removed) ? d.removed.length : 0;
+    const denied = Array.isArray(d.denied) ? d.denied.length : 0;
+    const undenied = Array.isArray(d.undenied) ? d.undenied.length : 0;
     const bits: string[] = [];
     if (added > 0) bits.push(`+${added} added`);
     if (removed > 0) bits.push(`−${removed} removed`);
+    if (denied > 0) bits.push(`${denied} denied`);
+    if (undenied > 0) bits.push(`${undenied} un-denied`);
     const detail = bits.length > 0 ? ` (${bits.join(", ")})` : "";
     return `${actor} updated permissions for the ${target(event, "a role")} role${detail}`;
   },
