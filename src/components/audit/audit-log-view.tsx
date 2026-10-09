@@ -41,8 +41,8 @@ function LiveTailToggle({
         Live
         {enabled ? (
           <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-600" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+            <span className="relative inline-flex size-2 rounded-full bg-success" />
           </span>
         ) : null}
       </Label>
@@ -232,8 +232,8 @@ function AuditLogViewInner({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Audit log</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-semibold tracking-tight">Audit log</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Every consequential action in this organization, in plain language.{" "}
             <span className="whitespace-nowrap">{AUDIT_RETENTION_LABEL}.</span>
           </p>
