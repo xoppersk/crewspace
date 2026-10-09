@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
  */
 
 const SYSTEM_STYLES: Record<string, string> = {
-  owner: "bg-indigo-600 text-white",
-  admin: "border-indigo-600 text-indigo-700",
+  owner: "bg-primary text-white",
+  admin: "border-primary bg-primary-soft text-[#312e81]",
   manager: "bg-sky-100 text-sky-800",
   member: "bg-zinc-100 text-zinc-700",
   viewer: "border-zinc-300 bg-zinc-50 text-zinc-500",

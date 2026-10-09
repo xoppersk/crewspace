@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Copy, Minus, Plus, Users } from "lucide-react";
+import { ChevronDown, Copy, Minus, Plus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,7 +19,10 @@ import {
 import { diffPermissionKeys, isDiffEmpty } from "@/lib/roles/diff";
 
 /**
- * PermissionMatrix — the Crewspace differentiator (DESIGN-BRIEF §4.2).
+ * PermissionMatrix — the Crewspace differentiator, in the Signature UI's
+ * register language: uppercase group titles with rule counts, rows that
+ * state each permission's effect in plain language, and the dark review bar
+ * ("Changes ready · affects N members").
  *
  * Resources as grouped rows (Organization, Members, Teams, Roles,
  * Invitations, Audit log, Settings, Billing); actions as toggle cells with
@@ -35,7 +38,8 @@ import { diffPermissionKeys, isDiffEmpty } from "@/lib/roles/diff";
  * and icons.
  */
 
-export interface PermissionMatrixProps {  catalog: ResourceGroup[];
+export interface PermissionMatrixProps {
+  catalog: ResourceGroup[];
   /** The saved key set — the diff baseline. */
   initialKeys: string[];
   /** System roles: locked toggles + clone affordance. */
@@ -59,7 +63,7 @@ export function PermissionMatrix({
   onValueChange,
   affectedMemberCount,
   onConfirm,
-  confirmLabel = "Confirm changes",
+  confirmLabel = "Review changes",
   onCloneRequest,
 }: PermissionMatrixProps) {
   const [internalKeys, setInternalKeys] = useState<string[]>(initialKeys);
@@ -134,7 +138,7 @@ export function PermissionMatrix({
     <TooltipProvider delayDuration={200}>
       <div ref={containerRef} onKeyDown={onMatrixKeyDown}>
         {readOnly ? (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-3">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-l-3 border-primary bg-primary-soft px-4 py-3">
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">System role — read-only.</span>{" "}
               These permissions are locked to keep the org safe.
@@ -147,7 +151,7 @@ export function PermissionMatrix({
           </div>
         ) : null}
 
-        {/* Desktop: grouped grid */}
+        {/* Desktop: grouped register */}
         <div className="hidden md:block">
           {catalog.map((group) => (
             <GroupSection
@@ -201,49 +205,56 @@ export function PermissionMatrix({
           })}
         </div>
 
-        {/* Sticky review bar */}
+        {/* Sticky review bar — the dark signature bar */}
         {dirty ? (
           <div
             aria-live="polite"
-            className="sticky bottom-4 z-10 mt-6 rounded-lg border bg-card p-4 shadow-lg"
+            className="sticky bottom-4 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 bg-foreground px-4 py-3 text-white shadow-lg"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Review changes</p>
-                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    {diff.added.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
-                        <Plus className="size-3.5" /> {diff.added.length} added
-                      </span>
-                    ) : null}
-                    {diff.removed.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-red-700">
-                        <Minus className="size-3.5" /> {diff.removed.length} removed
-                      </span>
-                    ) : null}
-                  </span>
-                  {typeof affectedMemberCount === "number" ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="size-3.5" />
-                      Affects {affectedMemberCount} member{affectedMemberCount === 1 ? "" : "s"}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-semibold">Changes ready</span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-white/80">
+                <span className="inline-flex items-center gap-1.5">
+                  {diff.added.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-emerald-300">
+                      <Plus className="size-3.5" /> {diff.added.length} added
                     </span>
                   ) : null}
-                </p>
-                {confirmError ? (
-                  <p role="alert" className="mt-1 text-sm text-destructive">
-                    {confirmError}
-                  </p>
+                  {diff.removed.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-red-300">
+                      <Minus className="size-3.5" /> {diff.removed.length} removed
+                    </span>
+                  ) : null}
+                </span>
+                {typeof affectedMemberCount === "number" ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="size-3.5" />
+                    Affects {affectedMemberCount} member{affectedMemberCount === 1 ? "" : "s"}
+                  </span>
                 ) : null}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={discard} disabled={confirming}>
-                  Discard
-                </Button>
-                <Button onClick={confirm} disabled={confirming}>
-                  {confirming ? "Saving…" : confirmLabel}
-                </Button>
-              </div>
+              </span>
+              {confirmError ? (
+                <p role="alert" className="w-full text-sm text-red-300">
+                  {confirmError}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={discard}
+                disabled={confirming}
+                className="text-white hover:bg-white/10 hover:text-white"
+              >
+                Discard
+              </Button>
+              <Button
+                onClick={confirm}
+                disabled={confirming}
+                className="bg-primary text-white hover:bg-primary-hover"
+              >
+                {confirming ? "Saving…" : confirmLabel}
+              </Button>
             </div>
           </div>
         ) : null}
@@ -265,11 +276,11 @@ function GroupSection({
 }) {
   const enabled = group.permissions.filter((p) => keys.includes(p.key)).length;
   return (
-    <section aria-label={group.label} className="border-b py-2 last:border-b-0">
-      <div className="flex items-baseline justify-between gap-3 px-1 py-2">
-        <h3 className="text-sm font-semibold tracking-tight">{group.label}</h3>
-        <span className="text-xs text-muted-foreground">
-          {enabled} of {group.permissions.length} enabled
+    <section aria-label={group.label} className="border-t-2 border-foreground pt-2 pb-4">
+      <div className="register-group-title px-1 pb-1">
+        <span>{group.label}</span>
+        <span className="text-muted-foreground">
+          {enabled} of {group.permissions.length} rules
         </span>
       </div>
       <div>
@@ -291,7 +302,7 @@ function PermissionLabel({ permission }: { permission: CatalogPermission }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="cursor-help text-sm font-medium underline decoration-dotted decoration-muted-foreground/50 underline-offset-4">
+        <span className="cursor-help text-sm font-semibold underline decoration-dotted decoration-muted-foreground/50 underline-offset-4">
           {permission.label}
         </span>
       </TooltipTrigger>
@@ -316,17 +327,12 @@ function DesktopPermissionRow({
   return (
     <label
       className={cn(
-        "grid grid-cols-[1fr_auto] items-center gap-4 rounded-md px-3 py-2.5",
-        !readOnly && "cursor-pointer hover:bg-muted/50",
+        "grid grid-cols-[1fr_auto] items-center gap-4 border-b px-1 py-3",
+        !readOnly && "cursor-pointer",
       )}
     >
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex items-center gap-2">
-          <PermissionLabel permission={permission} />
-          {checked ? (
-            <Check className="size-3.5 shrink-0 text-emerald-600" aria-label="Granted" />
-          ) : null}
-        </span>
+        <PermissionLabel permission={permission} />
         {permission.description ? (
           <span className="text-xs text-muted-foreground">{permission.description}</span>
         ) : null}
@@ -337,7 +343,7 @@ function DesktopPermissionRow({
           aria-label={checked ? "Granted (locked)" : "Not granted (locked)"}
           className={cn(
             "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-bold",
-            checked ? "border-emerald-600 text-emerald-700" : "border-muted-foreground/30 text-muted-foreground/50",
+            checked ? "border-success text-success" : "border-muted-foreground/30 text-muted-foreground/50",
           )}
         >
           {checked ? "✓" : "–"}
@@ -368,12 +374,12 @@ function MobilePermissionRow({
   return (
     <label
       className={cn(
-        "flex min-h-[44px] w-full items-center justify-between gap-4 rounded-md px-1 py-2.5",
+        "flex min-h-[44px] w-full items-center justify-between gap-4 px-1 py-2.5",
         !readOnly && "cursor-pointer active:bg-muted/50",
       )}
     >
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-sm font-medium">{permission.label}</span>
+        <span className="text-sm font-semibold">{permission.label}</span>
         {permission.description ? (
           <span className="text-xs text-muted-foreground">{permission.description}</span>
         ) : null}
@@ -384,7 +390,7 @@ function MobilePermissionRow({
           aria-label={checked ? "Granted (locked)" : "Not granted (locked)"}
           className={cn(
             "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
-            checked ? "border-emerald-600 text-emerald-700" : "border-muted-foreground/30 text-muted-foreground/50",
+            checked ? "border-success text-success" : "border-muted-foreground/30 text-muted-foreground/50",
           )}
         >
           {checked ? "✓" : "–"}

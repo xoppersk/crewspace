@@ -34,7 +34,7 @@ export function RoleCreatedToast({ roleName }: { roleName: string }) {
       role="status"
       className="fixed bottom-6 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-lg border bg-card p-4 shadow-lg"
     >
-      <CheckCircle2 className="size-5 shrink-0 text-emerald-600" aria-hidden />
+      <CheckCircle2 className="size-5 shrink-0 text-success" aria-hidden />
       <p className="flex-1 text-sm">
         <span className="font-semibold">Role created.</span>{" "}
         <span className="text-muted-foreground">“{roleName}” is ready to assign.</span>

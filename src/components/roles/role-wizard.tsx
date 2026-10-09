@@ -115,8 +115,8 @@ export function RoleWizard({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">New role</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="text-3xl font-semibold tracking-tight">New role</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Create a custom role — a named subset of permissions you can assign to members.
         </p>
       </div>
@@ -133,7 +133,7 @@ export function RoleWizard({
                 className={
                   "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold " +
                   (done
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-success text-white"
                     : current
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground")
@@ -265,7 +265,7 @@ export function RoleWizard({
                       <ul className="mt-1 flex flex-col gap-1">
                         {group.entries.map((entry) => (
                           <li key={entry.key} className="flex items-start gap-2 text-sm">
-                            <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                            <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden />
                             <span>
                               <span className="font-medium">{entry.label}</span>
                               {entry.description ? (
