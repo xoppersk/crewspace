@@ -307,7 +307,7 @@ export function ChangePasswordCard() {
           </p>
         ) : null}
         {done ? (
-          <p className="flex items-center gap-1.5 text-sm text-emerald-600">
+          <p className="flex items-center gap-1.5 text-sm text-success">
             <Check className="size-4" /> Password changed.
           </p>
         ) : null}
@@ -437,7 +437,7 @@ export function DeleteAccountCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {blocked ? (
-          <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <div role="alert" className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm">
             <p className="font-semibold">You can&apos;t delete your account yet.</p>
             <p className="mt-1 text-muted-foreground">
               You&apos;re the only owner of {soleOwnerOrgs.join(", ")}. Transfer ownership of{" "}
