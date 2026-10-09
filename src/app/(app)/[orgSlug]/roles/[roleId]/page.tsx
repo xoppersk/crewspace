@@ -5,6 +5,7 @@ import { RoleCreatedToast } from "@/components/roles/role-created-toast";
 import { RoleDetailClient } from "@/components/roles/role-detail-client";
 import { requireOrgAccess } from "@/lib/permissions";
 import { getOrgBySlug, getPermissionCatalog, hasOrgPermission } from "@/lib/roles/server";
+import { assignRegisterNumbers, formatRegisterNo } from "@/lib/members/register";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -36,17 +37,36 @@ export default async function RoleDetailPage({
     .from("role_permissions")
     .select("permission_key")
     .eq("role_id", roleId);
-  const initialKeys = (rolePermissions ?? []).map((rp) => rp.permission_key);
+  const { data: roleDenies } = await supabase
+    .from("role_permission_denies")
+    .select("permission_key")
+    .eq("role_id", roleId);
+  const initialDecisions = {
+    allow: (rolePermissions ?? []).map((rp) => rp.permission_key),
+    deny: (roleDenies ?? []).map((rd) => rd.permission_key),
+  };
 
+  // Register numbers are org-wide: position in the org's full membership
+  // ordered by join date (the numbered civic register).
+  const { data: orgMembershipRows } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("org_id", org.id)
+    .order("joined_at", { ascending: true });
+  const registerByMembershipId = assignRegisterNumbers(
+    (orgMembershipRows ?? []).map((m) => m.id),
+  );
+  // Members holding the role, oldest first.
   const { data: membershipRows } = await supabase
     .from("memberships")
     .select("id, user_id")
     .eq("org_id", org.id)
     .eq("role_id", roleId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("joined_at", { ascending: true });
   const activeMembers = membershipRows ?? [];
 
-  let members: { membershipId: string; userId: string; name: string; title: string | null }[] = [];
+  let members: { membershipId: string; userId: string; name: string; title: string | null; registerNo: string }[] = [];
   if (activeMembers.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
@@ -61,6 +81,7 @@ export default async function RoleDetailPage({
       userId: m.user_id,
       name: profileById.get(m.user_id)?.full_name || "Unnamed member",
       title: profileById.get(m.user_id)?.title ?? null,
+      registerNo: formatRegisterNo(registerByMembershipId.get(m.id) ?? 0),
     }));
   }
 
@@ -81,7 +102,7 @@ export default async function RoleDetailPage({
           systemKey: role.system_key,
         }}
         catalog={catalog}
-        initialKeys={initialKeys}
+        initialDecisions={initialDecisions}
         affectedMemberCount={activeMembers.length}
         members={members}
         canEdit={canEdit}
