@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { UserPlus } from "lucide-react";
 
 import { requireOrgAccess } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { GettingStartedChecklist } from "@/components/dashboard/getting-started-checklist";
 import { PendingInvitations } from "@/components/dashboard/pending-invitations";
@@ -151,14 +155,44 @@ export default async function DashboardPage({
 
   const canReadAudit = permissions.includes("audit:read");
   const canManageInvitations = permissions.includes("invitations:manage");
+  const canInvite = permissions.includes("members:invite");
+
+  // Team sizes for the mini bar chart (pure CSS bars, no chart lib).
+  const { data: teamRows } = await supabase
+    .from("teams")
+    .select("id, name")
+    .eq("org_id", org.id)
+    .eq("is_archived", false)
+    .order("name");
+  const teamIds = (teamRows ?? []).map((t) => t.id);
+  const { data: teamMemberRows } =
+    teamIds.length > 0
+      ? await supabase.from("team_memberships").select("team_id").in("team_id", teamIds)
+      : { data: [] as { team_id: string }[] };
+  const teamSizeById = new Map<string, number>();
+  for (const row of teamMemberRows ?? []) {
+    teamSizeById.set(row.team_id, (teamSizeById.get(row.team_id) ?? 0) + 1);
+  }
+  const teamSizes = (teamRows ?? []).map((t) => ({
+    name: t.name,
+    size: teamSizeById.get(t.id) ?? 0,
+  }));
+  const maxTeamSize = Math.max(1, ...teamSizes.map((t) => t.size));
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{org.name}</h1>
-          <p className="text-sm text-muted-foreground">Here&rsquo;s what&rsquo;s happening in your workspace.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{org.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Here&rsquo;s what&rsquo;s happening in your workspace.</p>
         </div>
+        {canInvite ? (
+          <Button asChild>
+            <Link href={`/${orgSlug}/invitations`}>
+              <UserPlus className="size-4" /> Invite members
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <StatCards
@@ -179,7 +213,7 @@ export default async function DashboardPage({
             canManage={canManageInvitations}
           />
           {canReadAudit ? (
-            <ActivityFeed orgId={org.id} initialEvents={initialActivity} />
+            <ActivityFeed orgId={org.id} orgSlug={orgSlug} initialEvents={initialActivity} />
           ) : null}
         </div>
         <GettingStartedChecklist
@@ -216,6 +250,37 @@ export default async function DashboardPage({
           ]}
         />
       </div>
+
+      {/* Team sizes — mini bar chart, pure CSS (UI-DESIGN.md §2.6) */}
+      {teamSizes.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Team sizes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-2.5">
+              {teamSizes.map((team) => (
+                <li key={team.name} className="grid grid-cols-[10rem_1fr_auto] items-center gap-3">
+                  <span className="truncate text-sm font-medium">{team.name}</span>
+                  <span
+                    className="h-2.5 bg-primary-soft"
+                    role="img"
+                    aria-label={`${team.name}: ${team.size} members`}
+                  >
+                    <span
+                      className="block h-full bg-primary"
+                      style={{ width: `${Math.max(4, (team.size / maxTeamSize) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="text-sm text-muted-foreground tnum">
+                    {team.size} member{team.size === 1 ? "" : "s"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
