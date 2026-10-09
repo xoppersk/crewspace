@@ -161,7 +161,7 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Account settings</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Account settings</h1>
         <p className="text-muted-foreground">
           Your profile, your organizations, and your sign-in security.
         </p>
