@@ -1,46 +1,80 @@
 "use client";
 
+import { useMemo } from "react";
 import { ScrollText } from "lucide-react";
 
-import { formatAbsoluteTime, formatRelativeTime } from "@/lib/audit/relative-time";
+import { formatAbsoluteTime } from "@/lib/audit/relative-time";
 import { formatAuditEvent } from "@/lib/audit/sentences";
 import type { ActorInfo, AuditEvent } from "@/lib/audit/types";
 import { EmptyState } from "@/components/app/empty-state";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
-function initials(name: string | null | undefined): string {
-  const parts = (name ?? "?").trim().split(/\s+/);
-  if (parts.length > 1 && parts[0] && parts[1]) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return (parts[0] ?? "?").slice(0, 2).toUpperCase();
-}
+/**
+ * Audit chronicle — the day-grouped sentence list (Flagship UI Designs
+ * artifact, Crewspace): sticky date dividers ("Tuesday · October 6, 2026"),
+ * plain-language sentences with the actor in bold, and a mono
+ * "3:18 PM · Role assignment" line under each. Clicking a sentence opens
+ * the detail drawer. One rendering for desktop and mobile.
+ */
 
-function ActorCell({ actor }: { actor: ActorInfo | null }) {
+/** Per-action category labels for the "time · category" line. */
+const EVENT_LABELS: Record<string, string> = {
+  "membership.created": "Member joined",
+  "membership.role_changed": "Role assignment",
+  "membership.deactivated": "Access revoked",
+  "membership.reactivated": "Access restored",
+  "membership.removed": "Member removed",
+  "invitation.sent": "Invitation sent",
+  "invitation.bulk_sent": "Invitations sent",
+  "invitation.resent": "Invitation resent",
+  "invitation.revoked": "Invitation revoked",
+  "invitation.accepted": "Invitation accepted",
+  "role.created": "Role created",
+  "role.permissions_changed": "Permission policy",
+  "role.deleted": "Role deleted",
+  "team.created": "Team created",
+  "team.member_added": "Team change",
+  "audit.exported": "Audit exported",
+  "org.created": "Organization created",
+  "org.ownership_transferred": "Ownership transferred",
+  "settings.updated": "Settings updated",
+};
+
+function eventLabel(action: string): string {
   return (
-    <span className="flex items-center gap-2">
-      <Avatar className="size-7">
-        {actor?.avatar_url ? <AvatarImage src={actor.avatar_url} alt="" /> : null}
-        <AvatarFallback className="text-[10px]">{initials(actor?.full_name)}</AvatarFallback>
-      </Avatar>
-      <span className="truncate font-medium">{actor?.full_name ?? "Unknown actor"}</span>
-    </span>
+    EVENT_LABELS[action] ??
+    action
+      .split(".")
+      .map((part) => part.replace(/_/g, " "))
+      .join(" · ")
   );
 }
 
-/**
- * Audit event table: relative timestamp (absolute on hover), actor avatar +
- * name, human-readable sentence, target, IP. Dense rows on desktop; stacked
- * cards on mobile (never a horizontally scrolling table on a phone).
- */
+/** "Tuesday · October 6, 2026" — the artifact's date divider. */
+function formatDayDivider(iso: string): string {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+  const day = date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `${weekday} · ${day}`;
+}
+
+/** "3:18 PM" — the artifact's sentence timestamp. */
+function formatSentenceTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+interface DayGroup {
+  key: string;
+  label: string;
+  items: AuditEvent[];
+}
+
 export function AuditTable({
   events,
   actors,
@@ -54,6 +88,20 @@ export function AuditTable({
   hasFilters: boolean;
   onClearFilters: () => void;
 }) {
+  const days = useMemo<DayGroup[]>(() => {
+    const groups = new Map<string, DayGroup>();
+    for (const event of events) {
+      const key = new Date(event.created_at).toDateString();
+      let group = groups.get(key);
+      if (!group) {
+        group = { key, label: formatDayDivider(event.created_at), items: [] };
+        groups.set(key, group);
+      }
+      group.items.push(event);
+    }
+    return [...groups.values()];
+  }, [events]);
+
   if (events.length === 0) {
     return (
       <EmptyState
@@ -80,81 +128,37 @@ export function AuditTable({
   }
 
   return (
-    <>
-      {/* Desktop table */}
-      <div className="hidden overflow-hidden rounded-lg border md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32">Time</TableHead>
-              <TableHead className="w-44">Actor</TableHead>
-              <TableHead>Event</TableHead>
-              <TableHead className="w-40">IP</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.map((event) => {
-              const actor = actors.get(event.actor_id) ?? null;
-              return (
-                <TableRow
-                  key={event.id}
-                  className="cursor-pointer"
-                  onClick={() => onSelect(event)}
-                >
-                  <TableCell
-                    className="whitespace-nowrap text-muted-foreground tabular-nums"
-                    title={formatAbsoluteTime(event.created_at)}
-                  >
-                    {formatRelativeTime(event.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    <ActorCell actor={actor} />
-                  </TableCell>
-                  <TableCell className="max-w-md">
-                    <span className="block truncate" title={formatAuditEvent(actor?.full_name ?? null, event)}>
-                      {formatAuditEvent(actor?.full_name ?? null, event)}
-                    </span>
-                    {event.target_label ? (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {event.target_label}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {typeof event.metadata.ip === "string" ? event.metadata.ip : "—"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Mobile cards */}
-      <div className="flex flex-col gap-2 md:hidden">
-        {events.map((event) => {
-          const actor = actors.get(event.actor_id) ?? null;
-          return (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => onSelect(event)}
-              className="flex flex-col gap-2 rounded-lg border bg-card p-3 text-left shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <ActorCell actor={actor} />
-                <span
-                  className="shrink-0 text-xs text-muted-foreground tabular-nums"
-                  title={formatAbsoluteTime(event.created_at)}
-                >
-                  {formatRelativeTime(event.created_at)}
+    <div>
+      {days.map((day) => (
+        <section key={day.key} aria-label={day.label}>
+          <div className="date-divider">{day.label}</div>
+          {day.items.map((event) => {
+            const actor = actors.get(event.actor_id) ?? null;
+            const actorName = actor?.full_name?.trim() || "Someone";
+            const sentence = formatAuditEvent(actor?.full_name ?? null, event);
+            const rest = sentence.startsWith(actorName)
+              ? sentence.slice(actorName.length)
+              : ` ${sentence}`;
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className="audit-sentence"
+                onClick={() => onSelect(event)}
+                title={formatAbsoluteTime(event.created_at)}
+              >
+                <span>
+                  <b className="font-semibold">{actorName}</b>
+                  {rest}
                 </span>
-              </div>
-              <p className="text-sm">{formatAuditEvent(actor?.full_name ?? null, event)}</p>
-            </button>
-          );
-        })}
-      </div>
-    </>
+                <time>
+                  {formatSentenceTime(event.created_at)} · {eventLabel(event.action)}
+                </time>
+              </button>
+            );
+          })}
+        </section>
+      ))}
+    </div>
   );
 }

@@ -62,7 +62,7 @@ function ExportButton({
   if (!canExport) return null;
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button variant="outline" size="sm" onClick={onExport} disabled={state.status === "exporting"}>
+      <Button onClick={onExport} disabled={state.status === "exporting"} className="min-h-11">
         {state.status === "exporting" ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
@@ -230,12 +230,15 @@ function AuditLogViewInner({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Audit log</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every consequential action in this organization, in plain language.{" "}
-            <span className="whitespace-nowrap">{AUDIT_RETENTION_LABEL}.</span>
+          <p className="type-label uppercase tracking-[0.17em] text-muted-foreground">
+            Crewspace / Governance
+          </p>
+          <h1 className="type-display mt-1">Audit log</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Trace consequential changes by actor, object, time, and before-and-after
+            values. <span className="whitespace-nowrap">{AUDIT_RETENTION_LABEL}.</span>
           </p>
         </div>
         <div className="flex items-center gap-4">
