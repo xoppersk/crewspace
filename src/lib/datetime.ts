@@ -35,6 +35,18 @@ export function formatAbsoluteTime(iso: string | null): string {
   });
 }
 
+/** Date-only absolute format: "Oct 5, 2026" (used for deactivation banners). */
+export function formatAbsoluteDate(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 /** Current local time in a member's timezone: "2:39 PM". */
 export function formatLocalTime(timezone: string, now: Date = new Date()): string {
   try {
