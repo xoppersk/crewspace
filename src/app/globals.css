@@ -1,5 +1,11 @@
 @import "@fontsource-variable/archivo";
-@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -16,22 +22,22 @@
   --radius: 0.75rem; /* cards rounded-xl (12px); inputs 8px; small controls 6px */
 
   --background: #fafaf9; /* app canvas — warm near-white */
-  --foreground: #18181b; /* primary text (zinc-900) */
+  --foreground: #1c1917; /* primary text — Ink */
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #1c1917;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
+  --popover-foreground: #1c1917;
 
   --primary: #4f46e5; /* interactive accent (indigo-600) */
   --primary-hover: #4338ca; /* hover/active (indigo-700) */
-  --primary-soft: #eef2ff; /* accent wash: active nav, selected rows */
+  --primary-soft: #e8e9ff; /* accent wash: active nav, selected rows */
   --primary-foreground: #ffffff;
 
   --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
+  --secondary-foreground: #1c1917;
   --muted: #f4f4f5;
   --muted-foreground: #71717a; /* secondary text */
-  --accent: #eef2ff;
+  --accent: #e8e9ff;
   --accent-foreground: #312e81;
 
   --destructive: #dc2626;
@@ -54,10 +60,10 @@
   --chart-5: #7c3aed;
 
   --sidebar: #ffffff;
-  --sidebar-foreground: #18181b;
+  --sidebar-foreground: #1c1917;
   --sidebar-primary: #4f46e5;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
+  --sidebar-accent: #e8e9ff;
   --sidebar-accent-foreground: #312e81;
   --sidebar-border: #e4e4e7;
   --sidebar-ring: #4f46e5;
@@ -67,7 +73,7 @@
  * theme provider is pinned to light, so no component should render dark. */
 .dark {
   --background: #fafaf9;
-  --foreground: #18181b;
+  --foreground: #1c1917;
 }
 
 @theme inline {
@@ -117,9 +123,8 @@
   --radius-md: calc(var(--radius) - 4px); /* 8px inputs */
   --radius-sm: calc(var(--radius) - 6px); /* 6px small controls */
 
-  --font-sans: "Archivo Variable", "Archivo", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular,
-    monospace;
+  --font-sans: "Archivo Variable", "Archivo", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
@@ -178,6 +183,31 @@
  * register (Signature UI): role seal, hint bar, register group titles.
  */
 @layer components {
+  /* Crewspace type scale (Flagship UI Designs artifact):
+   * Display 34/34·500, Heading 22/26·600, Body 15/25·400, Label 11/16·600. */
+  .type-display {
+    font-size: 2.125rem; /* 34px */
+    line-height: 2.125rem; /* 34px */
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .type-heading {
+    font-size: 1.375rem; /* 22px */
+    line-height: 1.625rem; /* 26px */
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .type-body {
+    font-size: 0.9375rem; /* 15px */
+    line-height: 1.5625rem; /* 25px */
+    font-weight: 400;
+  }
+  .type-label {
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1rem; /* 16px */
+    font-weight: 600;
+  }
+
   .role-seal {
     display: inline-block;
     background: var(--foreground);
@@ -213,6 +243,236 @@
     letter-spacing: 0.13em;
     text-transform: uppercase;
     color: var(--foreground);
+  }
+
+  /*
+   * Permission-state segmented control — the register's Allow / Deny /
+   * Inherit control (Flagship UI Designs artifact, Crewspace signature UI).
+   * Text labels with an explicit selected state; the selected decision is
+   * Indigo. Selected buttons carry a "✓ " prefix — state is never
+   * color-alone.
+   */
+  .permission-state {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 0;
+  }
+  .permission-state button {
+    min-height: 2rem; /* 32px — matches the artifact prototype */
+    border: 0;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted-foreground);
+    padding: 0 0.625rem;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.6875rem; /* 11px */
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .permission-state button:last-child {
+    border-right: 0;
+  }
+  .permission-state button:hover:not(.selected):not(:disabled) {
+    background: var(--primary-soft);
+    color: var(--foreground);
+  }
+  .permission-state button.selected {
+    background: var(--primary); /* Indigo — the selected access decision */
+    color: #fff;
+    font-weight: 700;
+  }
+  .permission-state button.selected::before {
+    content: "✓ ";
+  }
+  .permission-state button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+  .permission-state button:disabled {
+    cursor: default;
+    opacity: 0.85;
+  }
+
+  /*
+   * Appointment letters — the invitations register (Flagship UI Designs
+   * artifact, Crewspace). Numbered letter, identity + role seal, expiry
+   * line, and Resend / Withdraw actions.
+   */
+  .appointment-list {
+    display: grid;
+    gap: 0.625rem;
+  }
+  .appointment-letter {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 0.875rem;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .appointment-number {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+  }
+  .appointment-letter h4 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .appointment-letter > div > p {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .appointment-actions {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+  .appointment-expiry {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+    margin-top: 0.375rem;
+  }
+  .appointment-expiry.urgent {
+    color: var(--warning);
+  }
+  .appointment-letter.is-withdrawn {
+    opacity: 0.55;
+  }
+  .appointment-letter.is-withdrawn .appointment-actions {
+    display: none;
+  }
+  .register-status {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /*
+   * Audit chronicle — day-grouped sentences (Flagship UI Designs artifact,
+   * Crewspace). Sticky date dividers, plain-language sentences with bold
+   * actor/target, and a mono time · category line.
+   */
+  .date-divider {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.5rem 0;
+    background: var(--card);
+    border-bottom: 2px solid var(--foreground);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .audit-sentence {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--foreground);
+    cursor: pointer;
+  }
+  .audit-sentence:hover {
+    background: var(--primary-soft);
+  }
+  .audit-sentence time {
+    display: block;
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    margin-top: 0.25rem;
+  }
+
+  /*
+   * Member register hero (Flagship UI Designs artifact, Crewspace member
+   * detail): the stamped identity block — avatar, name, title + role seal,
+   * and the status line.
+   */
+  .member-register {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    margin-bottom: 1rem;
+  }
+  .member-register .register-avatar {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    background: var(--foreground);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    border-radius: 0;
+    flex: none;
+  }
+  .member-register h2 {
+    font-size: 1.375rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.25rem;
+  }
+  .member-register .register-sub {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .member-status-line {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    color: var(--success);
+    white-space: nowrap;
+  }
+  .member-status-line.inactive {
+    color: var(--destructive);
+  }
+  @media (max-width: 640px) {
+    .member-register {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .member-status-line {
+      grid-column: 2;
+    }
+  }
+  @media (max-width: 760px) {
+    .appointment-letter {
+      grid-template-columns: 32px minmax(0, 1fr);
+    }
+    .appointment-actions {
+      grid-column: 2;
+    }
   }
 }
 
