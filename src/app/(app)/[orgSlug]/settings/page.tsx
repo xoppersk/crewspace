@@ -13,7 +13,8 @@ export const metadata: Metadata = { title: "Organization settings" };
  * Settings page — tabs: General | Member policy | Security | Plan.
  * Server loads the org settings, role options, and plan usage; the client
  * form owns dirty state and the sticky save bar.
- * Gate: `settings:manage` (layer 2).
+ * Gate: viewers without `settings:manage` get the read-only view (layer 2
+ * still asserts on every mutation server-side).
  */
 export default async function SettingsPage({
   params,
@@ -32,7 +33,10 @@ export default async function SettingsPage({
     .maybeSingle();
   if (!org) notFound();
 
-  await requireOrgAccess(org.id, "settings:manage");
+  // No `settings:manage` → read-only view of all tabs (UI-DESIGN.md §2.16),
+  // never a 403. The nav already hides this item; this covers deep links.
+  const { permissions } = await requireOrgAccess(org.id, "org:read");
+  const readOnly = !permissions.includes("settings:manage");
 
   const [{ data: roles }, { count: memberCount }, { count: teamCount }] = await Promise.all([
     supabase
@@ -110,6 +114,7 @@ export default async function SettingsPage({
       orgSlug={org.slug}
       initial={initial}
       roleOptions={roleOptions}
+      readOnly={readOnly}
       usage={{
         members: memberCount ?? 0,
         membersLimit: FREE_PLAN.limits.members,
