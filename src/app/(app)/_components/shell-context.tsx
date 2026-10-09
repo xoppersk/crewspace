@@ -9,6 +9,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Pending-invitation count etc. Static for this phase. */
   badge?: number;
+  /** Locked items (e.g. Audit without audit:read) render with a lock icon. */
+  locked?: boolean;
 }
 
 /**
