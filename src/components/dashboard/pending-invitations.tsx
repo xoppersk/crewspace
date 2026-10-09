@@ -96,8 +96,8 @@ export function PendingInvitations({
                   className={cn(
                     "w-fit rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
                     urgent
-                      ? "border-red-500/40 text-red-700"
-                      : "border-amber-500/40 text-amber-700",
+                      ? "border-destructive/40 text-destructive"
+                      : "border-warning/40 text-warning",
                   )}
                   title={formatAbsoluteTime(inv.expiresAt)}
                 >

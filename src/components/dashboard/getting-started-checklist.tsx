@@ -73,7 +73,7 @@ export function GettingStartedChecklist({
                 fill="none"
                 strokeWidth="6"
                 strokeLinecap="round"
-                className="stroke-indigo-600 transition-[stroke-dashoffset] duration-500"
+                className="stroke-primary transition-[stroke-dashoffset] duration-500"
                 strokeDasharray={circumference}
                 strokeDashoffset={circumference * (1 - progress)}
               />
@@ -112,7 +112,7 @@ export function GettingStartedChecklist({
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full border",
                     item.done
-                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      ? "border-success bg-success text-white"
                       : "border-input text-transparent",
                   )}
                   aria-hidden

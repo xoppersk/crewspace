@@ -79,7 +79,7 @@ export async function MemberDashboard({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
         <p className="text-sm text-muted-foreground">
           {orgName} — here&rsquo;s your access and your teams.
         </p>

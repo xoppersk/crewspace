@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { formatAbsoluteTime, formatRelativeTime } from "@/lib/datetime";
@@ -51,9 +53,11 @@ function sentence(event: ActivityEvent): string {
  */
 export function ActivityFeed({
   orgId,
+  orgSlug,
   initialEvents,
 }: {
   orgId: string;
+  orgSlug: string;
   initialEvents: ActivityEvent[];
 }) {
   const [events, setEvents] = useState<ActivityEvent[]>(initialEvents);
@@ -112,17 +116,20 @@ export function ActivityFeed({
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           Recent activity
           <span className="flex items-center gap-1 text-[11px] font-normal text-muted-foreground">
             <span className="relative flex size-2" aria-hidden>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
             </span>
             live
           </span>
         </CardTitle>
+        <Button asChild variant="link" size="sm" className="h-auto p-0">
+          <Link href={`/${orgSlug}/audit`}>View all</Link>
+        </Button>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
