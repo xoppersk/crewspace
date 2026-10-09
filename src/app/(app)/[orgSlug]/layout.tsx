@@ -67,6 +67,18 @@ export default async function OrgSlugLayout({
     .eq("id", user.id)
     .maybeSingle();
 
+  // Pending-invitation count for the nav badge (only when the viewer can
+  // manage or send invitations; RLS narrows the count to the caller).
+  let pendingInvites = 0;
+  if (permissions.includes("invitations:manage") || permissions.includes("members:invite")) {
+    const { count } = await supabase
+      .from("invitations")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.id)
+      .eq("status", "pending");
+    pendingInvites = count ?? 0;
+  }
+
   return (
     <OrgProvider
       value={{
@@ -82,7 +94,7 @@ export default async function OrgSlugLayout({
         user,
       }}
     >
-      <SetOrgNav slug={org.slug} permissions={permissions} />
+      <SetOrgNav slug={org.slug} permissions={permissions} pendingInvites={pendingInvites} />
       <OrgCommandPalette />
       <OrgPresence
         identity={{
