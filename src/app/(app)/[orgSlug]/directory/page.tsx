@@ -5,9 +5,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { requireOrgAccess } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { assignRegisterNumbers, formatRegisterNo } from "@/lib/members/register";
 import {
   buildDirectoryClauses,
-  describeDirectoryFilters,
   directoryPageRange,
   DIRECTORY_PAGE_SIZE,
   parseDirectoryFilters,
@@ -196,11 +196,23 @@ export default async function DirectoryPage({
     }
   }
 
+  // Register numbers are org-wide: position in the full membership ordered
+  // by join date (the numbered civic register).
+  const { data: orgMembershipRows } = await supabase
+    .from("memberships")
+    .select("id, is_active")
+    .eq("org_id", org.id)
+    .order("joined_at", { ascending: true });
+  const registerByMembershipId = assignRegisterNumbers(
+    (orgMembershipRows ?? []).map((m) => m.id),
+  );
+
   const members: DirectoryMember[] = rows.map((row) => {
     const memberTeams = teamIdsByMember.get(row.id) ?? [];
     return {
       membershipId: row.id,
       userId: row.user_id,
+      registerNo: formatRegisterNo(registerByMembershipId.get(row.id) ?? 0),
       fullName: row.profiles.full_name,
       avatarUrl: row.profiles.avatar_url,
       title: row.profiles.title,
@@ -218,11 +230,55 @@ export default async function DirectoryPage({
     };
   });
 
+  // Register summary: pending invitations (oldest expiry) for the KPI row.
+  const { data: pendingInvites } = await supabase
+    .from("invitations")
+    .select("expires_at")
+    .eq("org_id", org.id)
+    .eq("status", "pending")
+    .order("expires_at", { ascending: true })
+    .limit(1);
+  const oldestExpiry = pendingInvites?.[0]?.expires_at
+    ? new Date(pendingInvites[0].expires_at).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+  const { count: pendingCount } = await supabase
+    .from("invitations")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", org.id)
+    .eq("status", "pending");
+  const activeCount = (orgMembershipRows ?? []).filter((m) => m.is_active).length;
+  const deactivatedCount = (orgMembershipRows ?? []).length - activeCount;
+  const customRoleCount = roles.filter((r) => !r.system_key).length;
+  const canInvite = permissions.includes("members:invite");
+
+  const summaryKpis = [
+    {
+      label: "Active members",
+      value: activeCount,
+      caption: `Across ${teams.length} team${teams.length === 1 ? "" : "s"}`,
+    },
+    {
+      label: "Pending invitations",
+      value: pendingCount ?? 0,
+      caption: oldestExpiry ? `Oldest expires ${oldestExpiry}` : "None pending",
+    },
+    {
+      label: "Custom roles",
+      value: customRoleCount,
+      caption: "Reviewed this month",
+    },
+    {
+      label: "Deactivated",
+      value: deactivatedCount,
+      caption: "History preserved",
+    },
+  ];
   // Sort is fully server-side (PostgREST orders on the joined profile row).
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / DIRECTORY_PAGE_SIZE));
-  const teamName = teams.find((t) => t.id === filters.teamId)?.name;
-  const roleName = roles.find((r) => r.id === filters.roleId)?.name;
   const resultSummary = `${totalCount} ${totalCount === 1 ? "member" : "members"}${filters.page > 1 ? ` · page ${filters.page} of ${totalPages}` : ""}`;
 
   const pageParams = (page: number) => {
@@ -241,11 +297,22 @@ export default async function DirectoryPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Directory</h1>
-        <p className="text-sm text-muted-foreground">
-          {describeDirectoryFilters(filters, teamName, roleName)} — {resultSummary}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-4">
+        <div>
+          <p className="type-label uppercase tracking-[0.17em] text-muted-foreground">
+            Crewspace / Personnel register
+          </p>
+          <h1 className="type-display mt-1">Directory</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Find people quickly, understand their access, and open a focused member detail
+            drawer. {resultSummary}.
+          </p>
+        </div>
+        {canInvite ? (
+          <Button asChild>
+            <Link href={`/${orgSlug}/invitations`}>Invite member</Link>
+          </Button>
+        ) : null}
       </div>
 
       <Suspense fallback={<Skeleton className="h-24 w-full rounded-lg" />}>
@@ -274,6 +341,31 @@ export default async function DirectoryPage({
           view={view}
         />
       </Suspense>
+
+      {/* Register summary — the artifact's KPI row */}
+      <div className="mt-2">
+        <div className="flex items-baseline justify-between border-b border-foreground pb-2">
+          <h2 className="text-sm font-bold uppercase tracking-[0.17em]">Register summary</h2>
+          <span className="text-xs text-muted-foreground">
+            {new Date().toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-px border bg-border lg:grid-cols-4">
+          {summaryKpis.map((kpi) => (
+            <div key={kpi.label} className="flex flex-col gap-1 bg-card p-4">
+              <span className="type-label uppercase tracking-wide text-muted-foreground">
+                {kpi.label}
+              </span>
+              <span className="font-mono text-2xl font-medium tnum">{kpi.value}</span>
+              <span className="text-xs text-muted-foreground">{kpi.caption}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {totalPages > 1 ? (
         <nav aria-label="Directory pages" className="flex items-center justify-between">
