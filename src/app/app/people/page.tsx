@@ -5,16 +5,16 @@ import {
   getDirectoryEntries,
   getDirectorySpotlight,
   getMember,
-  getRole,
+  getOfflineWindow,
   getRoles,
+  getTeam,
   getTeams,
   type DirectoryEntry,
 } from "@/lib/api";
 import { AppShell } from "@/components/Shell";
-import { Button, ButtonLink } from "@/components/Button";
+import { ButtonLink } from "@/components/Button";
 import { InvitationRow, MemberRow } from "@/components/MemberRow";
 import { ReconnectBanner } from "@/components/ReconnectBanner";
-import { RoleTag } from "@/components/RoleTag";
 import { ConflictSheet } from "./ConflictSheet";
 import { DirectoryDrawer } from "./DirectoryDrawer";
 import { DirectoryFilters } from "./DirectoryFilters";
@@ -59,45 +59,74 @@ export async function generateMetadata({
 }
 
 /**
- * X-06: Zoe Adams' pending offline edit, shown on her own row
- * (SysReconnect.html): seal "Waiting to save" marker, role
- * "Member · now Analyst", teams "Product" struck through → "Partnerships",
- * on the sheet tint.
+ * X-06 offline register row (SysReconnect.html): five columns — No.,
+ * Person, Role, Teams, Status — with roles as plain text and people as
+ * names only; rows are not links because membership actions are paused.
+ * Zoe Adams' row is the pending one: sheet tint, seal "Waiting to save"
+ * marker, role "Member · now Analyst", teams "Product" struck through
+ * → "Partnerships".
  */
-function OfflineZoeRow({ href }: { href: string }) {
-  const zoe = getMember("036")!;
-  const role = getRole(zoe.roleId)!;
-  return (
-    <Link
-      role="row"
-      href={href}
-      className="mr"
-      style={{ background: "var(--sheet-tint)" }}
-    >
-      <span role="cell" className="rg">
-        {zoe.id}
-      </span>
-      <span role="cell">
-        <b style={{ fontWeight: 600 }}>{zoe.name}</b>{" "}
-        <span className="newmark">Waiting to save</span>
-        <small>{zoe.email}</small>
-      </span>
-      <span role="cell">
-        <RoleTag role={role} link={false} />{" "}
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>
-          · now Analyst
-        </span>
-      </span>
-      <span role="cell" style={{ color: "var(--ink-2)" }}>
-        <s style={{ color: "var(--muted)" }}>Product</s> → Partnerships
-      </span>
+function OfflineDirectoryRow({ id }: { id: string }) {
+  const member = getMember(id)!;
+  const role = getRoles().find((r) => r.id === member.roleId)!;
+  const pending = id === "036";
+  const statusCell =
+    member.status === "active" ? (
       <span role="cell" className="ok">
         Active
       </span>
-      <span role="cell" style={{ color: "var(--ink-2)" }}>
-        {zoe.lastActive}
+    ) : (
+      <span role="cell" className="off">
+        Deactivated
       </span>
-    </Link>
+    );
+  return (
+    <div
+      role="row"
+      className="omr"
+      style={pending ? { background: "var(--sheet-tint)" } : undefined}
+    >
+      <span role="cell" className="rg">
+        {member.id}
+      </span>
+      <span role="cell">
+        <b style={{ fontWeight: 600 }}>{member.name}</b>
+        {pending ? (
+          <>
+            {" "}
+            <span
+              style={{
+                fontSize: 12,
+                color: "var(--seal)",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Waiting to save
+            </span>
+          </>
+        ) : null}
+      </span>
+      {pending ? (
+        <span role="cell">
+          {role.name}{" "}
+          <span style={{ color: "var(--muted)" }}>· now Analyst</span>
+        </span>
+      ) : (
+        <span role="cell">{role.name}</span>
+      )}
+      {pending ? (
+        <span role="cell">
+          <s style={{ color: "var(--muted)" }}>Product</s> → Partnerships
+        </span>
+      ) : (
+        <span role="cell">
+          {member.teams.map((t) => getTeam(t.teamId)!.name).join(", ") ||
+            "—"}
+        </span>
+      )}
+      {statusCell}
+    </div>
   );
 }
 
@@ -186,27 +215,7 @@ export default async function DirectoryPage({
     return `/app/people?${params.toString()}`;
   };
 
-  /* X-06: Zoe Adams (036) is not in the 12-row spotlight, but the offline
-     view shows her pending edit on her own row, in register order. */
-  let displayEntries = entries;
-  if (
-    offline &&
-    !entries.some((e) => e.kind === "member" && e.member.id === "036")
-  ) {
-    const zoe = getMember("036");
-    if (zoe) {
-      const at = entries.findIndex(
-        (e) =>
-          e.kind === "invitation" ||
-          (e.kind === "member" && e.member.id > "036"),
-      );
-      const zoeEntry: DirectoryEntry = { kind: "member", member: zoe };
-      displayEntries =
-        at === -1
-          ? [...entries, zoeEntry]
-          : [...entries.slice(0, at), zoeEntry, ...entries.slice(at)];
-    }
-  }
+  const displayEntries = entries;
 
   const showMoreHref = (() => {
     const params = new URLSearchParams(serialize(sp));
@@ -234,28 +243,16 @@ export default async function DirectoryPage({
             </p>
           )}
         </div>
-        <div className="head-actions">
-          {offline ? (
-            <Button disabled title="Import is paused while you are offline">
-              Import CSV
-            </Button>
-          ) : (
+        {/* X-06: the offline header is the title and the "As of" line
+            only — SysReconnect.html draws no actions at all. */}
+        {offline ? null : (
+          <div className="head-actions">
             <ButtonLink href="/app/invitations/import">Import CSV</ButtonLink>
-          )}
-          {offline ? (
-            <Button
-              variant="pri"
-              disabled
-              title="Invitations are paused while you are offline"
-            >
-              Invite member
-            </Button>
-          ) : (
             <ButtonLink variant="pri" href="/app/invitations">
               Invite member
             </ButtonLink>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {offline ? <ConflictSheet /> : null}
@@ -269,43 +266,70 @@ export default async function DirectoryPage({
         params={serialize(sp)}
       />
 
-      <section
-        className="sheet"
-        style={{ overflow: "hidden", opacity: offline ? 0.94 : undefined }}
-      >
-        <div className="rows-scroll">
-          <div
-            role="table"
-            aria-label={offline ? "People, as of 10:41 AM" : "People"}
-            style={{ minWidth: 860 }}
-          >
-            <div role="row" className="mr head">
-              <span role="columnheader">No.</span>
-              <span role="columnheader">Person</span>
-              <span role="columnheader">Role</span>
-              <span role="columnheader">Teams</span>
-              <span role="columnheader">Status</span>
-              <span role="columnheader">Last active</span>
+      {offline ? (
+        /* X-06 (SysReconnect.html): the offline sheet is its own
+           composition — the designed four-row register window on a
+           700px five-column table, the paused-actions note, and no
+           "Showing N of 45" counts footer. */
+        <section
+          className="sheet"
+          style={{ overflow: "hidden", opacity: 0.94 }}
+        >
+          <div className="rows-scroll">
+            <div
+              role="table"
+              aria-label="People, as of 10:41"
+              style={{ minWidth: 700 }}
+            >
+              <div role="row" className="omr head">
+                <span role="columnheader">No.</span>
+                <span role="columnheader">Person</span>
+                <span role="columnheader">Role</span>
+                <span role="columnheader">Teams</span>
+                <span role="columnheader">Status</span>
+              </div>
+              {getOfflineWindow().map((member) => (
+                <OfflineDirectoryRow key={member.id} id={member.id} />
+              ))}
             </div>
+          </div>
+          <p
+            style={{
+              margin: 0,
+              padding: "12px 24px",
+              borderTop: "1px solid var(--rule-strong)",
+              fontSize: 12,
+              color: "var(--muted)",
+            }}
+          >
+            Role changes, deactivation and invitations are paused while
+            offline. Reading and searching still work.
+          </p>
+        </section>
+      ) : (
+        <section className="sheet" style={{ overflow: "hidden" }}>
+          <div className="rows-scroll">
+            <div role="table" aria-label="People" style={{ minWidth: 860 }}>
+              <div role="row" className="mr head">
+                <span role="columnheader">No.</span>
+                <span role="columnheader">Person</span>
+                <span role="columnheader">Role</span>
+                <span role="columnheader">Teams</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader">Last active</span>
+              </div>
             {displayEntries.map((entry) =>
               entry.kind === "member" ? (
-                offline && entry.member.id === "036" ? (
-                  <OfflineZoeRow
-                    key={entry.member.id}
-                    href={rowHref(entry.member.id)}
-                  />
-                ) : (
-                  <MemberRow
-                    key={entry.member.id}
-                    member={entry.member}
-                    href={rowHref(entry.member.id)}
-                    highlighted={
-                      openMember?.id === entry.member.id ||
-                      entry.member.id === "042"
-                    }
-                    you={entry.member.id === "001"}
-                  />
-                )
+                <MemberRow
+                  key={entry.member.id}
+                  member={entry.member}
+                  href={rowHref(entry.member.id)}
+                  highlighted={
+                    openMember?.id === entry.member.id ||
+                    entry.member.id === "042"
+                  }
+                  you={entry.member.id === "001"}
+                />
               ) : (
                 <InvitationRow
                   key={entry.invitation.id}
@@ -350,21 +374,8 @@ export default async function DirectoryPage({
             </Link>
           ) : null}
         </div>
-        {offline ? (
-          <p
-            style={{
-              margin: 0,
-              padding: "12px 24px",
-              borderTop: "1px solid var(--rule-strong)",
-              fontSize: 12,
-              color: "var(--muted)",
-            }}
-          >
-            Role changes, deactivation and invitations are paused while offline.
-            Reading and searching still work.
-          </p>
-        ) : null}
-      </section>
+        </section>
+      )}
 
       {openMember ? (
         <DirectoryDrawer
