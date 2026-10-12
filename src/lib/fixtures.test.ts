@@ -13,11 +13,14 @@ import {
   getInvitations,
   getMember,
   getMembers,
+  getNeedsOwner,
+  getOfflineWindow,
   getOrg,
   getPermissions,
   getRole,
   getRoles,
   getSeats,
+  getTeam,
   getTeams,
   importCounts,
   invitationTabCounts,
@@ -464,5 +467,37 @@ describe("parity pins — invitations and sessions (G-01, P-04/P-05)", () => {
   it("Maya's session stamps read 9:12 and Oct 5, as the record screens draw them", () => {
     const sessions = getMember("042")!.sessions!;
     expect(sessions.map((s) => s.lastActive)).toEqual(["9:12", "Oct 5"]);
+  });
+});
+
+describe("round-2 pins — offline window (X-06) and overview copy", () => {
+  it("the offline Directory window is exactly 035, 036, 038, 040 in register order", () => {
+    const window = getOfflineWindow();
+    expect(window.map((m) => m.id)).toEqual(["035", "036", "038", "040"]);
+    expect(window.map((m) => m.name)).toEqual([
+      "Sofia Duarte",
+      "Zoe Adams",
+      "Hannah Lee",
+      "Yusuf Ali",
+    ]);
+    // The cells the design draws, from the fixtures: roles as plain
+    // names, one team each, everyone active.
+    expect(window.map((m) => getRole(m.roleId)!.name)).toEqual([
+      "Analyst",
+      "Member",
+      "Product admin",
+      "Member",
+    ]);
+    expect(
+      window.map((m) => m.teams.map((t) => getTeam(t.teamId)!.name).join(", ")),
+    ).toEqual(["Product", "Product", "Customer operations", "Product"]);
+    expect(window.every((m) => m.status === "active")).toBe(true);
+  });
+
+  it("the two-step needs-owner detail carries no shadowed contradiction", () => {
+    const item = getNeedsOwner().find((i) => i.id === "two-step")!;
+    expect(item.detail).toBe(
+      "Sam Patel, Iris Novak (Guest) and Yusuf Ali. Your setting makes it required from Nov 1.",
+    );
   });
 });

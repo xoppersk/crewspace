@@ -261,6 +261,19 @@ export function getDirectorySpotlight(): DirectoryEntry[] {
   return rows;
 }
 
+/**
+ * The register window the offline Directory shows (X-06, SysReconnect):
+ * exactly four rows in register order — the person whose offline edit is
+ * waiting to save (036) and the three neighbours the design draws
+ * around her. The offline view always shows this window, whatever the
+ * filters or search hold.
+ */
+export const OFFLINE_WINDOW_IDS = ["035", "036", "038", "040"];
+
+export function getOfflineWindow(): Member[] {
+  return OFFLINE_WINDOW_IDS.map((id) => getMember(id)!);
+}
+
 export function invitationTabCounts(): {
   open: number;
   accepted: number;
