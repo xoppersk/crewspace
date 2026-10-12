@@ -1,0 +1,458 @@
+{
+  "name": "Sevyn Labs",
+  "domain": "sevynlabs.io",
+  "domainVerified": "Aug 2, 2025",
+  "today": "Tuesday, October 6",
+  "todayFull": "Tuesday, October 6, 2026",
+  "plan": {
+    "name": "Team plan",
+    "seats": 50,
+    "pricePerSeat": 8,
+    "renews": "Oct 31",
+    "nextInvoice": "Oct 31",
+    "billingContactId": "014"
+  },
+  "baseline": {
+    "allowedPermissionIds": [
+      3
+    ]
+  },
+  "groups": [
+    {
+      "name": "People",
+      "permissionIds": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "Access",
+      "permissionIds": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "name": "Teams",
+      "permissionIds": [
+        7,
+        8
+      ]
+    },
+    {
+      "name": "Invitations",
+      "permissionIds": [
+        9,
+        10
+      ]
+    },
+    {
+      "name": "Security",
+      "permissionIds": [
+        11,
+        12
+      ]
+    },
+    {
+      "name": "Governance",
+      "permissionIds": [
+        13,
+        14
+      ]
+    },
+    {
+      "name": "Billing",
+      "permissionIds": [
+        15,
+        16
+      ]
+    },
+    {
+      "name": "Organization",
+      "permissionIds": [
+        17,
+        18
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "id": 1,
+      "group": "People",
+      "name": "Invite members",
+      "description": "Can invite new people and choose their first role."
+    },
+    {
+      "id": 2,
+      "group": "People",
+      "name": "Deactivate members",
+      "description": "Can suspend someone’s access while keeping what they own and their history."
+    },
+    {
+      "id": 3,
+      "group": "People",
+      "name": "Edit member profiles",
+      "description": "Can change names, titles and team placement for other members."
+    },
+    {
+      "id": 4,
+      "group": "Access",
+      "name": "Change member roles",
+      "description": "Can move a member to another role, up to Product admin."
+    },
+    {
+      "id": 5,
+      "group": "Access",
+      "name": "Edit role permissions",
+      "description": "Can change what any custom role allows."
+    },
+    {
+      "id": 6,
+      "group": "Access",
+      "name": "Create custom roles",
+      "description": "Can add a new role to the register."
+    },
+    {
+      "id": 7,
+      "group": "Teams",
+      "name": "Create teams",
+      "description": "Can start a team and name its lead."
+    },
+    {
+      "id": 8,
+      "group": "Teams",
+      "name": "Manage team membership",
+      "description": "Can add people to teams and remove them."
+    },
+    {
+      "id": 9,
+      "group": "Invitations",
+      "name": "Resend or revoke invitations",
+      "description": "Can resend a pending invitation or cancel its link."
+    },
+    {
+      "id": 10,
+      "group": "Invitations",
+      "name": "Import members from CSV",
+      "description": "Can invite many people at once from a file."
+    },
+    {
+      "id": 11,
+      "group": "Security",
+      "name": "Manage sign-in methods",
+      "description": "Can change passwords, single sign-on and two-step rules for everyone."
+    },
+    {
+      "id": 12,
+      "group": "Security",
+      "name": "Sign members out everywhere",
+      "description": "Can end every active session for a member."
+    },
+    {
+      "id": 13,
+      "group": "Governance",
+      "name": "Read audit log",
+      "description": "Can review access changes, sign-ins and exports."
+    },
+    {
+      "id": 14,
+      "group": "Governance",
+      "name": "Export audit records",
+      "description": "Can download the organization’s audit archive."
+    },
+    {
+      "id": 15,
+      "group": "Billing",
+      "name": "View billing",
+      "description": "Can see the plan, seat count and invoices."
+    },
+    {
+      "id": 16,
+      "group": "Billing",
+      "name": "Manage plan and payment",
+      "description": "Can change seats, plan and the card on file."
+    },
+    {
+      "id": 17,
+      "group": "Organization",
+      "name": "Edit organization settings",
+      "description": "Can change the name, domain and data retention."
+    },
+    {
+      "id": 18,
+      "group": "Organization",
+      "name": "Transfer ownership",
+      "description": "Only the organization owner can do this. No role can be given it."
+    }
+  ],
+  "roles": [
+    {
+      "id": "owner",
+      "regNumber": "R-01",
+      "name": "Organization owner",
+      "type": "System",
+      "summary": "Everything, including transferring ownership of the organization.",
+      "settings": {
+        "1": "allow",
+        "2": "allow",
+        "3": "allow",
+        "4": "allow",
+        "5": "allow",
+        "6": "allow",
+        "7": "allow",
+        "8": "allow",
+        "9": "allow",
+        "10": "allow",
+        "11": "allow",
+        "12": "allow",
+        "13": "allow",
+        "14": "allow",
+        "15": "allow",
+        "16": "allow",
+        "17": "allow",
+        "18": "allow"
+      },
+      "lastChanged": "—"
+    },
+    {
+      "id": "member",
+      "regNumber": "R-02",
+      "name": "Member",
+      "type": "System",
+      "summary": "Uses the workspace; sees their own record and the teams they are on.",
+      "settings": {
+        "1": "inherit",
+        "2": "inherit",
+        "3": "deny",
+        "4": "inherit",
+        "5": "inherit",
+        "6": "inherit",
+        "7": "inherit",
+        "8": "inherit",
+        "9": "inherit",
+        "10": "inherit",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "inherit",
+        "14": "inherit",
+        "15": "inherit",
+        "16": "inherit",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "—"
+    },
+    {
+      "id": "guest",
+      "regNumber": "R-03",
+      "name": "Guest",
+      "type": "System",
+      "summary": "Sees only the teams they are invited to, from outside the organization.",
+      "settings": {
+        "1": "inherit",
+        "2": "inherit",
+        "3": "deny",
+        "4": "inherit",
+        "5": "inherit",
+        "6": "inherit",
+        "7": "inherit",
+        "8": "inherit",
+        "9": "inherit",
+        "10": "inherit",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "inherit",
+        "14": "inherit",
+        "15": "inherit",
+        "16": "inherit",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "—"
+    },
+    {
+      "id": "product-admin",
+      "regNumber": "R-04",
+      "name": "Product admin",
+      "type": "Custom",
+      "summary": "Product admins run the product workspace. They can invite people, change roles and organize teams. They can’t edit what a role allows, change sign-in or billing, or export the audit archive.",
+      "settings": {
+        "1": "allow",
+        "2": "deny",
+        "3": "inherit",
+        "4": "allow",
+        "5": "inherit",
+        "6": "deny",
+        "7": "allow",
+        "8": "allow",
+        "9": "allow",
+        "10": "inherit",
+        "11": "deny",
+        "12": "deny",
+        "13": "allow",
+        "14": "inherit",
+        "15": "inherit",
+        "16": "deny",
+        "17": "deny",
+        "18": "locked"
+      },
+      "pendingChanges": [
+        {
+          "permissionId": 2,
+          "from": "deny",
+          "to": "allow"
+        },
+        {
+          "permissionId": 14,
+          "from": "inherit",
+          "to": "deny"
+        }
+      ],
+      "lastChanged": "Oct 2 by Sheku Koroma",
+      "createdFrom": "Member",
+      "createdOn": "Sep 18"
+    },
+    {
+      "id": "support-lead",
+      "regNumber": "R-05",
+      "name": "Support lead",
+      "type": "Custom",
+      "summary": "Helps members with profiles, invitations and sessions, and reads the audit log.",
+      "settings": {
+        "1": "inherit",
+        "2": "inherit",
+        "3": "inherit",
+        "4": "inherit",
+        "5": "deny",
+        "6": "deny",
+        "7": "deny",
+        "8": "deny",
+        "9": "allow",
+        "10": "inherit",
+        "11": "deny",
+        "12": "allow",
+        "13": "allow",
+        "14": "deny",
+        "15": "deny",
+        "16": "deny",
+        "17": "deny",
+        "18": "locked"
+      },
+      "lastChanged": "Sep 24 by Sheku Koroma"
+    },
+    {
+      "id": "analyst",
+      "regNumber": "R-06",
+      "name": "Analyst",
+      "type": "Custom",
+      "summary": "Reads the audit log and billing, to report on how access is used.",
+      "settings": {
+        "1": "deny",
+        "2": "inherit",
+        "3": "deny",
+        "4": "deny",
+        "5": "deny",
+        "6": "deny",
+        "7": "deny",
+        "8": "deny",
+        "9": "inherit",
+        "10": "inherit",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "allow",
+        "14": "deny",
+        "15": "allow",
+        "16": "deny",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "Sep 18 by Sheku Koroma"
+    },
+    {
+      "id": "finance-viewer",
+      "regNumber": "R-07",
+      "name": "Finance viewer",
+      "type": "Custom",
+      "summary": "Sees billing and invoices.",
+      "settings": {
+        "1": "deny",
+        "2": "deny",
+        "3": "deny",
+        "4": "deny",
+        "5": "deny",
+        "6": "deny",
+        "7": "deny",
+        "8": "deny",
+        "9": "inherit",
+        "10": "deny",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "inherit",
+        "14": "deny",
+        "15": "allow",
+        "16": "deny",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "Jun 12 by Sheku Koroma"
+    },
+    {
+      "id": "auditor",
+      "regNumber": "R-08",
+      "name": "Auditor",
+      "type": "Custom",
+      "summary": "Reads and exports the audit log for external review.",
+      "settings": {
+        "1": "deny",
+        "2": "deny",
+        "3": "deny",
+        "4": "deny",
+        "5": "deny",
+        "6": "deny",
+        "7": "deny",
+        "8": "deny",
+        "9": "inherit",
+        "10": "inherit",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "allow",
+        "14": "allow",
+        "15": "deny",
+        "16": "deny",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "Jul 7 by Sheku Koroma"
+    },
+    {
+      "id": "billing-admin",
+      "regNumber": "R-09",
+      "name": "Billing admin",
+      "type": "Custom",
+      "summary": "Owns the plan, seats and payment for the organization.",
+      "settings": {
+        "1": "deny",
+        "2": "deny",
+        "3": "deny",
+        "4": "deny",
+        "5": "deny",
+        "6": "deny",
+        "7": "deny",
+        "8": "deny",
+        "9": "inherit",
+        "10": "inherit",
+        "11": "inherit",
+        "12": "inherit",
+        "13": "allow",
+        "14": "deny",
+        "15": "allow",
+        "16": "allow",
+        "17": "inherit",
+        "18": "locked"
+      },
+      "lastChanged": "Aug 30 by Sheku Koroma"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "needsOwner": [
+    {
+      "id": "role-review",
+      "severity": 1,
+      "title": "Product admin review is ready",
+      "detail": "2 changes are waiting: Deactivate members becomes Allow, Export audit records becomes Deny. Applying affects 5 members.",
+      "action": "Review changes",
+      "href": "/app/roles/product-admin"
+    },
+    {
+      "id": "leah-invite",
+      "severity": 2,
+      "title": "Leah Kim\u2019s invite didn\u2019t arrive",
+      "detail": "The invitation to leah.kim@sevynlab.io bounced. The address looks like a typo for leah.kim@sevynlabs.io.",
+      "action": "Fix and resend",
+      "href": "/app/invitations"
+    },
+    {
+      "id": "two-step",
+      "severity": 3,
+      "title": "3 people without 2-step verification",
+      "detail": "Sam Patel, Iris Novak (Guest) and Yusuf Ali. Your setting makes it required for everyone from Nov 1.",
+      "action": "See who",
+      "href": "/app/people"
+    },
+    {
+      "id": "priya-expiring",
+      "severity": 4,
+      "title": "Priya\u2019s invite expires Oct 11",
+      "detail": "Priya Shah was invited as Analyst on Oct 4 and hasn\u2019t opened it yet.",
+      "action": "Resend",
+      "href": "/app/invitations"
+    }
+  ]
+}

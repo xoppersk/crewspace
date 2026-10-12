@@ -1,0 +1,705 @@
+{
+  "members": [
+    {
+      "id": "001",
+      "name": "Sheku Koroma",
+      "email": "sheku@sevynlabs.io",
+      "roleId": "owner",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "leadership",
+          "lead": false
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Now",
+      "title": "Organization owner"
+    },
+    {
+      "id": "002",
+      "name": "Priya Nair",
+      "email": "priya.nair@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "003",
+      "name": "Tom Becker",
+      "email": "tom.becker@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2025",
+      "lastActive": "Oct 5"
+    },
+    {
+      "id": "004",
+      "name": "Lena Fischer",
+      "email": "lena.fischer@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "005",
+      "name": "David Osei",
+      "email": "david.osei@sevynlabs.io",
+      "roleId": "support-lead",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "006",
+      "name": "Marta Vidal",
+      "email": "marta.vidal@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Apr 2025",
+      "lastActive": "Oct 4"
+    },
+    {
+      "id": "007",
+      "name": "Tomás Rivera",
+      "email": "tomás.rivera@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "engineering",
+          "lead": true
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "008",
+      "name": "Felix Grant",
+      "email": "felix.grant@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Oct 5"
+    },
+    {
+      "id": "009",
+      "name": "Anna Kowalski",
+      "email": "anna.kowalski@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "May 2025",
+      "lastActive": "Oct 3"
+    },
+    {
+      "id": "010",
+      "name": "James Whitfield",
+      "email": "james.whitfield@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Jun 2025",
+      "lastActive": "Yesterday"
+    },
+    {
+      "id": "011",
+      "name": "Owen Clarke",
+      "email": "owen.clarke@sevynlabs.io",
+      "roleId": "support-lead",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": true
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "012",
+      "name": "Jonah Price",
+      "email": "jonah.price@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "Nov 2024",
+      "lastActive": "Today"
+    },
+    {
+      "id": "013",
+      "name": "Sara Lindqvist",
+      "email": "sara.lindqvist@sevynlabs.io",
+      "roleId": "finance-viewer",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "finance",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "014",
+      "name": "Grace Mensah",
+      "email": "grace.mensah@sevynlabs.io",
+      "roleId": "billing-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "finance",
+          "lead": true
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Yesterday",
+      "title": "Billing contact"
+    },
+    {
+      "id": "015",
+      "name": "Peter Novak",
+      "email": "peter.novak@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [],
+      "joined": "Jul 2025",
+      "lastActive": "Oct 2"
+    },
+    {
+      "id": "016",
+      "name": "Aisha Bello",
+      "email": "aisha.bello@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "Aug 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "017",
+      "name": "Daniel Okafor",
+      "email": "daniel.okafor@sevynlabs.io",
+      "roleId": "product-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": true
+        },
+        {
+          "teamId": "leadership",
+          "lead": false
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Today",
+      "title": "Product lead"
+    },
+    {
+      "id": "018",
+      "name": "Chris Donovan",
+      "email": "chris.donovan@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        },
+        {
+          "teamId": "finance",
+          "lead": false
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Oct 5"
+    },
+    {
+      "id": "019",
+      "name": "Nadia Rahman",
+      "email": "nadia.rahman@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "020",
+      "name": "Julia Brandt",
+      "email": "julia.brandt@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [],
+      "joined": "Sep 2025",
+      "lastActive": "Oct 1"
+    },
+    {
+      "id": "021",
+      "name": "Elif Kaya",
+      "email": "elif.kaya@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Oct 4"
+    },
+    {
+      "id": "022",
+      "name": "Robert Chen",
+      "email": "robert.chen@sevynlabs.io",
+      "roleId": "auditor",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "leadership",
+          "lead": false
+        }
+      ],
+      "joined": "Apr 2025",
+      "lastActive": "Oct 3"
+    },
+    {
+      "id": "023",
+      "name": "Ama Boateng",
+      "email": "ama.boateng@sevynlabs.io",
+      "roleId": "product-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        },
+        {
+          "teamId": "marketing",
+          "lead": true
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "024",
+      "name": "Iris Novak",
+      "email": "iris@northfieldstudio.co",
+      "roleId": "guest",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "marketing",
+          "lead": false
+        }
+      ],
+      "joined": "Sep 2025",
+      "lastActive": "Sep 28",
+      "twoStep": false,
+      "externalOrg": "Northfield Studio"
+    },
+    {
+      "id": "025",
+      "name": "Kofi Mensah",
+      "email": "kofi.mensah@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "May 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "026",
+      "name": "Ken Ito",
+      "email": "ken.ito@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        },
+        {
+          "teamId": "engineering",
+          "lead": false
+        }
+      ],
+      "joined": "Apr 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "027",
+      "name": "Rita Alvarez",
+      "email": "rita.alvarez@sevynlabs.io",
+      "roleId": "support-lead",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2025",
+      "lastActive": "Today"
+    },
+    {
+      "id": "028",
+      "name": "Nina Petrova",
+      "email": "nina.petrova@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "marketing",
+          "lead": false
+        },
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Jun 2025",
+      "lastActive": "Oct 5"
+    },
+    {
+      "id": "029",
+      "name": "Marcus Bell",
+      "email": "marcus.bell@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        },
+        {
+          "teamId": "marketing",
+          "lead": false
+        }
+      ],
+      "joined": "Dec 2025",
+      "lastActive": "Oct 4"
+    },
+    {
+      "id": "030",
+      "name": "Omar Farouk",
+      "email": "omar.farouk@sevynlabs.io",
+      "roleId": "finance-viewer",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "finance",
+          "lead": false
+        }
+      ],
+      "joined": "Jun 2025",
+      "lastActive": "Yesterday"
+    },
+    {
+      "id": "031",
+      "name": "Lucas Meyer",
+      "email": "lucas.meyer@sevynlabs.io",
+      "roleId": "product-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        },
+        {
+          "teamId": "leadership",
+          "lead": false
+        }
+      ],
+      "joined": "Feb 2026",
+      "lastActive": "Today"
+    },
+    {
+      "id": "032",
+      "name": "Emma Wilson",
+      "email": "emma.wilson@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "marketing",
+          "lead": false
+        }
+      ],
+      "joined": "Oct 2025",
+      "lastActive": "Oct 2"
+    },
+    {
+      "id": "033",
+      "name": "Victor Hale",
+      "email": "victor.hale@sevynlabs.io",
+      "roleId": "member",
+      "status": "deactivated",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Jan 2025",
+      "lastActive": "Sep 12",
+      "deactivatedBy": "Sheku Koroma",
+      "deactivatedOn": "Sep 12"
+    },
+    {
+      "id": "034",
+      "name": "Sam Patel",
+      "email": "sam.patel@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Jul 2025",
+      "lastActive": "Today",
+      "twoStep": false
+    },
+    {
+      "id": "035",
+      "name": "Sofia Duarte",
+      "email": "sofia.duarte@sevynlabs.io",
+      "roleId": "analyst",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "Apr 2026",
+      "lastActive": "Oct 5"
+    },
+    {
+      "id": "036",
+      "name": "Zoe Adams",
+      "email": "zoe.adams@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "May 2026",
+      "lastActive": "Today"
+    },
+    {
+      "id": "037",
+      "name": "Liam Murphy",
+      "email": "liam.murphy@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        },
+        {
+          "teamId": "finance",
+          "lead": false
+        }
+      ],
+      "joined": "Aug 2025",
+      "lastActive": "Oct 3"
+    },
+    {
+      "id": "038",
+      "name": "Hannah Lee",
+      "email": "hannah.lee@sevynlabs.io",
+      "roleId": "product-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Mar 2025",
+      "lastActive": "Today",
+      "title": "Customer operations"
+    },
+    {
+      "id": "039",
+      "name": "Ruth Adeyemi",
+      "email": "ruth.adeyemi@sevynlabs.io",
+      "roleId": "finance-viewer",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "finance",
+          "lead": false
+        }
+      ],
+      "joined": "Sep 2025",
+      "lastActive": "Oct 4"
+    },
+    {
+      "id": "040",
+      "name": "Yusuf Ali",
+      "email": "yusuf.ali@sevynlabs.io",
+      "roleId": "member",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "Sep 2026",
+      "lastActive": "Today",
+      "twoStep": false
+    },
+    {
+      "id": "041",
+      "name": "George Hall",
+      "email": "george.hall@sevynlabs.io",
+      "roleId": "support-lead",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "customer-operations",
+          "lead": false
+        }
+      ],
+      "joined": "Oct 2025",
+      "lastActive": "Yesterday"
+    },
+    {
+      "id": "042",
+      "name": "Maya Jordan",
+      "email": "maya.jordan@sevynlabs.io",
+      "roleId": "product-admin",
+      "status": "active",
+      "teams": [
+        {
+          "teamId": "product",
+          "lead": false
+        }
+      ],
+      "joined": "Oct 5",
+      "lastActive": "Today",
+      "isNew": true,
+      "sessions": [
+        {
+          "device": "MacBook Pro · Chrome",
+          "place": "Philadelphia, US",
+          "current": true,
+          "lastActive": "9:12"
+        },
+        {
+          "device": "iPhone · Safari",
+          "place": "Philadelphia, US",
+          "current": false,
+          "lastActive": "Oct 5"
+        }
+      ]
+    }
+  ]
+}

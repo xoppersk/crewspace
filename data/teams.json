@@ -1,0 +1,54 @@
+{
+  "teams": [
+    {
+      "id": "customer-operations",
+      "regNumber": "T-01",
+      "name": "Customer operations",
+      "blurb": "support, onboarding and renewals",
+      "leadId": "011"
+    },
+    {
+      "id": "product",
+      "regNumber": "T-02",
+      "name": "Product",
+      "blurb": "roadmap, design and research",
+      "leadId": "017"
+    },
+    {
+      "id": "engineering",
+      "regNumber": "T-03",
+      "name": "Engineering",
+      "blurb": "platform and integrations",
+      "leadId": "007"
+    },
+    {
+      "id": "finance",
+      "regNumber": "T-04",
+      "name": "Finance",
+      "blurb": "billing, payroll and reporting",
+      "leadId": "014"
+    },
+    {
+      "id": "marketing",
+      "regNumber": "T-05",
+      "name": "Marketing",
+      "blurb": "brand, content and events",
+      "leadId": "023"
+    },
+    {
+      "id": "leadership",
+      "regNumber": "T-06",
+      "name": "Leadership",
+      "blurb": "company decisions and approvals",
+      "leadId": "001"
+    },
+    {
+      "id": "partnerships",
+      "regNumber": "T-07",
+      "name": "Partnerships",
+      "blurb": "partners and alliances",
+      "leadId": null,
+      "unlisted": true
+    }
+  ]
+}
