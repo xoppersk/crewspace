@@ -6,16 +6,8 @@ import { Button } from "@/components/Button";
 /* P-05 interactive parts — screens/Profile.html.
    The profile form's fields are controlled so edits are tracked. The
    screen shows no dirty-state styling and no post-save state, so none
-   is added. */
-
-const rowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "180px minmax(0, 1fr)",
-  gap: "8px 20px",
-  alignItems: "center",
-  padding: "12px 24px",
-  borderTop: "1px solid var(--rule)",
-};
+   is added. Row metrics live in the .pf-row class (globals.css) so
+   phones can stack label above control. */
 
 const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: 13 };
 
@@ -73,7 +65,7 @@ export function ProfileForm({
           Everyone in Sevyn Labs sees this
         </span>
       </div>
-      <div style={rowStyle}>
+      <div className="pf-row">
         <label htmlFor="nm" style={labelStyle}>
           Name
         </label>
@@ -85,7 +77,7 @@ export function ProfileForm({
           onChange={(e) => setName(e.target.value)}
         />
       </div>
-      <div style={rowStyle}>
+      <div className="pf-row">
         <label htmlFor="tt" style={labelStyle}>
           Title
         </label>
@@ -97,7 +89,7 @@ export function ProfileForm({
           onChange={(e) => setTitle(e.target.value)}
         />
       </div>
-      <div style={rowStyle}>
+      <div className="pf-row">
         <label htmlFor="pr" style={labelStyle}>
           Pronouns <Small>Optional</Small>
         </label>
@@ -109,13 +101,13 @@ export function ProfileForm({
           onChange={(e) => setPronouns(e.target.value)}
         />
       </div>
-      <div style={rowStyle}>
+      <div className="pf-row">
         <span style={labelStyle}>
           Work email <Small>Set by your invitation</Small>
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-2)" }}>{email}</span>
       </div>
-      <div style={rowStyle}>
+      <div className="pf-row">
         <label htmlFor="tz" style={labelStyle}>
           Time zone
         </label>
