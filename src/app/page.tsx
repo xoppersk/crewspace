@@ -20,16 +20,8 @@ export default function MarketingPage() {
 
   /* The hero fragment is drawn statically, at the Marketing screen's
    * own metrics and with that screen's own permission wording — it is
-   * not the interactive app PermissionRow. */
-  const fragRow = {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 210px 120px",
-    gap: 16,
-    alignItems: "center",
-    padding: "11px 20px",
-    borderTop: "1px solid var(--rule)",
-    fontSize: 13,
-  } as const;
+   * not the interactive app PermissionRow. Row metrics live in the
+   * .frag-row class (globals.css) so phones can stack the cells. */
   const fragName = {
     display: "block",
     fontSize: 14,
@@ -194,7 +186,7 @@ export default function MarketingPage() {
                 {role.regNumber} · {members} members
               </span>
             </div>
-            <div style={fragRow}>
+            <div className="frag-row">
               <span>
                 <b style={fragName}>Invite members</b>
                 <small style={fragSmall}>
@@ -211,7 +203,8 @@ export default function MarketingPage() {
             {/* The pending change: Deny → Allow. The name cell carries
               * only the "Changed" line, as the Marketing screen draws it. */}
             <div
-              style={{ ...fragRow, background: "var(--sheet-tint)" }}
+              className="frag-row"
+              style={{ background: "var(--sheet-tint)" }}
             >
               <span>
                 <b style={fragName}>Deactivate members</b>
@@ -235,7 +228,7 @@ export default function MarketingPage() {
                 <small style={fragSmall}>{scope} people in scope</small>
               </span>
             </div>
-            <div style={fragRow}>
+            <div className="frag-row">
               <span>
                 <b style={fragName}>Export audit records</b>
                 <small style={fragSmall}>
@@ -463,14 +456,10 @@ export default function MarketingPage() {
           </p>
         </div>
         <dl
+          className="spec-list"
           style={{
             flex: "1 1 480px",
             margin: 0,
-            display: "grid",
-            gridTemplateColumns: "200px minmax(0, 1fr)",
-            gap: "16px 24px",
-            fontSize: 15,
-            lineHeight: 1.55,
           }}
         >
           <dt style={{ fontWeight: 700 }}>18 permissions</dt>

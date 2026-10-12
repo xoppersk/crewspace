@@ -86,8 +86,8 @@ a:hover { color: var(--seal-deep); }
 :focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
 .mono { font-family: var(--font-mono); }
 .sr-only {
-  position: absolute; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap;
+  position: absolute; left: 0; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -398,6 +398,10 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
   .main-col { padding: 16px 16px 40px; }
   .pr { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .mr { grid-template-columns: 40px minmax(0, 1fr) 100px; }
+  /* Inside a scroll table the scroller does the work: rows keep their
+     designed columns at phone widths instead of collapsing. */
+  .rows-scroll .mr { grid-template-columns: 52px minmax(0, 1.5fr) 150px minmax(0, 1fr) 110px 110px; }
+  .rows-scroll .tmr { grid-template-columns: 52px minmax(0, 1.4fr) 150px minmax(0, 1fr) 90px 40px; }
   .field-row { grid-template-columns: minmax(0, 1fr); }
   .steps { flex: 1 1 100%; }
   .focused-wrap { padding: 18px 16px; }
@@ -429,3 +433,50 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
 .tmr small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 .tmr.head { padding-top: 8px; padding-bottom: 8px; font-size: 12px; color: var(--muted); border-top-color: var(--rule-strong); }
 @media (max-width: 760px) { .tmr { grid-template-columns: 40px minmax(0, 1fr) 110px; } }
+
+/* ------------------------------------------------ offline directory rows (X-06) */
+/* SysReconnect.html: the register window is a 5-column row (no Last
+   active column); roles are plain text, people are names only. */
+.omr {
+  display: grid; grid-template-columns: 52px minmax(0, 1.5fr) 150px minmax(0, 1fr) 110px;
+  gap: 16px; align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
+  font-size: 14px; color: var(--ink);
+}
+.omr.head { padding-top: 10px; padding-bottom: 10px; font-size: 12px; color: var(--muted); border-top: 0; }
+
+/* ------------------------------------------------ marketing fragment rows */
+/* Desktop metrics are the Marketing screen's own (moved here from
+   inline styles so the phone stack below can apply). */
+.frag-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 210px 120px;
+  gap: 16px; align-items: center; padding: 11px 20px;
+  border-top: 1px solid var(--rule); font-size: 13px;
+}
+
+/* Marketing "by the numbers" definition list (same treatment: desktop
+   metrics are the screen's own; phones stack term above description). */
+.spec-list {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px 24px; font-size: 15px; line-height: 1.55;
+}
+
+/* ------------------------------------------------ profile form rows (P-05) */
+/* Desktop metrics match Profile.html's form rows (moved here from
+   inline styles so the phone stack below can apply). */
+.pf-row {
+  display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px 20px;
+  align-items: center; padding: 12px 24px; border-top: 1px solid var(--rule);
+}
+
+/* Phone stacks for the class-based rows above — kept after their base
+   rules so the cascade applies them (equal specificity, later wins). */
+@media (max-width: 760px) {
+  .frag-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pf-row { grid-template-columns: minmax(0, 1fr); }
+  .spec-list { grid-template-columns: minmax(0, 1fr); gap: 6px 24px; }
+  .spec-list dt { margin-top: 10px; }
+  .spec-list dt:first-child { margin-top: 0; }
+  /* Long button labels (e.g. "Accept with <email>") wrap on phones
+     instead of forcing the form wider than the screen. */
+  .auth-form .btn { white-space: normal; }
+}
