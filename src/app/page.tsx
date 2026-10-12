@@ -1,374 +1,593 @@
 import Link from "next/link";
 import {
-  ArrowRight,
-  FileText,
-  KeyRound,
-  MailPlus,
-  ScanSearch,
-  ShieldCheck,
-  UserCheck,
-  Users,
-} from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { TRUTH_LEDGER } from "@/lib/demo/truth-ledger";
-import { RoleBadge } from "@/components/roles/role-badge";
-import { RoleSeal } from "@/components/crew/role-seal";
-import { MatrixTeaser } from "./_components/matrix-teaser";
+  deactivateScopeCount,
+  getRole,
+  roleMemberCount,
+} from "@/lib/api";
+import { ButtonLink } from "@/components/Button";
 
 /**
- * Marketing landing (UI-DESIGN.md §2.1): top nav → hero with the interactive
- * permission-matrix teaser → three pattern sections (Directory, Roles,
- * Audit) with static mock visuals → How it works (Invite → Assign →
- * Verify) → tech-stack strip → footer.
+ * F-01 — Marketing. Public page, always light.
+ * NOTE: the header is composed here from the shared public classes,
+ * exactly as the screen shows it (How it works · Security · Pricing ·
+ * Docs / Sign in / Start your register). The shared PublicHeader
+ * marketing variant renders the same header.
  */
+export default function MarketingPage() {
+  const role = getRole("product-admin")!;
+  const members = roleMemberCount(role.id);
+  const scope = deactivateScopeCount();
 
-const NAV_LINKS = [
-  { label: "Directory", href: "#directory" },
-  { label: "Roles", href: "#roles" },
-  { label: "Audit", href: "#audit" },
-  { label: "How it works", href: "#how-it-works" },
-];
+  /* The hero fragment is drawn statically, at the Marketing screen's
+   * own metrics and with that screen's own permission wording — it is
+   * not the interactive app PermissionRow. */
+  const fragRow = {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 210px 120px",
+    gap: 16,
+    alignItems: "center",
+    padding: "11px 20px",
+    borderTop: "1px solid var(--rule)",
+    fontSize: 13,
+  } as const;
+  const fragName = {
+    display: "block",
+    fontSize: 14,
+    fontWeight: 600,
+  } as const;
+  const fragSmall = {
+    display: "block",
+    fontSize: 12,
+    color: "var(--muted)",
+    marginTop: 2,
+  } as const;
+  const fragSeg = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    border: "1px solid var(--frame)",
+    borderRadius: 6,
+    padding: 2,
+    gap: 2,
+  } as const;
+  const fragSegSpan = {
+    height: 28,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 4,
+    color: "var(--muted)",
+    fontSize: 12,
+  } as const;
+  const fragSegA = {
+    ...fragSegSpan,
+    background: "var(--seal)",
+    color: "var(--on-seal)",
+    fontWeight: 600,
+  } as const;
+  const fragSegD = {
+    ...fragSegSpan,
+    color: "var(--deny)",
+    fontWeight: 600,
+    boxShadow: "inset 0 0 0 1.5px var(--deny)",
+  } as const;
 
-const PATTERNS = [
-  {
-    id: "directory",
-    icon: Users,
-    kicker: "Pattern · Directory",
-    title: "Find people quickly",
-    description:
-      "Find people quickly, understand their access, and open a focused member detail drawer.",
-    mock: <DirectoryMock />,
-  },
-  {
-    id: "roles",
-    icon: KeyRound,
-    kicker: "Pattern · Roles",
-    title: "Shape access in plain language",
-    description:
-      "Shape access in plain language and review the exact effect of every permission change.",
-    mock: <RolesMock />,
-  },
-  {
-    id: "audit",
-    icon: FileText,
-    kicker: "Pattern · Audit",
-    title: "Trace every consequential change",
-    description:
-      "Trace consequential changes by actor, object, time, and before-and-after values.",
-    mock: <AuditMock />,
-  },
-];
-
-const STEPS = [
-  {
-    icon: MailPlus,
-    step: "1",
-    title: "Invite",
-    description:
-      "Send invitations with the right role from day one — delivery, expiry, and resend are all tracked.",
-  },
-  {
-    icon: KeyRound,
-    step: "2",
-    title: "Assign",
-    description:
-      "Give people roles in plain language. Custom roles start from a safe baseline, never a blank slate.",
-  },
-  {
-    icon: ShieldCheck,
-    step: "3",
-    title: "Verify",
-    description:
-      "The audit log records every change with before-and-after values, so access is always explainable.",
-  },
-];
-
-export default function Home() {
   return (
-    <main className="min-h-svh bg-background">
-      {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className="flex size-8 items-center justify-center rounded-md bg-primary text-base font-bold text-white"
-            >
-              C
-            </span>
-            <span className="text-lg font-bold tracking-tight">Crewspace</span>
+    <div className="pub">
+      <header
+        className="pub-head pub-wrap"
+        style={{ maxWidth: 1200, paddingTop: 20, paddingBottom: 20 }}
+      >
+        <Link href="/" className="wordmark">
+          Crewspace
+        </Link>
+        <nav
+          aria-label="Main"
+          className="pub-nav"
+          style={{ gap: 28, fontSize: 15 }}
+        >
+          <Link href="#how">How it works</Link>
+          <Link href="#">Security</Link>
+          <Link href="#">Pricing</Link>
+          <Link href="#">Docs</Link>
+        </nav>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <Link
+            href="/signin"
+            style={{
+              color: "var(--ink-2)",
+              textDecoration: "none",
+              fontSize: 15,
+            }}
+          >
+            Sign in
           </Link>
-          <nav className="hidden items-center gap-6 md:flex" aria-label="Product">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/sign-in">
-                View live demo <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
+          <ButtonLink
+            variant="pri"
+            size="h40"
+            href="/signup"
+            style={{ fontSize: 15 }}
+          >
+            Start your register
+          </ButtonLink>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 md:pt-24 md:pb-16">
-        <p className="text-xs font-bold tracking-[0.17em] uppercase text-primary">
-          Team access, made explainable
-        </p>
-        <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
-          Know exactly who can do what
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-          Crewspace is a people-and-permissions workspace with calm authority: granular
-          roles in plain language, an immutable audit log, and access everyone can
-          explain.
-        </p>
-        <div className="mt-10">
-          <MatrixTeaser />
+      {/* Hero + live product fragment */}
+      <section
+        className="pub-wrap"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 56,
+          alignItems: "center",
+          paddingTop: 56,
+          paddingBottom: 72,
+        }}
+      >
+        <div
+          style={{
+            flex: "1 1 440px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+          }}
+        >
+          <h1 className="display">Access everyone can explain.</h1>
+          <p
+            style={{
+              margin: 0,
+              maxWidth: "30em",
+              fontSize: 19,
+              lineHeight: 1.55,
+              color: "var(--ink-2)",
+            }}
+          >
+            Crewspace keeps one register of who’s in your organization, what
+            their role lets them do, and every change to it, written in
+            sentences people can read.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <ButtonLink
+              variant="pri"
+              size="h44"
+              href="/signup"
+              style={{ fontSize: 15 }}
+            >
+              Start your register
+            </ButtonLink>
+            <ButtonLink size="h44" href="#how" style={{ fontSize: 15 }}>
+              See how a change happens
+            </ButtonLink>
+          </div>
+          <span style={{ fontSize: 13, color: "var(--muted)" }}>
+            Sign in with Google. Invite people from a list or a CSV.
+          </span>
         </div>
+
+        <figure
+          aria-label="Product fragment: three permissions on the Product admin role"
+          style={{
+            flex: "1 1 520px",
+            margin: 0,
+            background: "var(--ground)",
+            borderRadius: 12,
+            padding: 28,
+          }}
+        >
+          <div
+            className="sheet"
+            style={{ overflow: "hidden" }}
+            role="table"
+            aria-label="Product admin permissions"
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                gap: 10,
+              }}
+            >
+              <b style={{ fontSize: 17 }}>{role.name}</b>
+              <span className="register">
+                {role.regNumber} · {members} members
+              </span>
+            </div>
+            <div style={fragRow}>
+              <span>
+                <b style={fragName}>Invite members</b>
+                <small style={fragSmall}>
+                  Can invite people and pick their first role.
+                </small>
+              </span>
+              <span style={fragSeg}>
+                <span style={fragSegA}>Allow</span>
+                <span style={fragSegSpan}>Deny</span>
+                <span style={fragSegSpan}>Inherit</span>
+              </span>
+              <span>Allowed</span>
+            </div>
+            {/* The pending change: Deny → Allow. The name cell carries
+              * only the "Changed" line, as the Marketing screen draws it. */}
+            <div
+              style={{ ...fragRow, background: "var(--sheet-tint)" }}
+            >
+              <span>
+                <b style={fragName}>Deactivate members</b>
+                <small
+                  style={{
+                    ...fragSmall,
+                    color: "var(--seal)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Changed · was Deny
+                </small>
+              </span>
+              <span style={fragSeg}>
+                <span style={fragSegA}>Allow</span>
+                <span style={fragSegSpan}>Deny</span>
+                <span style={fragSegSpan}>Inherit</span>
+              </span>
+              <span>
+                Allowed
+                <small style={fragSmall}>{scope} people in scope</small>
+              </span>
+            </div>
+            <div style={fragRow}>
+              <span>
+                <b style={fragName}>Export audit records</b>
+                <small style={fragSmall}>
+                  Can download the audit archive.
+                </small>
+              </span>
+              <span style={fragSeg}>
+                <span style={fragSegSpan}>Allow</span>
+                <span style={fragSegD}>Deny</span>
+                <span style={fragSegSpan}>Inherit</span>
+              </span>
+              <span style={{ color: "var(--muted)" }}>Blocked</span>
+            </div>
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "var(--ink-bar)",
+                color: "var(--on-seal)",
+                fontSize: 13,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <span>
+                <b style={{ fontWeight: 600 }}>1 change ready</b> · affects{" "}
+                {members} members
+              </span>
+              <Link
+                href="/app/roles/product-admin"
+                style={{ color: "var(--on-seal)" }}
+              >
+                Review changes
+              </Link>
+            </div>
+          </div>
+          <figcaption
+            style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}
+          >
+            Every setting shows what it actually does, and nothing applies
+            until someone reviews it.
+          </figcaption>
+        </figure>
       </section>
 
-      {/* Pattern sections */}
-      {PATTERNS.map((pattern, i) => (
-        <section
-          key={pattern.id}
-          id={pattern.id}
-          className={i % 2 === 1 ? "border-y bg-card" : undefined}
-        >
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
-            <div className={i % 2 === 1 ? "md:order-2" : undefined}>
-              <p className="flex items-center gap-2 text-xs font-bold tracking-[0.17em] uppercase text-primary">
-                <pattern.icon className="size-4" aria-hidden /> {pattern.kicker}
-              </p>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-                {pattern.title}
-              </h2>
-              <p className="mt-4 max-w-md text-muted-foreground">{pattern.description}</p>
-              <Button variant="outline" asChild className="mt-6">
-                <Link href="/sign-in">
-                  See it in the demo <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className={i % 2 === 1 ? "md:order-1" : undefined}>{pattern.mock}</div>
+      {/* Principles */}
+      <section
+        className="pub-wrap"
+        style={{
+          paddingBottom: 80,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 32,
+        }}
+      >
+        {[
+          {
+            h: "Every permission says what it does",
+            p: "“Allowed”, “Blocked, from baseline”, “36 people in scope.” No grid of ticks to decode, no guessing what Inherit means today.",
+          },
+          {
+            h: "Roles grant. Teams organize.",
+            p: "Move someone between teams without changing what they can do. Change a role and see exactly who gains or loses what.",
+          },
+          {
+            h: "Nothing changes silently",
+            p: "Changes wait for review, people are told by email, and the audit log keeps the before and after for two years.",
+          },
+        ].map((x) => (
+          <div
+            key={x.h}
+            style={{
+              flex: "1 1 260px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              paddingTop: 18,
+              borderTop: "2px solid var(--ink)",
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                font: "700 19px/1.25 var(--font-sans)",
+              }}
+            >
+              {x.h}
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                lineHeight: 1.6,
+                color: "var(--ink-2)",
+              }}
+            >
+              {x.p}
+            </p>
           </div>
-        </section>
-      ))}
+        ))}
+      </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="border-t">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
-          <p className="text-xs font-bold tracking-[0.17em] uppercase text-primary">
-            How it works
-          </p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-            Invite → Assign → Verify
-          </h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <div key={step.step} className="border bg-card p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-primary-soft">
-                    <step.icon className="size-5 text-primary" aria-hidden />
-                  </span>
-                  <span className="text-sm font-bold text-muted-foreground">
-                    Step {step.step}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-xl font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{step.description}</p>
+      {/* How a change happens */}
+      <section
+        id="how"
+        style={{ background: "var(--ground)", padding: "80px 0" }}
+      >
+        <div
+          className="pub-wrap"
+          style={{ display: "flex", flexDirection: "column", gap: 28 }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              maxWidth: "44em",
+            }}
+          >
+            <h2 className="public-h2">How a change happens</h2>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 17,
+                lineHeight: 1.6,
+                color: "var(--ink-2)",
+              }}
+            >
+              One person joining, from invitation to the permanent record.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+            {[
+              {
+                n: "01 · Invite",
+                h: "Appointment issued",
+                p: "Maya Jordan, invited as Product admin to the Product team.",
+              },
+              {
+                n: "02 · Accept",
+                h: "Identity verified",
+                p: "She signs in with the exact work address the invitation named.",
+              },
+              {
+                n: "03 · Assign",
+                h: "Access active",
+                p: "Product admin applies to Member 042. She can see why, in plain words.",
+              },
+              {
+                n: "04 · Audit",
+                h: "Permanent record",
+                p: "“Product admin applied to Maya Jordan, Member 042.” Can’t be edited.",
+              },
+            ].map((s) => (
+              <div
+                key={s.n}
+                className="sheet"
+                style={{
+                  flex: "1 1 200px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  padding: "18px 20px",
+                }}
+              >
+                <b
+                  className="mono"
+                  style={{
+                    font: "500 12px/1 var(--font-mono)",
+                    color: "var(--seal)",
+                  }}
+                >
+                  {s.n}
+                </b>
+                <span style={{ fontWeight: 600 }}>{s.h}</span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    color: "var(--ink-2)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {s.p}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Tech stack strip */}
-      <section className="border-t bg-card">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
-          <p className="text-sm font-medium text-muted-foreground">
-            Built on production-grade primitives
+      {/* Who it's for */}
+      <section
+        className="pub-wrap"
+        style={{
+          paddingTop: 80,
+          paddingBottom: 80,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 48,
+          alignItems: "flex-start",
+        }}
+      >
+        <div
+          style={{
+            flex: "1 1 380px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          <h2 className="public-h2">
+            Built for the people who answer “who can do that?”
+          </h2>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 17,
+              lineHeight: 1.6,
+              color: "var(--ink-2)",
+            }}
+          >
+            Founders, operations leads and security reviewers who need a
+            straight answer in under a minute.
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {["Next.js", "Supabase", "shadcn/ui"].map((tech) => (
-              <span
-                key={tech}
-                className="border px-3 py-1.5 text-sm font-semibold tracking-tight"
-              >
-                {tech}
-              </span>
-            ))}
-          </div>
+        </div>
+        <dl
+          style={{
+            flex: "1 1 480px",
+            margin: 0,
+            display: "grid",
+            gridTemplateColumns: "200px minmax(0, 1fr)",
+            gap: "16px 24px",
+            fontSize: 15,
+            lineHeight: 1.55,
+          }}
+        >
+          <dt style={{ fontWeight: 700 }}>18 permissions</dt>
+          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
+            in 8 groups, each with a one-sentence description.
+          </dd>
+          <dt style={{ fontWeight: 700 }}>Custom roles</dt>
+          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
+            copied from a safe starting point and reviewed before they exist.
+          </dd>
+          <dt style={{ fontWeight: 700 }}>Drawers, not pop-ups</dt>
+          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
+            open a person without losing your place in the list.
+          </dd>
+          <dt style={{ fontWeight: 700 }}>Plain-language audit</dt>
+          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
+            exportable, filterable, kept for two years.
+          </dd>
+        </dl>
+      </section>
+
+      {/* CTA band */}
+      <section className="cta-band" style={{ padding: "72px 0" }}>
+        <div
+          className="pub-wrap"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 24,
+          }}
+        >
+          <h2 className="public-h2" style={{ maxWidth: "16em" }}>
+            Know who can do what, and why, by this afternoon.
+          </h2>
+          <ButtonLink
+            variant="white"
+            href="/signup"
+            style={{ height: 44, padding: "0 18px", fontSize: 15 }}
+          >
+            Start your register
+          </ButtonLink>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-white"
-            >
-              C
-            </span>
-            <div>
-              <p className="text-sm font-bold tracking-tight">Crewspace</p>
-              <p className="text-xs text-muted-foreground">Access everyone can explain.</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-5 text-sm text-muted-foreground" aria-label="Footer">
-            <Link href="/sign-in" className="hover:text-foreground">
-              Sign in
-            </Link>
-            <Link href="/sign-up" className="hover:text-foreground">
-              Get started
-            </Link>
-            <Link href="#how-it-works" className="hover:text-foreground">
-              How it works
-            </Link>
-          </nav>
+      {/* Full marketing footer */}
+      <footer
+        className="pub-wrap"
+        style={{
+          paddingTop: 40,
+          paddingBottom: 48,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          gap: 24,
+          fontSize: 14,
+          color: "var(--muted)",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span
+            style={{
+              font: "800 17px/1 var(--font-sans)",
+              color: "var(--ink)",
+            }}
+          >
+            Crewspace
+          </span>
+          <span>© 2026 [Company]</span>
         </div>
+        <nav
+          aria-label="Product"
+          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Product</b>
+          <Link href="#how" style={{ color: "var(--ink-2)" }}>
+            How it works
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Pricing
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Changelog
+          </Link>
+        </nav>
+        <nav
+          aria-label="Trust"
+          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Trust</b>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Security
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Privacy
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Terms
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Status
+          </Link>
+        </nav>
+        <nav
+          aria-label="Help"
+          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Help</b>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            Docs
+          </Link>
+          <Link href="#" style={{ color: "var(--ink-2)" }}>
+            hello@sevynlabs.io
+          </Link>
+        </nav>
       </footer>
-    </main>
-  );
-}
-
-/** Static directory mock: register rows from the truth ledger. */
-function DirectoryMock() {
-  return (
-    <div className="border bg-background shadow-sm" aria-hidden>
-      <div className="border-b-2 border-foreground px-5 pt-4 pb-3">
-        <p className="text-xs font-bold tracking-[0.13em] uppercase text-muted-foreground">
-          Member register
-        </p>
-      </div>
-      <ul className="divide-y">
-        {TRUTH_LEDGER.people.map((person) => (
-          <li key={person.name} className="flex items-center gap-3 px-5 py-3.5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
-              {person.name
-                .split(" ")
-                .map((p) => p[0])
-                .join("")}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{person.name}</span>
-              {person.registerNo ? (
-                <span className="mt-0.5 block">
-                  <RoleSeal>{person.registerNo}</RoleSeal>
-                </span>
-              ) : null}
-            </span>
-            <RoleBadge roleName={person.role} />
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <span
-                className={
-                  person.status === "Active"
-                    ? "size-2 rounded-full bg-success"
-                    : "size-2 rounded-full bg-warning"
-                }
-              />
-              {person.status}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/** Static roles mock: register groups with allow-state chips. */
-function RolesMock() {
-  const groups: { name: string; rules: string[] }[] = [
-    { name: "People", rules: ["Invite members", "Deactivate members"] },
-    { name: "Access", rules: ["Change member roles", "Edit role permissions"] },
-    { name: "Governance", rules: ["Read audit log", "Export audit records"] },
-  ];
-  return (
-    <div className="border bg-background p-5 shadow-sm md:p-6" aria-hidden>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold">Permission register</p>
-        <p className="text-xs text-muted-foreground">6 shown · 18 total</p>
-      </div>
-      <div className="flex flex-col gap-4">
-        {groups.map((group) => (
-          <div key={group.name}>
-            <p className="register-group-title border-t-2 border-foreground pt-2 pb-1">
-              <span>{group.name}</span>
-              <span className="text-muted-foreground">{group.rules.length} rules</span>
-            </p>
-            <div className="flex flex-col pt-1">
-              {group.rules.map((rule) => (
-                <div
-                  key={rule}
-                  className="flex items-center justify-between border-b py-2 text-sm last:border-b-0"
-                >
-                  <span className="font-medium">{rule}</span>
-                  <span className="flex items-center gap-1 text-xs font-semibold text-success">
-                    <UserCheck className="size-3.5" /> Allow
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Static audit mock: human-readable sentences with before/after values. */
-function AuditMock() {
-  const events = [
-    {
-      actor: "Maya Jordan",
-      sentence: "changed Luis Gomez’s role from Member to Manager",
-      time: "2h ago",
-    },
-    {
-      actor: "Sheku Koroma",
-      sentence: "accepted Priya Shah’s invitation as Analyst",
-      time: "5h ago",
-    },
-    {
-      actor: "Maya Jordan",
-      sentence: "exported the audit log (42 events)",
-      time: "Yesterday",
-    },
-  ];
-  return (
-    <div className="border bg-background shadow-sm" aria-hidden>
-      <div className="border-b-2 border-foreground px-5 pt-4 pb-3">
-        <p className="text-xs font-bold tracking-[0.13em] uppercase text-muted-foreground">
-          Audit log · immutable
-        </p>
-      </div>
-      <ul className="divide-y">
-        {events.map((event) => (
-          <li key={event.sentence} className="flex items-start gap-3 px-5 py-3.5">
-            <ScanSearch className="mt-0.5 size-4 shrink-0 text-primary" />
-            <p className="min-w-0 flex-1 text-sm">
-              <span className="font-semibold">{event.actor}</span>{" "}
-              <span className="text-muted-foreground">{event.sentence}</span>
-            </p>
-            <time className="shrink-0 text-xs text-muted-foreground">{event.time}</time>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

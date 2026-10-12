@@ -1,28 +1,33 @@
 import type { Metadata } from "next";
+import { JetBrains_Mono, Public_Sans } from "next/font/google";
 import type { ReactNode } from "react";
-import { Toaster } from "sonner";
-
-import { ThemeProvider } from "@/components/theme-provider";
-
 import "./globals.css";
 
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-public-sans",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jetbrains",
+});
+
 export const metadata: Metadata = {
-  title: {
-    default: "Crewspace",
-    template: "%s · Crewspace",
-  },
+  title: "Crewspace — Access everyone can explain",
   description:
-    "Crewspace — know exactly who can do what. Multi-tenant team workspace with granular RBAC, invitations, and an immutable audit log.",
+    "Crewspace is the people-and-permissions register for Sevyn Labs: who is in it, which team they work in, what their role lets them do, and a signed record of every change.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-        {/* Bottom-right on desktop, top-center on mobile (UI-DESIGN.md §2.4). */}
-        <Toaster position="bottom-right" richColors closeButton />
-      </body>
+    <html
+      lang="en"
+      className={`${publicSans.variable} ${jetBrainsMono.variable}`}
+    >
+      <body>{children}</body>
     </html>
   );
 }
