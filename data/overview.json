@@ -20,7 +20,7 @@
       "id": "two-step",
       "severity": 3,
       "title": "3 people without 2-step verification",
-      "detail": "Sam Patel, Iris Novak (Guest) and Yusuf Ali. Your setting makes it required for everyone from Nov 1.",
+      "detail": "Sam Patel, Iris Novak (Guest) and Yusuf Ali. Your setting makes it required from Nov 1.",
       "action": "See who",
       "href": "/app/people"
     },
