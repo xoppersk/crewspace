@@ -233,6 +233,7 @@ export default function TeamsPage() {
 
       <div
         role="search"
+        className="team-search"
         style={{
           display: "flex",
           flexWrap: "wrap",
