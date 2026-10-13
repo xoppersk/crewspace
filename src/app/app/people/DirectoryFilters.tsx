@@ -75,6 +75,7 @@ export function DirectoryFilters({
   return (
     <div
       role="search"
+      className="dir-filters"
       style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}
     >
       <label htmlFor="q" className="sr-only">
