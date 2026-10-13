@@ -480,3 +480,257 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
      instead of forcing the form wider than the screen. */
   .auth-form .btn { white-space: normal; }
 }
+
+/* ------------------------------------------------ mobile fix pass
+   (visual audit 2026-10-12: desktop-width tables were clipped inside
+   their cards at phone widths — the last column sliced with no cue.
+   Everything below is phone-only; desktop layouts are untouched.
+   Scroll-table shells lose their designed min-width floors and each
+   register re-stacks instead of scrolling sideways.) */
+@media (max-width: 760px) {
+  /* App navigation: a compact horizontal chip list + one-line user
+     block, instead of the full desktop sidebar stacked above the
+     content on every screen. */
+  .sidenav { gap: 12px; padding: 14px 16px 12px; }
+  .sidenav .org { padding: 0; }
+  .navlist { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .nv { height: 30px; padding: 0 9px; gap: 8px; }
+  .sidenav .who {
+    flex-direction: row; flex-wrap: wrap; align-items: baseline;
+    gap: 2px 8px; padding: 9px 2px 0;
+  }
+
+  /* The min-width floors on scroll tables (inline styles) come off;
+     the registers below re-stack at card width. */
+  .rows-scroll > [role="table"] { min-width: 0 !important; }
+  [aria-label="Audit entries"] { min-width: 0 !important; }
+  [aria-label="Effective permissions"] { min-width: 0 !important; }
+
+  /* Member rows — Directory, offline Directory, team members, demos:
+     number + person + role on the first line, remaining cells flow
+     underneath. Full role chips, status reachable, nothing sliced. */
+  .mr, .omr, .tmr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  }
+  .mr > [role="cell"]:nth-child(2),
+  .omr > [role="cell"]:nth-child(2),
+  .tmr > [role="cell"]:nth-child(2) { flex: 1 1 150px; min-width: 0; }
+
+  /* Permission register (role detail): the stacked rows get the full
+     card width; the Permission / Setting / Result label row describes
+     columns that no longer exist — hide it. */
+  .pr.head { display: none; }
+
+  /* Member record — "What X can do, and why": permission + result on
+     one line, the "Comes from" text full width beneath. */
+  [aria-label="Effective permissions"] [role="row"] {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+  [aria-label="Effective permissions"] [role="cell"]:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+  [aria-label="Effective permissions"] > [role="row"]:first-child {
+    display: none !important;
+  }
+
+  /* Roles register: name + summary full width, type / members / last
+     change on one line, the 18-cell strip full width under it. */
+  [aria-label="Roles"] [role="row"] {
+    grid-template-columns: auto auto minmax(0, 1fr) !important;
+    align-items: center !important;
+  }
+  [aria-label="Roles"] [role="cell"]:nth-child(1) {
+    grid-column: 1 / -1; grid-row: 1;
+  }
+  [aria-label="Roles"] [role="cell"]:nth-child(2) { grid-row: 2; }
+  [aria-label="Roles"] [role="cell"]:nth-child(3) { grid-row: 2; }
+  [aria-label="Roles"] [role="cell"]:nth-child(4) {
+    grid-column: 1 / -1; grid-row: 3;
+  }
+  [aria-label="Roles"] [role="cell"]:nth-child(5) {
+    grid-row: 2; justify-self: end;
+  }
+  [aria-label="Roles"] > [role="row"]:first-child { display: none !important; }
+
+  /* Teams register: team + count, lead, the role-mix bar with its
+     caption, then last change — everything the footer describes is
+     on the page again. */
+  [aria-label="Teams"] [role="row"] {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+  }
+  [aria-label="Teams"] [role="cell"]:nth-child(1) { grid-row: 1; }
+  [aria-label="Teams"] [role="cell"]:nth-child(3) { grid-row: 1; }
+  [aria-label="Teams"] [role="cell"]:nth-child(2) {
+    grid-column: 1 / -1; grid-row: 2;
+  }
+  [aria-label="Teams"] [role="cell"]:nth-child(4) {
+    grid-column: 1 / -1; grid-row: 3;
+  }
+  [aria-label="Teams"] [role="cell"]:nth-child(5) {
+    grid-column: 1 / -1; grid-row: 4;
+  }
+  [aria-label="Teams"] > [role="row"]:first-child { display: none !important; }
+
+  /* Invitations register: invited + role chip, then team, status and
+     actions full width — the chip no longer sits on the email. */
+  [aria-label$="invitations"] [role="row"] {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+  }
+  [aria-label$="invitations"] [role="cell"]:nth-child(1) {
+    grid-column: 1; grid-row: 1;
+  }
+  [aria-label$="invitations"] [role="cell"]:nth-child(2) {
+    grid-column: 2; grid-row: 1;
+  }
+  [aria-label$="invitations"] [role="cell"]:nth-child(3) {
+    grid-column: 1 / -1; grid-row: 2;
+  }
+  [aria-label$="invitations"] [role="cell"]:nth-child(4) {
+    grid-column: 1 / -1; grid-row: 3;
+  }
+  [aria-label$="invitations"] [role="cell"]:nth-child(5) {
+    grid-column: 1 / -1; grid-row: 4;
+  }
+  [aria-label$="invitations"] > [role="row"]:first-child { display: none !important; }
+
+  /* CSV import decisions: row number + person, then problem, fix
+     select and result stacked in the wide column — problem text wraps
+     in full instead of clipping. */
+  [aria-label="Rows that need a decision"] [role="row"] {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    align-items: start !important;
+  }
+  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(3),
+  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(4),
+  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(5) {
+    grid-column: 2;
+  }
+  [aria-label="Rows that need a decision"] > [role="row"]:first-child {
+    display: none !important;
+  }
+
+  /* Role wizard diff: permission + the from → to chips on one line
+     (the NEW value is the point of the diff — never clipped), the
+     meaning full width beneath. */
+  [aria-label*="Changes from"] [role="row"] {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+  }
+  [aria-label*="Changes from"] [role="cell"]:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+  [aria-label*="Changes from"] > [role="row"]:first-child { display: none !important; }
+
+  /* Onboarding invite rows: email full width with the remove button,
+     role and team selects paired beneath — no sliced chevrons. */
+  [aria-label="Invitations to send"] [role="row"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px !important;
+  }
+  [aria-label="Invitations to send"] [role="cell"]:nth-child(1) {
+    grid-column: 1 / 3; grid-row: 1;
+  }
+  [aria-label="Invitations to send"] [role="cell"]:nth-child(2) {
+    grid-row: 2;
+  }
+  [aria-label="Invitations to send"] [role="cell"]:nth-child(3) {
+    grid-row: 2;
+  }
+  [aria-label="Invitations to send"] [role="cell"]:nth-child(4) {
+    grid-column: 3; grid-row: 1;
+  }
+  [aria-label="Invitations to send"] > [role="row"]:first-child {
+    display: none !important;
+  }
+
+  /* Billing invoices: all four columns fit the card — amounts are
+     never ambiguous. */
+  [aria-label="Invoices"] [role="row"] {
+    grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+  }
+
+  /* Audit log: entry sentences wrap inside the card; the actor moves
+     under the sentence; the expanded detail keeps its Before / After
+     columns at a narrower label width. */
+  [aria-label="Audit entries"] [role="listitem"] > button {
+    grid-template-columns: 52px minmax(0, 1fr) 24px !important;
+  }
+  [aria-label="Audit entries"] [role="listitem"] > button > span:nth-child(3) {
+    grid-column: 2; grid-row: 2;
+  }
+  [aria-label="Audit entries"] [role="listitem"] > button > span:nth-child(4) {
+    grid-column: 3; grid-row: 1;
+  }
+  [aria-label="Audit entries"] [role="listitem"] > div {
+    padding: 0 24px 16px !important;
+  }
+  [aria-label="Audit entries"] [role="listitem"] dl {
+    grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  /* Overview "Needs an owner": the action button goes under the text
+     instead of squeezing it into half the card. */
+  section[aria-labelledby="no"] > div + div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: start;
+  }
+
+  /* Settings: the transfer-ownership card stacks (select full width,
+     steps beneath); the "Change in Roles" link never breaks
+     mid-phrase; denied-state facts get a narrower label column. */
+  section[aria-labelledby="h4s"] > div:nth-of-type(2) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  section[aria-labelledby="h3s"] a[href="/app/roles"] {
+    white-space: nowrap;
+  }
+  .kv.wide { grid-template-columns: 96px minmax(0, 1fr); }
+
+  /* Role wizard name / register-number sheet stacks, so the register
+     number never breaks mid-token. (Other focused flows' first sheets
+     are not grids — the rule is inert there.) */
+  .focused-wrap main > section:first-of-type {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* The description field spans 2 on desktop; left alone it forces an
+     implicit second column track and defeats the stack above. */
+  .focused-wrap main > section:first-of-type > * {
+    grid-column: auto !important;
+  }
+
+  /* Sign-in helper: "Start a register" stays on one line. */
+  .auth-form a[href="/signup"] { white-space: nowrap; }
+
+  /* Member drawer: the granted-permissions list goes single column —
+     no uneven two-column pairing. */
+  .can { grid-template-columns: minmax(0, 1fr); }
+
+  /* Landing footer: brand spans the top; the three link columns sit
+     in an even two-column grid instead of wrapping raggedly. */
+  footer.pub-wrap {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px 24px;
+  }
+  footer.pub-wrap > div:first-child { grid-column: 1 / -1; }
+
+  /* Filter bars: search spans the full width; selects pair up evenly;
+     status chips keep their counts on the label's line. */
+  .dir-filters input.in { flex: 1 1 100%; width: auto !important; }
+  .dir-filters [role="group"] { flex-wrap: wrap; }
+  .dir-filters .fl { white-space: nowrap; }
+  .dir-filters select.in { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .audit-filters { flex: 1 1 100%; }
+  .audit-filters form { flex: 1 1 100%; }
+  .audit-filters form .in { width: 100% !important; }
+  .audit-filters select.in { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .team-search input.in { flex: 1 1 100%; width: auto !important; }
+
+  /* Component demos: the strip demo's cells get a definite width to
+     resolve against, and its count aligns to the right edge. */
+  section[aria-label="PermissionStrip"] .strip {
+    flex: 1 1 auto; min-width: 0;
+  }
+  section[aria-label="PermissionStrip"] .strip .n { text-align: right; }
+}
