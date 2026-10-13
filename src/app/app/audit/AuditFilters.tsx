@@ -50,6 +50,7 @@ export function AuditFilters({
   return (
     <div
       role="search"
+      className="audit-filters"
       style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}
     >
       <form
