@@ -12,12 +12,17 @@ import {
 } from "@/lib/api";
 import { AppShell } from "@/components/Shell";
 import { Button } from "@/components/Button";
+import { PermissionStrip } from "@/components/PermissionStrip";
+import { IconCheck, IconLock } from "@/components/icons";
+import { initialsOf, tintFor } from "@/components/MemberRow";
 
 /* P-04 Member detail — screens/MemberDetail.html.
    Maya Jordan (042) is the designed record; every other id renders the
-   same template from fixture data. Permissions 1–10 and Read audit log
-   (13) are listed individually; 11, 12 and 14–18 collapse into the
-   screen's single "7 others" row. */
+   same template from fixture data. The table follows the screen's group
+   order (People, Access, Teams, Invitations, then the combined tail
+   group); permissions are listed individually except the tail set
+   (13, 14, 8, 15, 16, 17, 18), which the screen collapses into one
+   "7 others" row under Read audit log (#7, §13 register). */
 
 export async function generateMetadata({
   params,
@@ -47,6 +52,42 @@ function deviceLabel(device: string): string {
 function placeLabel(place: string): string {
   return place.replace(/, US$/, "");
 }
+
+function IconLaptop({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="2" y="3" width="12" height="8" rx="1.2" />
+      <path d="M5.5 13.5h5" />
+    </svg>
+  );
+}
+
+function IconPhone({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="4.5" y="1.8" width="7" height="12.4" rx="1.5" />
+      <path d="M7.3 11.8h1.4" />
+    </svg>
+  );
+}
+
+const TABLE_GROUPS: { label: string; ids: number[] }[] = [
+  { label: "People", ids: [1, 2, 3] },
+  { label: "Access", ids: [4, 5, 6] },
+  { label: "Teams", ids: [9, 10] },
+  { label: "Invitations", ids: [11, 12] },
+];
+const TAIL_LABEL = "Security, Governance, Billing, Organization";
+/* The screen's "7 others" names, in the screen's order. */
+const TAIL_OTHERS: { id: number; name: string }[] = [
+  { id: 13, name: "Sign-in methods" },
+  { id: 14, name: "sign members out" },
+  { id: 8, name: "export audit" },
+  { id: 15, name: "view billing" },
+  { id: 16, name: "manage plan" },
+  { id: 17, name: "organization settings" },
+  { id: 18, name: "transfer ownership" },
+];
 
 export default async function MemberDetailPage({
   params,
@@ -99,10 +140,6 @@ export default async function MemberDetailPage({
     history.push({ when: member.joined, text: `Joined ${org.name}` });
   }
 
-  const headGroups = org.groups.slice(0, 4);
-  const tailGroups = org.groups.slice(4);
-  const tailLabel = tailGroups.map((g) => g.name).join(", ");
-
   const renderRow = (permissionId: number) => {
     const entry = effective.find((e) => e.permission.id === permissionId)!;
     const { permission, result, source } = entry;
@@ -117,40 +154,31 @@ export default async function MemberDetailPage({
         : source === "baseline"
           ? "Organization baseline"
           : role.name;
+    const allowed = result === "Allowed";
     return (
       <div
         role="row"
         key={permission.id}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) 110px minmax(0, 1fr)",
-          gap: 16,
-          padding: "8px 24px",
-          fontSize: 13,
-          alignItems: "baseline",
-          background: change ? "var(--sheet-tint)" : undefined,
-        }}
+        className={change ? "p-ar changed" : "p-ar"}
       >
-        <span role="cell">{permission.name}</span>
-        <span
-          role="cell"
-          style={
-            result === "Allowed"
-              ? { fontWeight: 600, color: "var(--ink)" }
-              : { color: "var(--muted)" }
-          }
-        >
-          {result}
+        <span role="cell" className="pname">
+          {permission.name}
         </span>
-        <span role="cell" style={{ color: "var(--muted)", fontSize: 12 }}>
+        <span role="cell">
+          <span className={allowed ? "res" : "res bl"}>
+            <span className={allowed ? "dot ok" : "dot"}>
+              {allowed ? <IconCheck /> : <IconLock />}
+            </span>
+            {result}
+          </span>
+        </span>
+        <span role="cell" className="why">
           {sourceText}
-          {permission.id === 4 && result === "Allowed"
-            ? " · up to Product admin"
-            : ""}
+          {permission.id === 4 && allowed ? " · up to Product admin" : ""}
           {change ? (
             <>
               {" · "}
-              <span style={{ color: "var(--seal)", fontWeight: 600 }}>
+              <span className="soon">
                 {nextResult === result
                   ? `stays ${result} if ${pending.length} waiting changes apply`
                   : `becomes ${nextResult} if ${pending.length} waiting changes apply`}
@@ -162,173 +190,205 @@ export default async function MemberDetailPage({
     );
   };
 
+  const tailResults = TAIL_OTHERS.map(
+    (o) => effective.find((e) => e.permission.id === o.id)!.result,
+  );
+  const tailAllBlocked = tailResults.every((r) => r === "Blocked");
+  const tailAllAllowed = tailResults.every((r) => r === "Allowed");
+  const tailResult = tailAllBlocked
+    ? "Blocked"
+    : tailAllAllowed
+      ? "Allowed"
+      : "Mixed";
+
   return (
     <AppShell current="directory">
       <div className="crumb">
-        <Link href="/app/people">Directory</Link> / {member.name}
+        <Link href="/app/people">Directory</Link>{" "}
+        <span className="sep">/</span>{" "}
+        {member.name}
       </div>
 
-      <header
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          gap: 14,
-          alignItems: "flex-start",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="register">Member {member.id}</span>
-          <h1 className="title">{member.name}</h1>
-          <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
-            {title ? `${title} · ` : ""}
-            {member.email} ·{" "}
-            {deactivated ? (
-              <span style={{ color: "var(--muted)", fontWeight: 600 }}>
-                Deactivated {member.deactivatedOn ?? ""}
-                {member.deactivatedBy ? ` by ${member.deactivatedBy}` : ""}
-              </span>
-            ) : (
-              <>
-                <span style={{ color: "var(--active)", fontWeight: 600 }}>
-                  Active
-                </span>{" "}
-                since {member.joined}
-              </>
-            )}
-          </span>
-        </div>
-        <div className="head-actions">
-          <Button>Sign out everywhere</Button>
-          <Button variant="pri">Change role</Button>
-        </div>
-      </header>
-
-      {isMaya ? (
-        <p className="lead" style={{ maxWidth: "52em" }}>
-          Maya is a <Link href="/app/roles/product-admin">Product admin</Link>{" "}
-          on the Product team. She can invite people, change roles and
-          organize teams. She can’t edit what roles allow, deactivate anyone,
-          or see billing.
-        </p>
-      ) : (
-        <p className="lead" style={{ maxWidth: "52em" }}>
-          {firstName} is a <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
-          {firstTeam ? <> on the {firstTeam.name} team</> : null}.{" "}
-          {role.summary}
-        </p>
-      )}
-
-      <div className="cols">
-        <section
-          className="sheet"
-          aria-labelledby="ea"
-          style={{ flex: "999 1 600px", minWidth: 0, overflowX: "auto" }}
-        >
-          <div
+      <div className="p-cols">
+        <div className="p-stack">
+          <header
+            className="card"
             style={{
+              padding: "24px 24px 22px",
               display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: 8,
-              padding: "16px 24px 12px",
+              flexDirection: "column",
+              gap: 20,
             }}
           >
-            <h2 id="ea" className="section">
-              What {firstName} can do, and why
-            </h2>
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>
-              {allowedCount} of 18 allowed
-            </span>
-          </div>
-          <div
-            role="table"
-            aria-label="Effective permissions"
-            style={{ minWidth: 560, paddingBottom: 10 }}
-          >
             <div
-              role="row"
               style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) 110px minmax(0, 1fr)",
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
                 gap: 16,
-                padding: "8px 24px",
-                fontSize: 12,
-                color: "var(--muted)",
-                borderTop: "1px solid var(--rule-strong)",
-                alignItems: "baseline",
+                alignItems: "flex-start",
               }}
             >
-              <span role="columnheader">Permission</span>
-              <span role="columnheader">Result</span>
-              <span role="columnheader">Comes from</span>
-            </div>
-            {headGroups.map((g) => (
-              <div key={g.name}>
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <span
+                  className="p-mono52"
+                  aria-hidden="true"
+                  style={
+                    isMaya
+                      ? { background: "#DCE3F4", color: "var(--seal)" }
+                      : { background: tintFor(member.id), color: "var(--ink)" }
+                  }
+                >
+                  {initialsOf(member.name)}
+                </span>
                 <div
-                  role="row"
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <h1 className="p-title">{member.name}</h1>
+                    <span className="p-rno big">Member {member.id}</span>
+                  </div>
+                  <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
+                    {title ? `${title} · ` : ""}
+                    {member.email} ·{" "}
+                    {deactivated ? (
+                      <span style={{ color: "var(--muted)", fontWeight: 600 }}>
+                        Deactivated {member.deactivatedOn ?? ""}
+                        {member.deactivatedBy
+                          ? ` by ${member.deactivatedBy}`
+                          : ""}
+                      </span>
+                    ) : (
+                      <>
+                        <span
+                          style={{ color: "var(--active)", fontWeight: 600 }}
+                        >
+                          Active
+                        </span>{" "}
+                        since {member.joined}
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className="head-actions">
+                <Button>Sign out everywhere</Button>
+                <Button variant="pri">Change role</Button>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+                paddingTop: 18,
+                borderTop: "1px solid var(--rule)",
+              }}
+            >
+              {isMaya ? (
+                <p
                   style={{
-                    padding: "12px 24px 4px",
-                    borderTop: "1px solid var(--rule-strong)",
-                    font: "600 13px/1.2 var(--font-sans)",
+                    margin: 0,
+                    maxWidth: 660,
+                    fontSize: 14.5,
+                    lineHeight: 1.55,
+                    color: "var(--ink-2)",
                   }}
                 >
-                  <span role="columnheader">{g.name}</span>
-                </div>
-                {g.permissionIds.map(renderRow)}
-              </div>
-            ))}
-            <div>
-              <div
-                role="row"
-                style={{
-                  padding: "12px 24px 4px",
-                  borderTop: "1px solid var(--rule-strong)",
-                  font: "600 13px/1.2 var(--font-sans)",
-                }}
-              >
-                <span role="columnheader">{tailLabel}</span>
-              </div>
-              {renderRow(13)}
-              <div
-                role="row"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 1fr) 110px minmax(0, 1fr)",
-                  gap: 16,
-                  padding: "8px 24px",
-                  fontSize: 13,
-                  alignItems: "baseline",
-                }}
-              >
-                <span role="cell">7 others</span>
-                <span role="cell" style={{ color: "var(--muted)" }}>
-                  Blocked
-                </span>
-                <span
-                  role="cell"
-                  style={{ color: "var(--muted)", fontSize: 12 }}
+                  Maya is a{" "}
+                  <Link href="/app/roles/product-admin">Product admin</Link>{" "}
+                  on the Product team. She can invite people, change roles and
+                  organize teams. She can’t edit what roles allow, deactivate
+                  anyone, or see billing.
+                </p>
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    maxWidth: 660,
+                    fontSize: 14.5,
+                    lineHeight: 1.55,
+                    color: "var(--ink-2)",
+                  }}
                 >
-                  Sign-in methods, sign members out, export audit, view
-                  billing, manage plan, organization settings, transfer
-                  ownership
-                </span>
+                  {firstName} is a{" "}
+                  <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
+                  {firstTeam ? <> on the {firstTeam.name} team</> : null}.{" "}
+                  {role.summary}
+                </p>
+              )}
+              <PermissionStrip role={role} big showCount={false} />
+            </div>
+          </header>
+
+          <section className="card p-perms" aria-labelledby="ea" style={{ overflow: "hidden" }}>
+            <div className="p-ch">
+              <h2 id="ea" className="p-h2">
+                What {firstName} can do, and why
+              </h2>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--seal)" }}>
+                {allowedCount} of 18 allowed
+              </span>
+            </div>
+            <div role="table" aria-label="Effective permissions">
+              <div role="row" className="p-ar head">
+                <span role="columnheader">Permission</span>
+                <span role="columnheader">Result</span>
+                <span role="columnheader">Comes from</span>
+              </div>
+              {TABLE_GROUPS.map((g) => (
+                <div key={g.label}>
+                  <div role="row" className="grp">
+                    <span role="columnheader">{g.label}</span>
+                  </div>
+                  {g.ids.map(renderRow)}
+                </div>
+              ))}
+              <div>
+                <div role="row" className="grp">
+                  <span role="columnheader">{TAIL_LABEL}</span>
+                </div>
+                {renderRow(7)}
+                <div role="row" className="p-ar">
+                  <span role="cell" className="pname">
+                    {TAIL_OTHERS.length} others
+                  </span>
+                  <span role="cell">
+                    <span className={tailAllAllowed ? "res" : "res bl"}>
+                      <span className={tailAllAllowed ? "dot ok" : "dot"}>
+                        {tailAllAllowed ? <IconCheck /> : <IconLock />}
+                      </span>
+                      {tailResult}
+                    </span>
+                  </span>
+                  <span role="cell" className="why">
+                    {TAIL_OTHERS.map((o) => o.name).join(", ")}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        <aside className="side-col">
-          <section className="sheet panel-box" aria-labelledby="pf">
-            <h2 id="pf" className="panel">
+        <aside className="p-aside">
+          <section
+            className="card"
+            aria-labelledby="pf"
+            style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
+          >
+            <h2 id="pf" className="p-panel">
               Record
             </h2>
-            <dl className="kv" style={{ gridTemplateColumns: "110px minmax(0, 1fr)" }}>
+            <dl className="kv p-kv96">
               <dt>Role</dt>
               <dd>
                 <Link href={`/app/roles/${role.id}`}>{role.name}</Link>{" "}
-                <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+                <span
+                  className="p-rno"
+                  style={{ height: 20, fontSize: 11.5, marginLeft: 2 }}
+                >
                   {role.regNumber}
                 </span>
               </dd>
@@ -358,53 +418,56 @@ export default async function MemberDetailPage({
             </dl>
           </section>
 
-          <section className="sheet panel-box" aria-labelledby="ss">
-            <h2 id="ss" className="panel">
+          <section
+            className="card"
+            aria-labelledby="ss"
+            style={{ padding: "18px 18px 8px", display: "flex", flexDirection: "column", gap: 12 }}
+          >
+            <h2 id="ss" className="p-panel">
               Sign-in and sessions
             </h2>
-            <dl className="kv" style={{ gridTemplateColumns: "110px minmax(0, 1fr)" }}>
+            <dl className="kv p-kv96">
               <dt>Method</dt>
               <dd>Google, {org.domain}</dd>
               <dt>2-step</dt>
               <dd>{member.twoStep === false ? "Off" : "On, authenticator app"}</dd>
             </dl>
             <div>
-              {(member.sessions ?? []).map((s) => (
-                <div
-                  key={s.device}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "52px minmax(0, 1fr)",
-                    gap: 10,
-                    padding: "9px 0",
-                    borderTop: "1px solid var(--rule)",
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <span
-                    className="mono"
-                    style={{ fontSize: 12, color: "var(--muted)" }}
-                  >
-                    {s.lastActive}
-                  </span>
-                  <span>
-                    {deviceLabel(s.device)} · {placeLabel(s.place)}
-                    {s.current ? (
-                      <>
-                        <br />
-                        <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                          this session is current
-                        </span>
-                      </>
-                    ) : null}
-                  </span>
-                </div>
-              ))}
+              {(member.sessions ?? []).map((s) => {
+                const phone = s.device.includes("iPhone");
+                return (
+                  <div key={s.device} className="p-sess">
+                    <span
+                      className={s.current ? "p-ico32 is-seal" : "p-ico32 is-flat"}
+                      aria-hidden="true"
+                    >
+                      {phone ? <IconPhone /> : <IconLaptop />}
+                    </span>
+                    <span>
+                      {deviceLabel(s.device)} · {placeLabel(s.place)}
+                      {s.current ? (
+                        <>
+                          <br />
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: "var(--active)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            this session is current
+                          </span>
+                        </>
+                      ) : null}
+                    </span>
+                    <span className="mono stamp">{s.lastActive}</span>
+                  </div>
+                );
+              })}
               {!member.sessions?.length ? (
                 <div
                   style={{
-                    padding: "9px 0",
+                    padding: "10px 0",
                     borderTop: "1px solid var(--rule)",
                     fontSize: 13,
                     color: "var(--ink-2)",
@@ -417,31 +480,17 @@ export default async function MemberDetailPage({
           </section>
 
           <section
-            className="sheet"
+            className="card"
             aria-labelledby="ah"
-            style={{ padding: "18px 20px 10px" }}
+            style={{ padding: "18px 18px 8px" }}
           >
-            <h2 id="ah" className="panel" style={{ marginBottom: 6 }}>
+            <h2 id="ah" className="p-panel" style={{ marginBottom: 8 }}>
               Access history
             </h2>
             <div>
               {history.map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "52px minmax(0, 1fr)",
-                    gap: 10,
-                    padding: "9px 0",
-                    borderTop: "1px solid var(--rule)",
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <span
-                    className="mono"
-                    style={{ fontSize: 12, color: "var(--muted)" }}
-                  >
+                <div key={i} className="p-ev">
+                  <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
                     {h.when}
                   </span>
                   <span>{h.text}</span>
@@ -450,22 +499,10 @@ export default async function MemberDetailPage({
             </div>
           </section>
 
-          <section
-            style={{
-              padding: "4px 4px 0",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              fontSize: 13,
-              lineHeight: 1.5,
-              color: "var(--ink-2)",
-            }}
-          >
+          <section className="p-deact">
             {deactivated ? (
               <>
-                <Button style={{ alignSelf: "flex-start" }}>
-                  Reactivate {firstName}
-                </Button>
+                <Button>Reactivate {firstName}</Button>
                 <span>
                   {firstName} was deactivated
                   {member.deactivatedOn ? ` on ${member.deactivatedOn}` : ""}
@@ -476,12 +513,7 @@ export default async function MemberDetailPage({
               </>
             ) : (
               <>
-                <Button
-                  variant="dest"
-                  style={{ alignSelf: "flex-start" }}
-                >
-                  Deactivate {firstName}
-                </Button>
+                <Button variant="dest">Deactivate {firstName}</Button>
                 <span>
                   Deactivating blocks sign-in at once.{" "}
                   {isMaya ? "Her" : "Their"} teams, history and anything{" "}
