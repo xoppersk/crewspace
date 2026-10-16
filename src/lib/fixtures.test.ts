@@ -59,7 +59,7 @@ describe("organization canon (§9)", () => {
   });
 });
 
-describe("the 18 permissions, in order (§9)", () => {
+describe("the 18 permissions, in order (§13 premium v2 register)", () => {
   it("has exactly 18 in the register order", () => {
     expect(getPermissions().map((p) => p.name)).toEqual([
       "Invite members",
@@ -68,18 +68,31 @@ describe("the 18 permissions, in order (§9)", () => {
       "Change member roles",
       "Edit role permissions",
       "Create custom roles",
+      "Read audit log",
+      "Export audit records",
       "Create teams",
       "Manage team membership",
       "Resend or revoke invitations",
       "Import members from CSV",
       "Manage sign-in methods",
       "Sign members out everywhere",
-      "Read audit log",
-      "Export audit records",
       "View billing",
       "Manage plan and payment",
       "Edit organization settings",
       "Transfer ownership",
+    ]);
+  });
+
+  it("groups them People/Access/Governance/Teams/Invitations/Security/Billing/Organization", () => {
+    expect(getOrg().groups.map((g) => g.name)).toEqual([
+      "People",
+      "Access",
+      "Governance",
+      "Teams",
+      "Invitations",
+      "Security",
+      "Billing",
+      "Organization",
     ]);
   });
 
@@ -134,19 +147,19 @@ describe("roles (§9)", () => {
         )
         .map((p) => p.id);
     };
-    expect(allowedIds("product-admin")).toEqual([1, 3, 4, 7, 8, 9, 13]);
-    expect(allowedIds("support-lead")).toEqual([3, 9, 12, 13]);
-    expect(allowedIds("analyst")).toEqual([13, 15]);
+    expect(allowedIds("product-admin")).toEqual([1, 3, 4, 7, 9, 10, 11]);
+    expect(allowedIds("support-lead")).toEqual([3, 7, 11, 14]);
+    expect(allowedIds("analyst")).toEqual([7, 15]);
     expect(allowedIds("finance-viewer")).toEqual([15]);
-    expect(allowedIds("auditor")).toEqual([13, 14]);
-    expect(allowedIds("billing-admin")).toEqual([13, 15, 16]);
+    expect(allowedIds("auditor")).toEqual([7, 8]);
+    expect(allowedIds("billing-admin")).toEqual([7, 15, 16]);
   });
 
   it("Product admin has the 2 designed pending changes and allows 8 after review", () => {
     const pa = getRole("product-admin")!;
     expect(pa.pendingChanges).toEqual([
       { permissionId: 2, from: "deny", to: "allow" },
-      { permissionId: 14, from: "inherit", to: "deny" },
+      { permissionId: 8, from: "inherit", to: "deny" },
     ]);
     expect(roleAllowsAfterReview(pa)).toBe(8);
   });
@@ -285,7 +298,7 @@ describe("permission enforcement + the roles/teams rule (§10)", () => {
     const maya = getMember("042")!;
     expect(memberCan(maya, 1)).toBe(true);
     expect(memberCan(maya, 5)).toBe(false);
-    expect(memberCan(maya, 14)).toBe(false);
+    expect(memberCan(maya, 8)).toBe(false);
   });
 
   it("Maya's effective list marks Edit member profiles as from the baseline", () => {
