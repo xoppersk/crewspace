@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ComponentType, SVGProps } from "react";
 import {
   getMember,
   getMembers,
@@ -7,6 +8,15 @@ import {
   getTeams,
   openInvitations,
 } from "@/lib/api";
+import {
+  IconDocument,
+  IconEnvelope,
+  IconGear,
+  IconGrid,
+  IconPerson,
+  IconShieldCheck,
+  IconTeams,
+} from "./icons";
 
 export type NavKey =
   | "overview"
@@ -16,6 +26,29 @@ export type NavKey =
   | "invitations"
   | "audit"
   | "settings";
+
+const ICONS: Record<NavKey, ComponentType<SVGProps<SVGSVGElement>>> = {
+  overview: IconGrid,
+  directory: IconPerson,
+  teams: IconTeams,
+  roles: IconShieldCheck,
+  invitations: IconEnvelope,
+  audit: IconDocument,
+  settings: IconGear,
+};
+
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+}
+
+/** The rail person line shortens the owner role to "Owner" (screens). */
+function railRoleName(roleId: string, roleName: string): string {
+  return roleId === "owner" ? "Owner" : roleName;
+}
 
 export function SideNav({
   current,
@@ -45,46 +78,55 @@ export function SideNav({
       ? []
       : [{ key: "settings", label: "Settings", href: "/app/settings" } as const]),
   ];
+  const whoInner = (
+    <>
+      <span className="av ink" aria-hidden="true">
+        {initialsOf(person.name)}
+      </span>
+      <span className="who-text">
+        <b>{person.name}</b>
+        <span>
+          {railRoleName(role.id, role.name)} ·{" "}
+          {variant === "profile" ? "Member " : null}
+          <span className="mono">{person.id}</span>
+        </span>
+      </span>
+    </>
+  );
   return (
     <nav aria-label="Organization" className="sidenav">
       <div className="org">
-        <b>{org.name}</b>
-        <span>
-          Organization register · {getMembers().length} members
+        <span className="monogram" aria-hidden="true">
+          SL
+        </span>
+        <span className="org-text">
+          <b>{org.name}</b>
+          <span>Register · {getMembers().length} members</span>
         </span>
       </div>
       <div className="navlist">
-        {items.map((it) => (
-          <Link
-            key={it.key}
-            href={it.href}
-            className="nv"
-            aria-current={current === it.key ? "page" : undefined}
-          >
-            {it.label}
-            {it.count !== undefined ? <span>{it.count}</span> : null}
-          </Link>
-        ))}
+        {items.map((it) => {
+          const Icon = ICONS[it.key];
+          return (
+            <Link
+              key={it.key}
+              href={it.href}
+              className="nv"
+              aria-current={current === it.key ? "page" : undefined}
+            >
+              <Icon />
+              {it.label}
+              {it.count !== undefined ? <span className="ct">{it.count}</span> : null}
+            </Link>
+          );
+        })}
       </div>
       {variant === "profile" ? (
-        <Link
-          href="/app/me"
-          className="who"
-          aria-current="page"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
-          <b style={{ fontWeight: 600 }}>{person.name}</b>
-          <span>
-            {role.name} · Member <span className="mono">{person.id}</span>
-          </span>
+        <Link href="/app/me" className="who" aria-current="page">
+          {whoInner}
         </Link>
       ) : (
-        <div className="who">
-          <b style={{ fontWeight: 600 }}>{person.name}</b>
-          <span>
-            {role.name} · Member <span className="mono">{person.id}</span>
-          </span>
-        </div>
+        <div className="who">{whoInner}</div>
       )}
     </nav>
   );

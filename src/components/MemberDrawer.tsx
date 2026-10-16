@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   getInvitations,
   getMember,
+  getOrg,
   getPermissions,
   getRole,
   getTeam,
@@ -15,10 +16,13 @@ import { Button, ButtonLink } from "./Button";
 import { Drawer, DrawerClose } from "./Drawer";
 import { PermissionStrip } from "./PermissionStrip";
 import { RoleTag } from "./RoleTag";
+import { IconCheck } from "./icons";
+import { initialsOf, tintFor } from "./MemberRow";
 
 /**
  * P-03: a member's record over the Directory — Access, Teams, Sign-in,
  * History, with the destructive actions in the footer.
+ * Geometry and copy follow screens/MemberDrawer.html.
  */
 export function MemberDrawer({
   member,
@@ -33,14 +37,18 @@ export function MemberDrawer({
   offline?: boolean;
 }) {
   const role = getRole(member.roleId)!;
+  const org = getOrg();
   const perms = getPermissions();
-  /* Design DOM order (MemberDrawer.html): Change member roles sits
-     before Edit member profiles in the two-column "can" grid. */
-  const drawerOrder = [...perms].sort((a, b) => {
-    const rank = (id: number) => (id === 4 ? 2.5 : id === 3 ? 3.5 : id);
-    return rank(a.id) - rank(b.id);
-  });
-  const allowedNames = drawerOrder
+  /* Design DOM order (MemberDrawer.html): Invite, Change member roles,
+     Edit member profiles, Create teams, Manage team membership,
+     Resend or revoke, Read audit log (§13 register ids below). */
+  const CAN_ORDER = [1, 4, 3, 9, 10, 11, 7];
+  const rank = (id: number) => {
+    const i = CAN_ORDER.indexOf(id);
+    return i === -1 ? 100 + id : i;
+  };
+  const allowedNames = [...perms]
+    .sort((a, b) => rank(a.id) - rank(b.id))
     .filter(
       (p) => settingResult(role.settings[String(p.id)]!, p.id) === "Allowed",
     )
@@ -56,22 +64,14 @@ export function MemberDrawer({
   const invitation = getInvitations().find((i) => i.email === member.email);
   const sessions = member.sessions?.length ?? 1;
   const firstName = member.name.split(" ")[0];
+  const isMaya = member.id === "042";
 
   return (
     <Drawer
       labelledBy="drawer-name"
       onClose={onClose}
       footer={
-        <footer
-          style={{
-            marginTop: "auto",
-            padding: "16px 24px",
-            borderTop: "1px solid var(--rule-strong)",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-          }}
-        >
+        <footer className="p-drawer-foot">
           <Button
             disabled={offline}
             title={
@@ -83,7 +83,7 @@ export function MemberDrawer({
             Sign out everywhere
           </Button>
           <Button
-            style={{ color: "var(--deny)", borderColor: "var(--deny)" }}
+            variant="dest"
             disabled={offline}
             title={
               offline ? "Deactivation is paused while you are offline" : undefined
@@ -96,10 +96,10 @@ export function MemberDrawer({
     >
       <header
         style={{
-          padding: "20px 24px 18px",
+          padding: "20px 24px",
           display: "flex",
           flexDirection: "column",
-          gap: 10,
+          gap: 14,
         }}
       >
         <div
@@ -110,35 +110,45 @@ export function MemberDrawer({
             gap: 12,
           }}
         >
-          <span className="register">Member {member.id}</span>
+          <span className="p-rno">Member {member.id}</span>
           <DrawerClose onClose={onClose} />
         </div>
-        <h2
-          id="drawer-name"
-          style={{
-            margin: 0,
-            font: "700 24px/1.2 var(--font-sans)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {member.name}
-        </h2>
-        <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
-          {member.email} ·{" "}
-          {member.status === "active" ? (
-            <>
-              <span style={{ color: "var(--active)", fontWeight: 600 }}>
-                Active
-              </span>{" "}
-              since {member.joined}
-            </>
-          ) : (
-            <span style={{ color: "var(--muted)", fontWeight: 600 }}>
-              Deactivated {member.deactivatedOn}
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <span
+            className="p-mono52"
+            aria-hidden="true"
+            style={
+              isMaya
+                ? { background: "#DCE3F4", color: "var(--seal)" }
+                : { background: tintFor(member.id), color: "var(--ink)" }
+            }
+          >
+            {initialsOf(member.name)}
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <h2 id="drawer-name" className="p-drawer-name">
+              {member.name}
+            </h2>
+            <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              {member.email} ·{" "}
+              {member.status === "active" ? (
+                <>
+                  <span style={{ color: "var(--active)", fontWeight: 600 }}>
+                    Active
+                  </span>{" "}
+                  since {member.joined}
+                </>
+              ) : (
+                <span style={{ color: "var(--muted)", fontWeight: 600 }}>
+                  Deactivated {member.deactivatedOn}
+                </span>
+              )}
             </span>
-          )}
-        </span>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          </div>
+        </div>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+        >
           <ButtonLink variant="pri" href={`/app/people/${member.id}`}>
             Open full record
           </ButtonLink>
@@ -153,24 +163,36 @@ export function MemberDrawer({
         </div>
       </header>
 
-      <section className="ds" aria-labelledby="ds-access">
+      <section className="ds p-ds" aria-labelledby="ds-access">
         <h3 id="ds-access">Access</h3>
-        <span style={{ fontSize: 14 }}>
-          <RoleTag role={role} />{" "}
-          <span
-            style={{ fontSize: 13, color: "var(--ink-2)", marginLeft: 6 }}
-          >
-            allows {roleAllows(role)} of 18
+        <span
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 14,
+          }}
+        >
+          <RoleTag role={role} />
+          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
+            <b style={{ color: "var(--seal)", fontWeight: 600 }}>
+              allows {roleAllows(role)} of 18
+            </b>
           </span>
         </span>
         <PermissionStrip role={role} full />
         <ul className="can">
           {allowedNames.map((n) => (
-            <li key={n}>{n}</li>
+            <li key={n}>
+              <span className="p-check">
+                <IconCheck strokeWidth={2.2} />
+              </span>
+              {n}
+            </li>
           ))}
         </ul>
         {pending.length > 0 && newlyAllowed.length > 0 ? (
-          <p className="tint-note">
+          <p className="p-pending-note">
             {role.name} has {pending.length} changes waiting for review. If
             you apply them, {firstName} can also{" "}
             <b>
@@ -183,7 +205,7 @@ export function MemberDrawer({
         ) : null}
       </section>
 
-      <section className="ds" aria-labelledby="ds-teams">
+      <section className="ds p-ds" aria-labelledby="ds-teams">
         <h3 id="ds-teams">Teams</h3>
         <dl className="kv">
           {member.teams.map((t) => {
@@ -208,11 +230,11 @@ export function MemberDrawer({
         </dl>
       </section>
 
-      <section className="ds" aria-labelledby="ds-signin">
+      <section className="ds p-ds" aria-labelledby="ds-signin">
         <h3 id="ds-signin">Sign-in</h3>
         <dl className="kv">
           <dt>Method</dt>
-          <dd>Google, sevynlabs.io</dd>
+          <dd>Google, {org.domain}</dd>
           <dt>2-step</dt>
           <dd>
             {member.twoStep === false ? "Off" : "On, authenticator app"}
@@ -225,7 +247,7 @@ export function MemberDrawer({
         </dl>
       </section>
 
-      <section className="ds" aria-labelledby="ds-history">
+      <section className="ds p-ds" aria-labelledby="ds-history">
         <h3 id="ds-history">History</h3>
         <dl className="kv">
           {invitation?.acceptedOn ? (

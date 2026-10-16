@@ -2,6 +2,7 @@
 
 import { settingResult } from "@/lib/api";
 import type { Permission, Setting } from "@/lib/types";
+import { IconCheck, IconLock } from "./icons";
 
 const CHOICES: { value: Setting; label: string; cls: string }[] = [
   { value: "allow", label: "Allow", cls: "a" },
@@ -21,7 +22,9 @@ export function settingLabel(s: Setting): string {
 
 /**
  * The signature component: one permission, the Allow / Deny / Inherit
- * choice, and the Result the choice produces.
+ * choice, and the Result the choice produces (dot glyph + word + note).
+ * Changed rows carry the tint of their direction and the
+ * "Changed · was X" chip, as Main.html draws them.
  */
 export function PermissionRow({
   permission,
@@ -33,7 +36,7 @@ export function PermissionRow({
 }: {
   permission: Permission;
   setting: Setting;
-  /** When set, the row shows "Changed · was X" on the sheet-tint ground. */
+  /** When set, the row shows "Changed · was X" as a changed row. */
   changedFrom?: Setting | null;
   resultNote?: string;
   /** Offline / not permitted: control disabled with this reason as a tooltip. */
@@ -44,13 +47,19 @@ export function PermissionRow({
   const note =
     resultNote ??
     (setting === "inherit" ? "from baseline" : undefined);
+  const denied = result === "Blocked" && setting === "deny";
+  const rowCls = changedFrom
+    ? setting === "deny"
+      ? "pr chg-deny"
+      : "pr chg-allow"
+    : "pr";
   return (
-    <div role="row" className={`pr${changedFrom ? " chg" : ""}`}>
+    <div role="row" className={rowCls}>
       <span role="cell">
         <b>{permission.name}</b>
         <small>{permission.description}</small>
         {changedFrom ? (
-          <span className="was">
+          <span className={`chg${setting === "deny" ? " deny" : ""}`}>
             Changed · was <s>{settingLabel(changedFrom)}</s>
           </span>
         ) : null}
@@ -81,9 +90,17 @@ export function PermissionRow({
           ))}
         </span>
       )}
-      <span role="cell" className={`ef${result === "Blocked" ? " bl" : ""}`}>
-        {result}
-        {note ? <em>{note}</em> : null}
+      <span
+        role="cell"
+        className={`res${result === "Blocked" ? (denied ? " dn" : " bl") : ""}`}
+      >
+        <span className={`dot${result === "Allowed" ? " ok" : denied ? " dn" : ""}`}>
+          {result === "Allowed" ? <IconCheck /> : <IconLock />}
+        </span>
+        <span>
+          {result}
+          {note ? <small>{note}</small> : null}
+        </span>
       </span>
     </div>
   );
