@@ -1,0 +1,254 @@
+/* Crewspace v2 — Foundation screens (F-01…F-05).
+   Owned by the Foundation group worker. Foundation classes live in
+   globals.css; only screen-specific rules belong here. Rules that must
+   beat globals.css are scoped under .fpub (public/auth pages) or .fob
+   (the onboarding focused flow) for specificity, because globals.css is
+   imported after this file. Screen-literal hexes the token sheet does
+   not name are marked as such. */
+
+/* ------------------------------------------------ public ground
+   The v2 public pages sit on --ground; cards and dark panels carry the
+   content (the .pub base in globals.css is the Phase 1 white ground). */
+.pub.fpub {
+  background: var(--ground);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Title sizes measured from the screen files (see batches/foundation.md):
+   hero 66px, section heads 42px/800 — the screens win over the tokens. */
+.fpub .display { font-size: 66px; line-height: 1.0; letter-spacing: -0.04em; }
+.fpub .public-h2 { font-size: 42px; line-height: 1.08; font-weight: 800; letter-spacing: -0.03em; }
+.ft-34 { margin: 0; font: 800 34px/1.1 var(--font-sans); letter-spacing: -0.025em; }
+.ft-32 { margin: 0; font: 800 32px/1.14 var(--font-sans); letter-spacing: -0.025em; }
+
+/* ------------------------------------------------ shield wordmark
+   (Marketing/SignIn/SignUp/InviteAccept headers + footers: an ink
+   square with the shield-check glyph beside the name.) */
+.fm-word {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--ink); text-decoration: none;
+}
+.fm-word .fm-name { font: 800 19px/1 var(--font-sans); letter-spacing: -0.02em; }
+.shieldmark {
+  width: 32px; height: 32px; border-radius: var(--radius-m); flex: none;
+  background: var(--ink-bar); color: #fff; display: grid; place-items: center;
+}
+.shieldmark svg { width: 18px; height: 18px; }
+.shieldmark.s28 { width: 28px; height: 28px; }
+.shieldmark.s28 svg { width: 16px; height: 16px; }
+.shieldmark.s22 { width: 22px; height: 22px; }
+.shieldmark.s22 svg { width: 12px; height: 12px; }
+
+/* Small Google "G" (the marketing hero footnote draws it at 14px). */
+.g14 { display: inline-flex; flex: none; }
+.g14 svg { width: 14px; height: 14px; }
+
+/* ------------------------------------------------ auth layout
+   Screens: centred wrap, 24px gap, cards on the ground, dark side
+   panels; the grid stretches so form and panel share a height. */
+.fpub .auth-grid {
+  flex: 1; gap: 24px; padding: 36px 40px 72px;
+  align-content: center; align-items: stretch;
+}
+.fpub .auth-form {
+  background: var(--sheet); border-radius: var(--radius-l);
+  box-shadow: var(--shadow-ring);
+}
+.fpub .fa-form { padding: 36px 36px 32px; gap: 18px; }
+.fpub .fa-form-lg { padding: 32px 36px; gap: 18px; }
+
+/* Dark ink panel (SignIn / SignUp / InviteAccept side panels,
+   Onboarding "Why only Member and Guest?"). */
+.fdark {
+  border-radius: var(--radius-l); background: var(--ink-bar); color: #fff;
+  box-shadow: var(--shadow-panel);
+  display: flex; flex-direction: column;
+}
+.fpanel-card { border-radius: var(--radius-l); background: var(--panel-card); }
+/* Dark key/value rows — the screens' .dk: panel line is the literal
+   #2C3442 they draw (globals --panel-line is a different shade). */
+.fdk {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px;
+  align-items: baseline; padding: 10px 0;
+  border-top: 1px solid #2c3442; font-size: 13.5px;
+}
+.fdk > :first-child { color: var(--panel-muted); }
+.fdk.last { border-bottom: 1px solid #2c3442; }
+
+/* SignIn side-panel strip on dark: 22px cells, literal off #343C4A. */
+.fstrip-dark { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 3px; }
+.fstrip-dark i { height: 22px; border-radius: 3px; background: #343c4a; display: block; }
+.fstrip-dark i.on { background: var(--panel-allow); }
+
+/* Grouped permission strip (SignUp panel card; Marketing "Who it's
+   for" in the light variant): groups of 3/3/2/2/2/2/2/2 cells. The
+   flex/grid proportions are set inline per group. */
+.fgroupstrip { display: flex; gap: 9px; }
+.fgroupstrip .fg { display: grid; gap: 3px; }
+.fgroupstrip i { height: 18px; border-radius: 3px; background: #3a4352; display: block; }
+.fgroupstrip.light i { height: 16px; border-radius: var(--radius-strip); background: #c9d3ec; }
+
+/* SignUp step progress: three 4px segments, current filled seal. */
+.fprog { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.fprog i { height: 4px; border-radius: 2px; background: var(--strip-off); display: block; }
+.fprog i.on { background: var(--seal); }
+
+/* Invitation chip (InviteAccept header row). */
+.fchip {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px;
+  padding: 0 10px; border-radius: var(--radius-m); background: var(--sheet);
+  box-shadow: var(--shadow-ring);
+  font: 500 12px/1 var(--font-mono); color: var(--ink-2); white-space: nowrap;
+}
+.fchip i { width: 7px; height: 7px; border-radius: 50%; background: var(--seal); flex: none; }
+
+/* InviteAccept can/can't panel: sunk sheet with two dot rows. */
+.fcanbox {
+  border-radius: var(--radius-l); background: var(--sheet-sunk);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+  font-size: 14px; line-height: 1.5;
+}
+.fcanrow { display: flex; gap: 12px; padding: 14px 16px; }
+.fcanrow + .fcanrow { border-top: 1px solid var(--rule-strong); }
+.fcanrow b { display: block; font-weight: 600; }
+.fcanrow .sub { color: var(--ink-2); }
+
+/* ------------------------------------------------ marketing (F-01) */
+/* Hero fragment rows at the screen's own metrics (globals .pr is the
+   app register grid: 206px/160px columns). */
+.fm-frag .pr {
+  grid-template-columns: minmax(0, 1fr) 192px 132px;
+  padding: 13px 22px;
+}
+.fm-frag .strip-big i { height: 24px; }
+/* Static segmented control (the fragment is illustrative, not a form). */
+.fseg {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 3px; gap: 2px; border-radius: var(--radius-m); background: var(--rule);
+}
+.fseg span {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-m);
+  font: 600 12.5px/1 var(--font-sans); color: var(--muted);
+}
+.fseg span.a { background: var(--seal); color: var(--on-seal); }
+.fseg span.d { background: var(--sheet); color: var(--deny); box-shadow: 0 0 0 1px var(--deny-line); }
+
+.fm-principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.fm-pt { padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+.fm-pt h3 { margin: 0; font: 700 19px/1.25 var(--font-sans); letter-spacing: -0.01em; }
+.fm-pt p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.fm-tile {
+  width: 44px; height: 44px; border-radius: var(--radius-l); flex: none;
+  background: var(--seal-tint); color: var(--seal);
+  display: grid; place-items: center;
+}
+.fm-tile svg { width: 22px; height: 22px; }
+
+.fm-steps {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+  padding: 14px; border-radius: var(--radius-l); background: var(--ground);
+}
+.fm-step { padding: 22px 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+.fm-step b { font: 500 12px/1 var(--font-mono); color: var(--seal); }
+.fm-step .t { font-weight: 700; font-size: 16px; }
+.fm-step .p { font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+.fm-step.dark {
+  background: var(--ink-bar); color: #fff;
+  border-radius: var(--radius-l); box-shadow: var(--shadow-panel);
+}
+.fm-step.dark b { color: var(--panel-allow); }
+.fm-step.dark .p { color: var(--panel-muted); }
+
+.fm-dl {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px 24px; padding: 20px 26px; align-items: baseline;
+  border-top: 1px solid var(--rule); font-size: 15px; line-height: 1.55;
+}
+.fm-dl:first-child { border-top: 0; }
+.fm-dl dt { font-weight: 700; }
+.fm-dl dd { margin: 0; color: var(--ink-2); }
+
+.fm-cta {
+  border-radius: var(--radius-l); background: var(--ink-bar); color: #fff;
+  padding: 56px; display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 28px;
+  box-shadow: 0 30px 60px -30px rgba(22, 27, 34, 0.6);
+}
+
+/* ------------------------------------------------ onboarding (F-05)
+   .fob is a display:contents wrapper inside FocusedShell so these
+   scoped rules can reach the shared WizardSteps markup. */
+.fob { display: contents; }
+.fo-title { margin: 0; font: 800 30px/1.12 var(--font-sans); letter-spacing: -0.025em; }
+
+/* Number-square steps, as Onboarding.html draws them (the shared
+   .step list in globals.css is the Phase 1 top-rule treatment). */
+.fob .steps { gap: 4px; }
+.fob .step {
+  border-top: 0; border-radius: var(--radius-m);
+  padding: 10px; gap: 12px; align-items: flex-start;
+}
+.fob .step .n {
+  flex: 0 0 26px; width: 26px; height: 26px;
+  border-radius: var(--radius-m); display: grid; place-items: center;
+  background: var(--strip-off); color: var(--muted);
+  font: 500 12px/1 var(--font-mono);
+}
+.fob .step.done .n { background: var(--seal); color: var(--on-seal); }
+.fob .step[aria-current="step"] {
+  background: var(--sheet); box-shadow: var(--shadow-ring); border-top: 0;
+}
+.fob .step[aria-current="step"] .n {
+  background: var(--seal-tint); color: var(--seal);
+  box-shadow: inset 0 0 0 1.5px var(--seal);
+}
+.fob .step .step-main { padding-top: 3px; }
+.fob .step b { line-height: 1.35; }
+
+/* Invitation rows (InviteRows): the screen's .ir grid + sunk head band. */
+.fir-head, .fir {
+  display: grid; grid-template-columns: minmax(0, 1.6fr) 170px 170px 36px;
+  gap: 12px; align-items: center;
+  padding: 10px 22px; border-top: 1px solid var(--rule);
+}
+.fir-head {
+  background: var(--sheet-sunk); border-top: 1px solid var(--rule-strong);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.fir .in { height: 38px; width: 100%; font-size: 14px; padding: 0 10px; }
+.fir .emcell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fir .emcell .in { flex: 1; min-width: 0; }
+.rav {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  font: 600 11px/1 var(--font-sans); color: var(--ink);
+}
+
+/* "So far" rows: the screens' .rw — ruled, right-aligned values,
+   no dotted leaders. */
+.frw {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px;
+  align-items: baseline; padding: 11px 0;
+  border-top: 1px solid var(--rule); font-size: 13.5px;
+}
+.frw > :last-child { text-align: right; color: var(--ink-2); }
+
+/* ------------------------------------------------ phones (§6) */
+@media (max-width: 760px) {
+  .fpub .display { font-size: 44px; }
+  .fpub .public-h2 { font-size: 30px; }
+  .ft-34 { font-size: 30px; }
+  .ft-32 { font-size: 28px; }
+  .fpub .auth-grid { padding: 24px 18px 40px; }
+  .fpub .fa-form, .fpub .fa-form-lg { padding: 26px 20px; }
+  /* The invitation chip may wrap its text on phones instead of
+     forcing the accept form wider than the screen. */
+  .fchip { white-space: normal; height: auto; min-height: 26px; padding-top: 6px; padding-bottom: 6px; line-height: 1.3; }
+  .fm-principles, .fm-steps { grid-template-columns: minmax(0, 1fr); }
+  .fm-frag .pr { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .fm-cta { padding: 28px 22px; }
+  .fm-dl { grid-template-columns: minmax(0, 1fr); gap: 6px 24px; }
+}

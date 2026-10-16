@@ -1,0 +1,347 @@
+/* Crewspace v2 — People screens (P-01…P-05).
+   Owned by the People group worker. Foundation classes live in
+   globals.css; only screen-specific rules belong here.
+   All metrics below are measured from the final screens
+   (Overview/Directory/MemberDrawer/MemberDetail/Profile.html). */
+
+/* ------------------------------------------------ type (screen-literal)
+   The People screens draw page titles at 800 30px (.h1), card heads at
+   700 17px (.ch h2), panel heads at 700 15px (.sh2) and leads at
+   14.5px (.lede) — see batches/people.md, Deviation 1. */
+.p-title { margin: 0; font: 800 30px/1.1 var(--font-sans); letter-spacing: -0.025em; }
+.p-lede { margin: 0; max-width: 640px; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+.p-h2 { margin: 0; font: 700 17px/1.2 var(--font-sans); }
+.p-panel { margin: 0; font: 700 15px/1.3 var(--font-sans); }
+.p-h20 { margin: 0; font: 700 20px/1.2 var(--font-sans); letter-spacing: -0.01em; }
+.p-sub { font-size: 12.5px; color: var(--muted); }
+
+/* Card head (.ch in the screens): 18px 22px, title left, meta right. */
+.p-ch {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: center; gap: 12px; padding: 18px 22px;
+}
+.p-ch.tight { padding-bottom: 14px; }
+
+/* Two-column screen layout: main column + 340px aside (screens draw a
+   grid, not the foundation flex .cols). */
+.p-cols {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px; align-items: start;
+}
+.p-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.p-aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Register-number chip (.rno in the screens). */
+.p-rno {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 7px;
+  border-radius: var(--radius-s); background: var(--rule);
+  font: 500 12px/1 var(--font-mono); color: var(--ink-2); white-space: nowrap;
+}
+.p-rno.big { height: 24px; }
+
+/* ------------------------------------------------ avatars (.avr)
+   Per-person tint backgrounds are set inline from MemberRow's tint map
+   (screen-literal hexes). */
+.p-avr {
+  width: 32px; height: 32px; border-radius: 50%; display: grid;
+  place-items: center; flex: none;
+  font: 600 11.5px/1 var(--font-sans); color: var(--ink);
+}
+.p-avr.sm { width: 28px; height: 28px; font-size: 10.5px; }
+.p-avr.invited {
+  background: var(--sheet); color: var(--muted);
+  box-shadow: inset 0 0 0 1.5px var(--control);
+}
+.p-avr.deact { background: var(--rule); color: var(--muted); }
+.p-pm { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.p-pm small {
+  display: block; font-size: 12px; color: var(--muted);
+  margin-top: 2px; line-height: 1.4;
+}
+
+/* 52px monogram box (drawer + member-detail headers). Background is set
+   inline (screen: Maya on #DCE3F4 with seal initials). */
+.p-mono52 {
+  width: 52px; height: 52px; border-radius: var(--radius-l); flex: none;
+  display: grid; place-items: center;
+  font: 800 17px/1 var(--font-sans);
+}
+
+/* ------------------------------------------------ status words (.st)
+   The v2 screens draw the state as a coloured word with a 7px dot. */
+.p-st {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.p-st::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex: none;
+}
+.p-st.is-ok { color: var(--active); }
+.p-st.is-pe { color: var(--pending); }
+.p-st.is-bad { color: var(--deny); }
+.p-st.is-off { color: var(--muted); }
+
+/* ------------------------------------------------ P-01 Overview */
+/* Needs-an-owner rows: 36px icon tile / copy / action. */
+.p-need {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 16px; align-items: center; padding: 16px 22px;
+  border-top: 1px solid var(--rule);
+}
+.p-need.first { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+.p-need b { display: block; font-size: 14.5px; font-weight: 600; }
+.p-need small {
+  display: block; margin-top: 3px; font-size: 13px;
+  line-height: 1.45; color: var(--ink-2);
+}
+.p-ico {
+  width: 36px; height: 36px; border-radius: var(--radius-m);
+  display: grid; place-items: center; flex: none;
+}
+.p-ico svg { width: 16px; height: 16px; }
+.p-ico.is-seal { background: var(--seal-tint); color: var(--seal); }
+.p-ico.is-deny { background: var(--deny-tint); color: var(--deny); }
+.p-ico.is-pend { background: #fbf1de; color: var(--pending); } /* screen-literal tile */
+.p-ico.is-flat { background: var(--rule); color: var(--ink-2); }
+
+/* Recent-changes timeline: date / dot+rule / text. */
+.p-tl {
+  display: grid; grid-template-columns: 52px 14px minmax(0, 1fr);
+  gap: 12px; font-size: 13.5px; line-height: 1.5;
+}
+.p-tl .when { font-size: 12px; color: var(--muted); padding-top: 2px; }
+.p-tl .rail { position: relative; display: flex; justify-content: center; }
+.p-tl .rail i.dotty {
+  position: relative; z-index: 1; width: 9px; height: 9px; margin-top: 6px;
+  border-radius: 50%; background: var(--sheet);
+  box-shadow: inset 0 0 0 2px var(--seal);
+}
+.p-tl .rail i.dotty.grey { box-shadow: inset 0 0 0 2px #9aa3ae; } /* screen-literal */
+.p-tl .rail i.line {
+  position: absolute; top: 15px; bottom: -6px; left: 50%;
+  width: 1px; background: var(--rule-strong);
+}
+.p-tl .body { padding-bottom: 14px; }
+.p-tl.last .body { padding-bottom: 0; }
+
+/* "Who has what" bar rows. */
+.p-whw {
+  display: grid; grid-template-columns: minmax(0, 1fr) 72px 24px;
+  gap: 12px; align-items: center; padding: 7px 0; font-size: 13px;
+}
+.p-whw .track {
+  height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden;
+}
+.p-whw .track i { display: block; height: 100%; border-radius: 3px; background: var(--seal); }
+.p-whw .track i.grey { background: #9aa3ae; } /* screen-literal */
+.p-whw .n { text-align: right; }
+
+/* Open-invitation rows on Overview. */
+.p-inv-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px;
+  align-items: center; padding: 10px 0;
+  border-top: 1px solid var(--rule); font-size: 13px;
+}
+
+/* ------------------------------------------------ P-02 Directory */
+/* Filter bar, drawn inside the directory card (Directory.html). */
+.p-dirbar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 14px 22px;
+}
+.p-srch { position: relative; display: inline-flex; }
+.p-srch svg {
+  position: absolute; left: 11px; top: 50%; margin-top: -7px;
+  width: 14px; height: 14px; color: var(--muted); pointer-events: none;
+}
+.p-srch .in { padding-left: 33px; width: 250px; }
+.p-seg2 {
+  display: inline-flex; padding: 3px; border-radius: var(--radius-m);
+  background: var(--fill); gap: 2px; max-width: 100%; overflow-x: auto;
+}
+.p-seg2 button {
+  height: 30px; padding: 0 12px; border: 0; border-radius: var(--radius-m);
+  background: transparent; font: 600 12.5px/1 var(--font-sans);
+  color: var(--ink-2); cursor: pointer; white-space: nowrap;
+}
+.p-seg2 button[aria-pressed="true"] {
+  background: var(--sheet); color: var(--ink);
+  box-shadow: 0 1px 2px rgba(22, 27, 34, 0.12), 0 0 0 1px var(--frame);
+}
+/* Select with the screens' chevron (select.in in the screen CSS). */
+.p-sel {
+  appearance: none; -webkit-appearance: none; padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%235E6773' stroke-width='1.8'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+.p-dirsel { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Directory rows sit at the screens' 22px card padding; the table head
+   is the screens' .th band (sunk, strong rule, uppercase). */
+.p-dir .mr { padding-left: 22px; padding-right: 22px; }
+.p-dir .mr.head {
+  background: var(--sheet-sunk); border-top: 1px solid var(--rule-strong);
+  padding-top: 11px; padding-bottom: 11px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2); line-height: 1.2;
+}
+.p-hl { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+.p-invrow { background: #fafbfc; } /* screen-literal row wash */
+.p-dirfoot {
+  padding: 13px 22px; border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk); display: flex; flex-wrap: wrap;
+  justify-content: space-between; gap: 10px;
+  font-size: 13px; color: var(--muted);
+}
+.p-dirfoot a { font-weight: 600; }
+
+/* ------------------------------------------------ P-03 Member drawer */
+.p-drawer-name { margin: 0; font: 800 26px/1.1 var(--font-sans); letter-spacing: -0.02em; }
+.ds.p-ds { padding: 18px 24px; gap: 12px; }
+.ds.p-ds h3 {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+/* The drawer's strip is taller than the register strip (MemberDrawer.html:
+   18px cells, 3px gap, 3px radius). */
+.ds.p-ds .strip-full { gap: 3px; }
+.ds.p-ds .strip-full i { height: 18px; border-radius: 3px; }
+.ds.p-ds .can { gap: 7px 14px; }
+.ds.p-ds .can li { display: flex; gap: 8px; align-items: center; }
+.ds.p-ds .can .p-check { color: var(--seal); display: inline-flex; flex: none; }
+.ds.p-ds .can .p-check svg { width: 12px; height: 12px; }
+/* Pending-change note (screen: tint wash + seal bar, squared left edge). */
+.p-pending-note {
+  margin: 0; padding: 12px 14px; background: var(--row-tint-allow);
+  box-shadow: inset 3px 0 0 var(--seal); border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  font-size: 13px; line-height: 1.5; color: var(--ink-2);
+}
+.p-pending-note b { font-weight: 600; color: var(--ink); }
+.p-drawer-foot {
+  margin-top: auto; padding: 16px 24px; border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk); display: grid;
+  grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+/* ------------------------------------------------ P-04 Member detail */
+/* Effective-permissions table (.ar in MemberDetail.html). */
+.p-ar {
+  display: grid; grid-template-columns: minmax(0, 1fr) 130px minmax(0, 1.1fr);
+  gap: 16px; padding: 12px 22px; border-top: 1px solid var(--rule);
+  font-size: 13.5px; align-items: center;
+}
+.p-ar.head {
+  background: var(--sheet-sunk); border-top: 1px solid var(--rule-strong);
+  padding-top: 11px; padding-bottom: 11px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.p-ar.changed { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+.p-ar .pname { font-weight: 600; }
+.p-ar .why { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.p-ar .why .soon { color: var(--seal); font-weight: 600; }
+.p-perms .grp { padding: 10px 22px; }
+/* Narrow .kv for the detail asides (MemberDetail.html draws 96px). */
+.p-kv96 { grid-template-columns: 96px minmax(0, 1fr); }
+/* Session / history rows in the detail asides. */
+.p-ev {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px;
+  padding: 10px 0; border-top: 1px solid var(--rule);
+  font-size: 13px; line-height: 1.5;
+}
+.p-sess {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px;
+  align-items: center; padding: 10px 0; border-top: 1px solid var(--rule);
+  font-size: 13px; line-height: 1.45;
+}
+.p-sess .stamp { font-size: 12px; color: var(--muted); }
+.p-ico32 {
+  width: 32px; height: 32px; border-radius: var(--radius-m);
+  display: grid; place-items: center; flex: none;
+}
+.p-ico32 svg { width: 15px; height: 15px; }
+.p-ico32.is-seal { background: var(--seal-tint); color: var(--seal); }
+.p-ico32.is-flat { background: var(--rule); color: var(--ink-2); }
+/* Deactivate panel (screen: deny wash, deny ring, no card shadow). */
+.p-deact {
+  padding: 16px 18px; border-radius: var(--radius-l);
+  background: var(--row-tint-deny); box-shadow: 0 0 0 1px var(--deny-line);
+  display: flex; flex-direction: column; gap: 10px;
+  font-size: 13px; line-height: 1.5; color: var(--ink-2);
+}
+.p-deact .btn { align-self: flex-start; }
+
+/* 52px seal-tint icon box (.ibx in Profile.html). */
+.p-ibx {
+  width: 52px; height: 52px; border-radius: var(--radius-l);
+  background: var(--seal-tint); display: grid; place-items: center;
+  flex: none; color: var(--seal);
+}
+
+/* ------------------------------------------------ P-05 Profile */
+/* "You can / You can't" split inside the access card. */
+.p-can-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--rule-strong);
+}
+.p-can-cell { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 14px; }
+.p-can-cell.cant { border-left: 1px solid var(--rule); background: #fafbfc; }
+.p-can-cell h3 {
+  margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.p-can-cell.can h3 { color: var(--seal); }
+.p-li { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.4; }
+.p-li li { display: flex; gap: 10px; align-items: center; }
+.p-askbar {
+  padding: 14px 22px; border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk); display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 12px;
+  font-size: 13px; line-height: 1.5; color: var(--ink-2);
+}
+/* Profile form rows (.fr in Profile.html: 200px label column). */
+.p-fr {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr);
+  gap: 8px 22px; align-items: center; padding: 14px 22px;
+  border-top: 1px solid var(--rule);
+}
+.p-fr label, .p-fr .lb { font-weight: 600; font-size: 13.5px; }
+.p-fr small {
+  display: block; font-weight: 400; color: var(--muted);
+  font-size: 12px; margin-top: 3px; line-height: 1.4;
+}
+.p-fr .in { width: 100%; max-width: 380px; height: 38px; }
+.p-formfoot {
+  padding: 14px 22px; border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk); display: flex; justify-content: flex-end;
+}
+/* Email-settings checkbox rows (.ck in Profile.html). */
+.p-ck {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 0;
+  border-top: 1px solid var(--rule); font-size: 13px; line-height: 1.45;
+  cursor: pointer;
+}
+.p-ck input { margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--seal); flex: none; }
+.p-ck .always { color: var(--muted); }
+
+/* ------------------------------------------------ responsive (§6) */
+@media (max-width: 980px) {
+  .p-cols { grid-template-columns: minmax(0, 1fr); }
+  .p-aside { max-width: none; }
+}
+@media (max-width: 700px) {
+  .p-can-grid { grid-template-columns: minmax(0, 1fr); }
+  .p-can-cell.cant { border-left: 0; border-top: 1px solid var(--rule); }
+}
+@media (max-width: 600px) {
+  .p-need { grid-template-columns: 36px minmax(0, 1fr); }
+  .p-need .btn { grid-column: 2; justify-self: start; }
+  .p-ar { grid-template-columns: minmax(0, 1fr) auto; }
+  .p-ar .why { grid-column: 1 / -1; }
+  .p-ar.head { display: none; }
+  .p-fr { grid-template-columns: minmax(0, 1fr); }
+  .p-dirsel { margin-left: 0; }
+  .p-srch { flex: 1 1 200px; }
+  .p-srch .in { width: 100%; }
+}

@@ -1,0 +1,751 @@
+/* Crewspace v2 — Governance screens (G-01…G-05).
+   Owned by the Governance group worker. Foundation classes live in
+   globals.css; only screen-specific rules belong here. Geometry and
+   copy are taken from the final screens (Invitations / CsvImport /
+   AuditLog / OrgSettings / Account). Note: globals.css is imported
+   after this file, so overrides of foundation classes use higher
+   specificity (e.g. `.sheet .field-row`). */
+
+/* ------------------------------------------------ page heads */
+/* Measured from the screens: .h1 is 800 30px/1.1, −0.025em on all five. */
+.gov-title {
+  margin: 0;
+  font: 800 30px/1.1 var(--font-sans);
+  letter-spacing: -0.025em;
+}
+.gov-lede {
+  margin: 0;
+  max-width: 640px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.gov-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 26px 0 6px;
+}
+.gov-head .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ------------------------------------------------ status words */
+/* Screens draw states as coloured words with a 7px dot (.st) — never pills. */
+.gov-st {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gov-st::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.gov-st.ok { color: var(--active); }
+.gov-st.pe { color: var(--pending); }
+.gov-st.bad { color: var(--deny); }
+.gov-st.off { color: var(--muted); }
+.gov-st.plain { color: var(--ink-2); }
+
+/* Register-number chip (screens' .rno). */
+.gov-rno {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-s);
+  background: var(--rule);
+  font: 500 12px/1 var(--font-mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* Outlined chip (screens' .chip). */
+.gov-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--frame);
+  background: var(--sheet);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.gov-chip.quiet { font-weight: 500; color: var(--muted); }
+.gov-chip.deny { color: var(--deny); border-color: var(--deny-line); }
+
+/* Small table buttons (screens' .btn.sm). */
+.gov-sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* ------------------------------------------------ G-01 invitations */
+/* Segmented tab group (screens' .seg2). */
+.gov-seg2 {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-m);
+  background: var(--fill);
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.gov-seg2 button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  font: 600 12.5px/1 var(--font-sans);
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gov-seg2 button .n {
+  font: 500 11.5px/1 var(--font-mono);
+  color: var(--muted);
+  margin-left: 6px;
+}
+.gov-seg2 button[aria-selected="true"] {
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgba(22, 27, 34, 0.12),
+    0 0 0 1px var(--frame);
+}
+.gov-seg2 button[aria-selected="true"] .n { color: var(--seal); }
+
+/* Invitation rows (screens' .ir). */
+.gov-ir {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.35fr) 118px minmax(0, 1.15fr) minmax(0, 1.3fr)
+    134px;
+  gap: 16px;
+  align-items: center;
+  padding: 15px 22px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+}
+.gov-ir small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.gov-ir.head {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.gov-ir.bounced {
+  background: var(--row-tint-deny);
+  box-shadow: inset 3px 0 0 var(--deny);
+}
+.gov-invite-note {
+  margin: 0;
+  padding: 13px 22px;
+  border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+/* Invite form (screens' .f). */
+.gov-f {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.gov-f label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.gov-f .in {
+  width: 100%;
+  height: 38px;
+}
+.gov-f .hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.gov-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-m);
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--seal-tint);
+  color: var(--seal);
+}
+
+/* ------------------------------------------------ G-02 CSV import */
+/* Decision rows (screens' .cr). */
+.gov-cr {
+  display: grid;
+  grid-template-columns:
+    40px minmax(0, 1.3fr) minmax(0, 1fr) 180px minmax(0, 1.4fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 22px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.gov-cr small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.gov-cr .in {
+  width: 100%;
+  height: 34px;
+  font-size: 13px;
+}
+.gov-cr.head {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.gov-cr.skipped { background: #fafbfc; }
+[data-theme="dark"] .gov-cr.skipped { background: var(--sheet-sunk); }
+
+/* Ready breakdown rows with proportional bars (screen geometry). */
+.gov-ready-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px 28px;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.gov-ready-row .track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rule);
+  overflow: hidden;
+  display: block;
+}
+.gov-ready-row .track i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--seal);
+}
+.gov-ready-row .n {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Column mapping rows (screens' .mp). */
+.gov-mp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 13px;
+  border-top: 1px solid var(--rule);
+}
+.gov-mp .gov-rno { justify-self: start; }
+
+/* ------------------------------------------------ G-03 audit */
+/* Entry rows (screens' .ae). */
+.gov-ae {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 190px 20px;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 22px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.gov-ae:hover { background: var(--sheet-sunk); }
+.gov-ae .t {
+  font: 500 12px/1.5 var(--font-mono);
+  color: var(--muted);
+}
+.gov-ae .k {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.gov-ae .k.deny { color: var(--deny); font-weight: 600; }
+.gov-avr {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font: 600 9px/1 var(--font-sans);
+  color: var(--ink);
+}
+.gov-ae-open {
+  border-top: 1px solid var(--rule);
+  background: var(--row-tint-allow);
+  box-shadow: inset 3px 0 0 var(--seal);
+}
+.gov-ae-detail {
+  padding: 0 22px 18px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gov-ae-card {
+  padding: 16px 18px;
+  border-radius: var(--radius-l);
+  background: var(--sheet);
+  box-shadow: var(--shadow-ring);
+}
+.gov-dt {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 16px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  align-items: center;
+}
+.gov-dt dt { color: var(--muted); }
+.gov-dt dd { margin: 0; }
+.gov-dt .colhead {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.gov-va {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  background: var(--seal);
+  color: var(--on-seal);
+  font-size: 12px;
+  font-weight: 600;
+}
+.gov-audit-foot {
+  padding: 13px 22px;
+  border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk);
+  font-size: 13px;
+  color: var(--muted);
+}
+.gov-search { position: relative; display: inline-flex; }
+.gov-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  margin-top: -7px;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.gov-search .in { padding-left: 33px; }
+
+/* ------------------------------------------------ G-04 / G-05 settings */
+/* Pill section tabs (screens' .tabs). */
+.gov-tabs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-m);
+  background: var(--fill);
+  gap: 2px;
+  align-self: flex-start;
+}
+.gov-tabs a {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-m);
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.gov-tabs a:hover { color: var(--ink); }
+.gov-tabs a[aria-current="page"] {
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgba(22, 27, 34, 0.12),
+    0 0 0 1px var(--frame);
+}
+
+/* Section headers with the seal-tint icon box (screens' .ch + .ico). */
+.gov-sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+}
+.gov-sheet-head h2 {
+  margin: 0;
+  font: 700 17px/1.2 var(--font-sans);
+}
+.gov-sheet-head .spacer { margin-left: auto; }
+.gov-ico32 {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-m);
+  background: var(--seal-tint);
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--seal);
+}
+.gov-ico32.deny { background: var(--deny-tint); color: var(--deny); }
+
+/* Field rows: the screens draw a 240px label column at 14px/22px
+   (OrgSettings .fr override), not the foundation 220px/24px. */
+.sheet .field-row {
+  grid-template-columns: 240px minmax(0, 1fr);
+  padding: 14px 22px;
+}
+.sheet .field-row .flabel b,
+.sheet .field-row .flabel label {
+  font-size: 13.5px;
+}
+/* Unsaved row: tint + seal inset bar, exactly as the screen draws it. */
+.sheet .field-row.changed {
+  background: var(--row-tint-allow);
+  box-shadow: inset 3px 0 0 var(--seal);
+}
+/* The Field component's changed note, in the screens' .chg pill dress. */
+.field-row .was {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  background: var(--seal-tint);
+  color: var(--seal);
+  font-size: 11.5px;
+  font-weight: 600;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Radio rows (screens' .rd). */
+.gov-rd {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 5px 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.gov-rd input {
+  margin: 2px 0 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--seal);
+  flex: none;
+}
+
+/* Transfer ownership: deny-ringed sheet (screen draws the ring in
+   --deny-line and the header/footer rules in #F0DDDA). */
+.card.gov-transfer {
+  box-shadow:
+    0 0 0 1px var(--deny-line),
+    0 1px 2px rgba(22, 27, 34, 0.04);
+}
+.gov-transfer .gov-sheet-head { background: var(--row-tint-deny); }
+.gov-transfer-body {
+  padding: 18px 22px 20px;
+  border-top: 1px solid #f0ddda;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+[data-theme="dark"] .gov-transfer-body { border-top-color: var(--deny-line); }
+.gov-transfer-foot {
+  padding: 14px 22px;
+  border-top: 1px solid #f0ddda;
+  display: flex;
+  justify-content: flex-end;
+}
+[data-theme="dark"] .gov-transfer-foot { border-top-color: var(--deny-line); }
+.gov-steps-num {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.gov-steps-num li { display: flex; gap: 10px; }
+.gov-steps-num .n {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--rule);
+  display: grid;
+  place-items: center;
+  font: 500 11px/1 var(--font-mono);
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* Baseline 18-cell strip on G-04 (screen draws 12px cells). */
+.gov-strip18 {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 380px;
+}
+.gov-strip18 i {
+  height: 12px;
+  border-radius: var(--radius-strip);
+  background: var(--strip-off);
+  display: block;
+}
+.gov-strip18 i.on { background: var(--seal); }
+
+/* Destructive buttons as the screens draw them (.dng): deny-line
+   border, deny on hover with the deny tint. */
+.btn.dest.gov-dng { border-color: var(--deny-line); }
+.btn.dest.gov-dng:hover {
+  border-color: var(--deny);
+  background: var(--row-tint-deny);
+  color: var(--deny);
+}
+
+/* ------------------------------------------------ G-05 billing */
+/* Seat bar: 14px tall, 3px gaps, screen corner treatment. */
+.gov-seatbar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+}
+.gov-seatbar .used {
+  border-radius: 4px 2px 2px 4px;
+  background: var(--seal);
+}
+.gov-seatbar .held {
+  border-radius: 2px;
+  background: var(--seal-hatch);
+}
+.gov-seatbar .free {
+  border-radius: 2px 4px 4px 2px;
+  background: var(--strip-off);
+}
+/* Dotted leader rows (screens' .ll2). */
+.gov-ll2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 11px 22px;
+  font-size: 14px;
+  border-top: 1px solid var(--rule);
+}
+.gov-ll2 i {
+  flex: 1;
+  border-bottom: 1px dotted var(--control);
+  transform: translateY(-3px);
+}
+/* Invoice rows (screens' .iv). */
+.gov-iv {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 100px 80px;
+  gap: 16px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+  align-items: center;
+}
+.gov-iv .amt { text-align: right; }
+.gov-iv.head {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+/* Close-the-organization panel: deny tint, deny ring, no sheet fill. */
+.gov-close {
+  padding: 18px;
+  border-radius: var(--radius-l);
+  background: var(--row-tint-deny);
+  box-shadow: 0 0 0 1px var(--deny-line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------ responsive (§6)
+   Fluid at 375px: register grids wrap into stacked rows inside their
+   .rows-scroll wrappers; field rows already stack via globals. */
+@media (max-width: 760px) {
+  .gov-inv-cols { grid-template-columns: minmax(0, 1fr) !important; }
+  .gov-ir,
+  .gov-cr,
+  .gov-ae,
+  .gov-iv {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+  }
+  .gov-ir.head,
+  .gov-cr.head,
+  .gov-iv.head { display: none; }
+  .gov-ae-detail { padding-left: 22px; }
+  .gov-dt { grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1fr); }
+  .gov-transfer-body { grid-template-columns: minmax(0, 1fr); }
+  .gov-ready-row { grid-template-columns: minmax(0, 1fr) 80px 28px; }
+  .gov-head { padding-top: 18px; }
+  .sheet .field-row { padding: 14px 16px; }
+  .gov-sheet-head { padding: 16px; }
+  .gov-ll2 { padding: 11px 16px; }
+}
+
+/* ---------------- CsvImport shell (integration fix, coordinator) */
+/* CsvImport.html draws the full AppShell rail (not FocusedShell) plus a
+   horizontal step strip — the same resolution Structure applied to the
+   RoleWizard. §13 overrides §4–§7, so the screen wins over §6. */
+.gov-crumb-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+  font-size: 13px;
+}
+.gov-crumb-row > span {
+  color: var(--muted);
+}
+.gov-crumb-row a {
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+}
+.gov-steps {
+  display: flex;
+  overflow: hidden;
+  margin: 14px 0 18px;
+}
+.gov-steps .stp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px;
+}
+.gov-steps .stp + .stp {
+  border-left: 1px solid var(--rule);
+}
+.gov-steps .stp .n {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font: 600 12px/1 var(--font-mono);
+}
+.gov-steps .stp.done .n {
+  background: var(--seal-tint);
+  color: var(--seal);
+}
+.gov-steps .stp.current {
+  background: var(--row-tint-allow);
+  box-shadow: inset 0 -3px 0 var(--seal);
+}
+.gov-steps .stp.current .n {
+  background: var(--seal);
+  color: var(--text-inverse);
+}
+.gov-steps .stp.todo .n {
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1.5px var(--control);
+  color: var(--muted);
+}
+.gov-steps .stp .stp-text {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.gov-steps .stp .stp-text b {
+  font-weight: 600;
+}
+.gov-steps .stp.current .stp-text b {
+  font-weight: 700;
+}
+.gov-steps .stp .stp-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.gov-steps .stp .stp-file {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.gov-steps .stp.todo .stp-text {
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .gov-steps {
+    flex-direction: column;
+  }
+  .gov-steps .stp + .stp {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+}

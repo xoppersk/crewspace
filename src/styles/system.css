@@ -1,0 +1,211 @@
+/* Crewspace v2 — System state screens (X-01…X-06).
+   Owned by the System group worker. Foundation classes live in
+   globals.css; only screen-specific rules belong here.
+   Geometry/values below are measured from the final screens
+   (SysDenied / SysEmptyTeam / SysExpired / SysNoOrg / SysDeactivated /
+   SysReconnect); hexes the screens draw literally are kept literal. */
+
+/* ---------- shared: two-column state layout (main + 340px aside) */
+.sys-two {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px; align-items: start;
+}
+.sys-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sys-aside { display: flex; flex-direction: column; gap: 16px; padding-top: 32px; min-width: 0; }
+
+/* ---------- shared: icon tile + mono chip (screen .chip) */
+.sys-toprow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sys-tile {
+  width: 52px; height: 52px; border-radius: var(--radius-l);
+  display: grid; place-items: center; flex: none;
+}
+.sys-tile svg { width: 26px; height: 26px; }
+.sys-tile.deny { background: var(--deny-tint); color: var(--deny); }
+.sys-tile.seal { background: var(--seal-tint); color: var(--seal); }
+.sys-chip {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px;
+  padding: 0 10px; border-radius: var(--radius-m); background: var(--sheet);
+  box-shadow: var(--shadow-ring); font: 500 12px/1 var(--font-mono);
+  color: var(--ink-2); white-space: nowrap;
+}
+.sys-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--seal); flex: none; }
+.sys-chip.deny { color: var(--deny); }
+.sys-chip.deny i { background: var(--deny); }
+.sys-chip.ok i { background: var(--active); }
+.sys-chip.grey i { background: var(--panel-faint); }
+
+/* ---------- shared: headlines measured from the screens */
+.sys-h-state { margin: 2px 0 0; font: 800 30px/1.15 var(--font-sans); letter-spacing: -0.025em; }
+.sys-h-public { margin: 4px 0 0; font: 800 34px/1.12 var(--font-sans); letter-spacing: -0.025em; }
+.sys-h-team { margin: 0; font: 800 30px/1.1 var(--font-sans); letter-spacing: -0.025em; }
+.sys-h-empty { margin: 0; font: 800 24px/1.2 var(--font-sans); letter-spacing: -0.02em; }
+.sys-lead15 { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.sys-lead16 { margin: 0; font-size: 16px; line-height: 1.6; color: var(--ink-2); }
+.sys-lead16 .mono { font-size: 14.5px; color: var(--ink); }
+.sys-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.sys-actions.gap10 { gap: 10px; padding-top: 6px; }
+.btn.sys-h42 { height: 42px; font-size: 14px; }
+.btn.sys-ghost { border-color: transparent; background: transparent; }
+.btn.sys-ghost:hover { border-color: transparent; }
+
+/* ---------- X-01: missing-permission facts box + dark decision panel */
+.sys-missbox {
+  padding: 16px 18px; border-radius: var(--radius-l); background: var(--sheet-sunk);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.sys-missrow {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; font-size: 13px;
+}
+.sys-missrow .missing { font-weight: 600; color: var(--deny); }
+/* Screen draws these cells at 22px high, 3px radius, 4px gap (not the
+   14px/2px register strip). Cell 5 is permission #5, Edit role permissions. */
+.sys-miss-strip { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 4px; }
+.sys-miss-strip i { height: 22px; border-radius: 3px; background: var(--strip-off); display: block; }
+.sys-miss-strip i.miss {
+  background: var(--deny-tint);
+  box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--deny);
+}
+.sys-dpanel {
+  border-radius: var(--radius-l); background: var(--ink-bar); color: #fff;
+  box-shadow: var(--shadow-panel); padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.sys-dpanel.pad28 { padding: 28px; gap: 18px; }
+/* Screen .dk rows: dt in panel-muted, dd right-aligned, #2C3442 rule
+   (screen-literal; --panel-line is the lighter #3A424D used for buttons). */
+.sys-dk { margin: 0; }
+.sys-dk > div {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px;
+  align-items: baseline; padding: 10px 0; border-top: 1px solid #2c3442;
+  font-size: 13.5px;
+}
+.sys-dk > div:first-child { border-top: 0; }
+.sys-dk > div.bb { border-bottom: 1px solid #2c3442; }
+.sys-dk dt { color: var(--panel-muted); }
+.sys-dk dd { margin: 0; text-align: right; }
+
+/* ---------- X-02: team header card, dashed avatar stack, suggestions */
+.sys-teamhead { padding: 24px; display: flex; gap: 16px; align-items: center; }
+.sys-teamhead .tile52 {
+  width: 52px; height: 52px; border-radius: var(--radius-l); flex: none;
+  background: var(--seal-tint); color: var(--seal); display: grid; place-items: center;
+}
+.sys-teamhead .tile52 svg { width: 28px; height: 28px; }
+.sys-teamhead .meta { font-size: 13px; color: var(--muted); }
+.sys-teamhead .meta .mono { font-size: 12px; color: var(--ink-2); }
+.sys-emptycard { padding: 36px 32px; display: flex; flex-direction: column; gap: 16px; }
+.sys-dashstack { display: flex; }
+.sys-dashstack i {
+  width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box;
+  border: 1.5px dashed var(--control); background: var(--sheet-sunk); display: block;
+}
+.sys-dashstack i + i { margin-left: -8px; }
+.sys-suggest { padding: 18px 18px 14px; }
+.sys-suggest h2 { margin: 0 0 8px; font: 700 15px/1.3 var(--font-sans); }
+.sys-sug {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px;
+  align-items: center; padding: 9px 0; border-top: 1px solid var(--rule);
+}
+.sys-sug b { font-size: 13.5px; font-weight: 600; }
+.sys-sug .role { font-size: 12px; color: var(--muted); }
+.sys-sug-note {
+  margin: 6px 0 0; padding-top: 12px; border-top: 1px solid var(--rule);
+  font-size: 12px; color: var(--muted); line-height: 1.45;
+}
+
+/* ---------- X-03/X-04/X-05: public (signed-out) state chrome.
+   These screens sit on --ground (not the white .pub ground), with a
+   shield-mark header and a centred card; LegalFooter closes them. */
+.sys-pub {
+  background: var(--ground); color: var(--ink); min-height: 100vh;
+  display: flex; flex-direction: column; font-size: 15px;
+}
+.sys-pub-head {
+  padding: 22px 40px; display: flex; justify-content: space-between;
+  align-items: center; gap: 16px;
+}
+.sys-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.sys-brand:hover { color: var(--ink); }
+.sys-brandmark {
+  width: 32px; height: 32px; border-radius: var(--radius-m); flex: none;
+  background: var(--ink-bar); color: #fff; display: grid; place-items: center;
+}
+.sys-brandmark svg { width: 18px; height: 18px; }
+.sys-brand b { font: 800 19px/1 var(--font-sans); letter-spacing: -0.02em; }
+.sys-headlink { font-size: 14px; font-weight: 600; }
+.sys-pub-center {
+  flex: 1; padding: 48px 40px 80px;
+  display: flex; justify-content: center; align-items: center;
+}
+.sys-pub-center.split {
+  padding: 36px 40px 72px; flex-wrap: wrap;
+  align-content: center; align-items: stretch; gap: 24px;
+}
+.sys-pub-card {
+  flex: 0 1 640px; box-sizing: border-box; padding: 36px 40px;
+  display: flex; flex-direction: column; gap: 18px; min-width: 0;
+}
+.sys-pub-card.split { flex: 1 1 440px; max-width: 560px; }
+.sys-pub-note {
+  padding-top: 16px; border-top: 1px solid var(--rule);
+  font-size: 13px; line-height: 1.5; color: var(--muted);
+}
+/* X-04 actions + things-to-check card */
+.sys-wide-stack { display: flex; flex-direction: column; gap: 10px; max-width: 380px; padding-top: 6px; }
+.btn.sys-wide { width: 100%; box-sizing: border-box; height: 46px; font-size: 14px; }
+.btn.sys-flat { border-color: transparent; background: var(--ground); }
+.btn.sys-flat:hover { border-color: transparent; color: var(--ink); }
+.sys-checkcard {
+  align-self: flex-start; flex: 1 1 300px; max-width: 360px; box-sizing: border-box;
+  padding: 26px 26px 12px; display: flex; flex-direction: column;
+  font-size: 14px; line-height: 1.55; color: var(--ink-2); min-width: 0;
+}
+.sys-checkcard h2 { margin: 0 0 12px; font: 700 15px/1.3 var(--font-sans); color: var(--ink); }
+.sys-check {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px;
+  padding: 14px 0; border-top: 1px solid var(--rule);
+}
+.sys-check .n { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 2px; }
+/* X-05 dark org panel header */
+.sys-orghead { display: flex; align-items: center; gap: 12px; }
+.sys-orghead .sl {
+  width: 40px; height: 40px; border-radius: var(--radius-l); flex: none;
+  background: #fff; color: var(--ink-bar); display: grid; place-items: center;
+  font: 800 15px/1 var(--font-sans);
+}
+.sys-orghead b { font: 700 17px/1.1 var(--font-sans); }
+.sys-dpanel .sys-asidecard { align-self: flex-start; }
+
+/* ---------- X-06: reconnect banner icon + conflict panel internals */
+.banner .sys-retry-ic { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.banner .sys-retry-ic svg { width: 16px; height: 16px; color: var(--panel-allow); flex: none; }
+.banner .sys-paused { color: var(--control); }
+.sys-conflict h2 { margin: 0; font: 700 18px/1.25 var(--font-sans); }
+.sys-conflict-card {
+  padding: 12px; border-radius: var(--radius-l); background: var(--panel-card);
+  font-size: 13px; line-height: 1.5;
+}
+.sys-conflict-card b { font-weight: 600; }
+.sys-conflict-note { font-size: 12.5px; line-height: 1.5; color: var(--panel-muted); }
+.sys-conflict-actions { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; max-width: 340px; }
+.sys-conflict-saved { margin: 0; font-size: 13px; line-height: 1.5; color: var(--panel-muted); }
+
+/* ---------- responsive (§6: fluid, no horizontal scroll at 375px) */
+@media (max-width: 980px) {
+  .sys-two { grid-template-columns: minmax(0, 1fr); }
+  .sys-aside { padding-top: 0; }
+}
+@media (max-width: 760px) {
+  .sys-h-public { font-size: 28px; }
+  .sys-h-state { font-size: 26px; }
+  .sys-pub-head { padding: 18px; }
+  .sys-pub-center, .sys-pub-center.split { padding: 26px 18px 48px; }
+  .sys-pub-card, .sys-pub-card.split { padding: 28px 22px; flex-basis: 100%; }
+  .sys-checkcard { flex-basis: 100%; max-width: none; }
+  .sys-emptycard { padding: 28px 22px; }
+  .sys-teamhead { padding: 20px; }
+  .sys-chip { white-space: normal; }
+  .sys-conflict-actions { max-width: none; }
+}

@@ -1,0 +1,453 @@
+/* Crewspace v2 — Structure screens (R-01…R-05).
+   Owned by the Structure group worker. Foundation classes live in
+   globals.css; only screen-specific rules belong here.
+   Screen-literal hexes used below, each drawn by a named screen:
+   #2C3442 (Roles baseline strip cells + dark-panel rule + TeamDetail
+   lead avatar), #C9D3EC (Lead/New chip border), #C9D0DA (dark-panel
+   body text on RoleWizard + TeamDetail), #FAFBFC (invited row). */
+
+/* ------------------------------------------------ shared structure bits */
+.stitle {
+  margin: 0; font: 800 30px/1.1 var(--font-sans); letter-spacing: -0.025em;
+}
+.slede {
+  margin: 0; max-width: 640px; font-size: 14.5px; line-height: 1.55;
+  color: var(--ink-2);
+}
+.spage-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: flex-end; gap: 16px; padding: 26px 0 6px;
+}
+.spage-head .stack { display: flex; flex-direction: column; gap: 8px; }
+
+/* Main + sticky aside grids (R-04/R-02: 340px aside; R-03/R-05 per screen). */
+.split-340 {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px; align-items: start;
+}
+.split-320 {
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px; align-items: start;
+}
+.split-340 .aside-sticky,
+.split-320 .aside-sticky {
+  position: sticky; top: 20px; display: flex; flex-direction: column; gap: 16px;
+}
+.split-340 .main-col-stack,
+.split-320 .main-col-stack {
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
+}
+@media (max-width: 1080px) {
+  .split-340, .split-320 { grid-template-columns: minmax(0, 1fr); }
+  .split-340 .aside-sticky, .split-320 .aside-sticky { position: static; }
+}
+
+/* 52px seal-tint icon tile (R-04 / R-02 header cards). */
+.tile52 {
+  width: 52px; height: 52px; border-radius: var(--radius-l); flex: none;
+  background: var(--seal-tint); display: grid; place-items: center;
+  color: var(--seal);
+}
+.tile52 svg { width: 28px; height: 28px; }
+
+/* Register-number chip + type chip (R-04 header, R-03 rows). */
+.rno {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 8px;
+  border-radius: var(--radius-s); background: var(--rule);
+  font: 500 12px/1 var(--font-mono); color: var(--ink-2); white-space: nowrap;
+}
+.rno.sm { height: 22px; padding: 0 7px; }
+.type-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px;
+  padding: 0 8px; border-radius: var(--radius-s);
+  border: 1px solid var(--frame); background: var(--sheet);
+  font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap;
+}
+.type-chip.system { background: var(--sheet-sunk); }
+.type-chip svg { width: 11px; height: 11px; color: var(--muted); }
+
+/* ------------------------------------------------ R-04 role detail */
+.role-head { padding: 24px 24px 22px; display: flex; flex-direction: column; gap: 20px; }
+.role-head .head-top {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  gap: 16px; align-items: flex-start;
+}
+.role-head .id-row { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
+.role-head .name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.role-head .summary {
+  margin: 8px 0 0; max-width: 520px; font-size: 14.5px; line-height: 1.55;
+  color: var(--ink-2);
+}
+.role-head .meta-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px;
+  align-items: center; padding-top: 18px; border-top: 1px solid var(--rule);
+}
+.role-head .meta-people {
+  display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-2);
+}
+.role-head .meta-people b { color: var(--ink); }
+.role-head .strip-block { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.role-head .strip-labels {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.role-head .strip-labels b { color: var(--seal); }
+
+.register-card { overflow: hidden; }
+.register-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: center; gap: 12px; padding: 18px 22px;
+}
+.register-head h2 { margin: 0; font: 700 17px/1.2 var(--font-sans); }
+.register-head .legend { font-size: 12.5px; color: var(--muted); }
+.register-head .legend b { color: var(--ink); }
+.register-head .legend b.deny { color: var(--deny); }
+.register-head .count { font: 500 12px/1 var(--font-mono); color: var(--muted); }
+
+/* Collapsed group tiles at the register card's foot (R-04). */
+.grp-tiles {
+  border-top: 1px solid var(--rule-strong); padding: 6px 22px 10px;
+}
+.grp-tiles .grid {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px; padding-top: 10px;
+}
+.grp-tile {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border-radius: var(--radius-m); background: var(--sheet-sunk);
+  text-decoration: none; color: var(--ink);
+}
+.grp-tile .gname {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.grp-tile .gcount { font-size: 12px; color: var(--muted); }
+
+/* Members-with-this-role card (R-04): 36px register column. */
+.role-members { padding: 18px 18px 8px; }
+.role-members .mem { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.role-members .mem .mname { font-size: 13.5px; }
+.role-members .mem .mname b { font-weight: 600; }
+.role-members .mem .msub { display: block; font-size: 12px; color: var(--muted); }
+
+/* Dark review panel buttons (R-04): Discard / Review and apply. */
+.dpanel .action-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+
+/* ------------------------------------------------ R-03 roles list */
+.roles-table .strip {
+  display: grid; grid-template-columns: minmax(0, 1fr) 22px;
+  gap: 10px; align-items: center;
+}
+.roles-table .strip .cells { gap: 3px; }
+.roles-table .strip .cells i { height: 16px; border-radius: 3px; }
+.roles-table .strip .n {
+  margin: 0; font: 500 12.5px/1 var(--font-mono);
+  color: var(--seal); text-align: right;
+}
+.roles-table .strip-zero .strip .n { color: var(--muted); }
+.roles-row-hl { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+
+.roles-foot {
+  padding: 14px 22px; border-top: 1px solid var(--rule-strong);
+  background: var(--sheet-sunk); display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 8px 18px;
+  font-size: 12px; color: var(--muted);
+}
+.roles-foot .order { flex-basis: 100%; font-size: 11.5px; white-space: nowrap; }
+.roles-foot .legend { display: flex; gap: 14px; align-items: center; }
+.roles-foot .legend span { display: inline-flex; gap: 6px; align-items: center; }
+.roles-foot .legend i {
+  display: inline-block; width: 10px; height: 12px;
+  border-radius: var(--radius-strip); background: var(--strip-off);
+}
+.roles-foot .legend i.on { background: var(--seal); }
+
+/* Baseline dark panel (R-03). */
+.baseline-strip {
+  display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 3px;
+}
+.baseline-strip i {
+  display: block; height: 14px; border-radius: 3px; background: #2c3442;
+}
+.baseline-strip i.on { background: var(--panel-allow); }
+.baseline-dl {
+  margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px; padding-top: 12px; border-top: 1px solid #2c3442;
+  font-size: 13px;
+}
+.baseline-dl dt { color: var(--panel-muted); }
+.baseline-dl dd { margin: 0; text-align: right; }
+.baseline-dl dd.mono { font-size: 12.5px; }
+.dpanel .edit-link { color: var(--panel-allow); font-weight: 600; font-size: 13px; }
+
+/* "How roles work" icon rows (R-03). */
+.how-row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px;
+  align-items: start;
+}
+
+/* ------------------------------------------------ R-05 role wizard */
+.wz-toprow {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding-top: 6px; font-size: 13px;
+}
+.wz-toprow .flow { color: var(--muted); }
+.wz-toprow a { font-weight: 600; }
+.wz-steps { display: flex; overflow: hidden; }
+.wz-step {
+  display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+  padding: 14px 18px; font-size: 14px; line-height: 1.35;
+}
+.wz-step + .wz-step { border-left: 1px solid var(--rule); }
+.wz-step .n {
+  width: 28px; height: 28px; border-radius: 50%; display: grid;
+  place-items: center; flex: none; font: 600 12px/1 var(--font-mono);
+  background: var(--seal-tint); color: var(--seal);
+}
+.wz-step .n svg { width: 13px; height: 13px; }
+.wz-step b { font-weight: 600; }
+.wz-step .sum { font-size: 12.5px; color: var(--muted); }
+.wz-step[aria-current="step"] {
+  background: var(--row-tint-allow); box-shadow: inset 0 -3px 0 var(--seal);
+}
+.wz-step[aria-current="step"] .n { background: var(--seal); color: var(--on-seal); }
+.wz-step[aria-current="step"] .stext { font-weight: 700; }
+
+.wz-name-card {
+  padding: 22px; display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px; gap: 18px;
+}
+.wz-name-card .span2 { grid-column: span 2; }
+.fld { display: flex; flex-direction: column; gap: 7px; }
+.fld label, .fld .lb { font-weight: 600; font-size: 13px; }
+.fld .in { width: 100%; height: 40px; }
+.wz-rno {
+  height: 40px; display: flex; align-items: center; gap: 8px;
+}
+.wz-rno .rno { height: 26px; font-size: 13px; }
+.wz-rno .note { font-size: 12px; color: var(--muted); }
+
+/* Compared-with table (R-05). */
+.dr {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) 190px minmax(0, 1.3fr);
+  gap: 18px; align-items: center; padding: 14px 22px;
+  border-top: 1px solid var(--rule); font-size: 14px;
+}
+.dr small { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.dr.th {
+  padding-top: 11px; padding-bottom: 11px; background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2);
+}
+.dr .meaning { font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.dr .chips { display: flex; gap: 8px; align-items: center; }
+.dr .chips .arr { color: var(--muted); }
+.vchip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 9px;
+  border-radius: var(--radius-s); font-size: 12px; font-weight: 600;
+}
+.vchip.allow { background: var(--seal); color: var(--on-seal); }
+.vchip.deny {
+  background: var(--sheet); color: var(--deny);
+  box-shadow: inset 0 0 0 1px var(--deny-line);
+}
+.vchip.inherit { background: var(--rule); color: var(--ink-2); }
+
+/* Wizard allows footer strip: 22px cells, gap 4 (RoleWizard.html). */
+.wz-allows .strip-full { gap: 4px; }
+.wz-allows .strip-full i { height: 22px; border-radius: var(--radius-s); }
+.wz-allows .ahead { font-size: 13px; color: var(--ink-2); }
+.wz-allows .ahead b { font-weight: 700; color: var(--seal); }
+
+/* Wizard dark aside (R-05). */
+.dchg .effect { color: #c9d0da; font-size: 12.5px; }
+.dpanel .subgroup {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 14px; border-top: 1px solid #2c3442;
+  font-size: 12.5px; line-height: 1.5;
+}
+.dpanel .subgroup h2 { font: 600 13px/1.3 var(--font-sans); }
+.dpanel .subgroup span { color: var(--panel-muted); }
+
+/* ------------------------------------------------ R-01 teams grid */
+.srch { position: relative; display: inline-flex; }
+.srch svg {
+  position: absolute; left: 11px; top: 50%; margin-top: -7px;
+  width: 14px; height: 14px; color: var(--muted); pointer-events: none;
+}
+.srch .in { padding-left: 33px; }
+.teams-toolbar {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  gap: 10px; align-items: center;
+}
+.teams-toolbar .note { font-size: 12.5px; color: var(--muted); }
+.teams-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;
+}
+.team-card {
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 20px 20px 16px; color: var(--ink); text-decoration: none;
+}
+.team-card:hover {
+  color: var(--ink);
+  box-shadow: 0 0 0 1px #9aa3ae, 0 6px 16px -8px rgba(22, 27, 34, 0.18);
+}
+.team-card .tc-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+}
+.team-card .tc-id { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.team-card .tile40 {
+  width: 40px; height: 40px; border-radius: var(--radius-l); flex: none;
+  background: var(--seal-tint); display: grid; place-items: center; color: var(--seal);
+}
+.team-card .tile40 svg { width: 20px; height: 20px; }
+.team-card .tname { display: block; font: 700 16px/1.25 var(--font-sans); }
+.team-card .tblurb {
+  display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted);
+}
+.team-card .tcount { text-align: right; }
+.team-card .tcount .mono {
+  display: block; font-size: 22px; font-weight: 500; line-height: 1;
+}
+.team-card .tcount .lbl { font-size: 11.5px; color: var(--muted); }
+.team-card .mix { display: flex; flex-direction: column; gap: 8px; }
+.team-card .mix .mlbl {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--muted);
+}
+.team-card .mixbar {
+  display: flex; height: 10px; border-radius: var(--radius-s);
+  overflow: hidden; gap: 2px; background: var(--rule);
+}
+.team-card .mixbar i { display: block; height: 100%; }
+.team-card .mixcap { font-size: 12.5px; color: var(--ink-2); }
+.team-card .tc-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; padding-top: 14px; border-top: 1px solid var(--rule);
+}
+.team-card .lead { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 13px; }
+.team-card .lead b { font-weight: 600; }
+.team-card .lead small {
+  display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4;
+}
+.lead-av {
+  width: 30px; height: 30px; border-radius: 50%; display: grid;
+  place-items: center; flex: none; font: 600 11px/1 var(--font-sans); color: var(--ink);
+}
+.team-card .lastchg { font-size: 12.5px; color: var(--ink-2); text-align: right; }
+.team-card .lastchg .lbl { display: block; font-size: 11px; color: var(--muted); }
+.teams-foot {
+  display: flex; justify-content: space-between; padding: 2px 4px;
+  font-size: 13px; color: var(--muted);
+}
+
+/* ------------------------------------------------ R-02 team detail */
+.team-head { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.team-head .head-top {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  gap: 16px; align-items: flex-start;
+}
+.team-head .id-row { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
+.team-head .subline { font-size: 13.5px; color: var(--ink-2); }
+.team-head .meta-row {
+  display: flex; align-items: center; gap: 12px;
+  padding-top: 18px; border-top: 1px solid var(--rule);
+}
+.team-head .meta-row .mixcap { font-size: 13px; color: var(--ink-2); }
+
+.card-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: center; gap: 12px; padding: 18px 22px;
+}
+.card-head h2 { margin: 0; font: 700 17px/1.2 var(--font-sans); }
+.card-head .sub { font-size: 12.5px; color: var(--muted); }
+
+/* Member rows (TeamDetail.html .mr geometry). */
+.team-mr {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1.6fr) 140px minmax(0, 1fr) 84px 32px;
+  gap: 14px; align-items: center; padding: 10px 22px;
+  border-top: 1px solid var(--rule); font-size: 14px; color: var(--ink);
+}
+.team-mr.th {
+  padding-top: 11px; padding-bottom: 11px; background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2);
+}
+.team-mr .person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.team-mr .person b { font-weight: 600; }
+.team-mr .person small {
+  display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4;
+}
+.team-mr .avr {
+  width: 32px; height: 32px; border-radius: 50%; display: grid;
+  place-items: center; flex: none; font: 600 11.5px/1 var(--font-sans); color: var(--ink);
+}
+.team-mr .avr.invited {
+  background: var(--sheet); box-shadow: inset 0 0 0 1.5px var(--control);
+  color: var(--muted);
+}
+.team-mr.hl { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+.team-mr.invited-row { background: #fafbfc; }
+.lead-chip {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px;
+  margin-left: 4px; border-radius: var(--radius-s);
+  border: 1px solid #c9d3ec; background: var(--row-tint-allow);
+  font-size: 11px; font-weight: 600; color: var(--seal); white-space: nowrap;
+}
+.inv-state {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; color: var(--pending);
+  white-space: normal;
+}
+.inv-state::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex: none;
+}
+
+/* Access panel mini strips (R-02): 8px cells under each .ll line. */
+.access-mix { display: flex; flex-direction: column; gap: 7px; padding: 11px 0; border-top: 1px solid var(--rule); }
+.access-mix .ll { padding: 0; }
+.access-mix .strip-full i { height: 8px; }
+.access-note {
+  margin: 0; padding: 12px; border-radius: var(--radius-m);
+  background: var(--sheet-sunk); font-size: 13px; line-height: 1.5; color: var(--ink-2);
+}
+
+/* Dark lead panel (R-02). */
+.dpanel .av.dk-av { background: #2c3442; color: #fff; border: 0; }
+.dpanel .lead-body { color: #c9d0da; font-size: 13px; line-height: 1.5; }
+.dpanel .lead-head { display: flex; align-items: center; gap: 10px; }
+.dpanel .lead-head h2 { font: 700 16px/1.3 var(--font-sans); }
+
+/* Recent changes card (R-02). */
+.recent-card { padding: 18px 18px 16px; display: flex; flex-direction: column; font-size: 13px; line-height: 1.5; }
+.recent-card h2 { margin: 0 0 8px; font: 700 15px/1.3 var(--font-sans); }
+.recent-card .rrow { padding: 8px 0; border-top: 1px solid var(--rule); }
+.recent-card .rlink { padding-top: 8px; border-top: 1px solid var(--rule); font-weight: 600; }
+
+/* ------------------------------------------------ phone rules (§6) */
+@media (max-width: 900px) {
+  .teams-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .stitle { font-size: 26px; }
+  .spage-head { padding-top: 10px; }
+  .grp-tiles .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .role-head .meta-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .wz-steps { flex-direction: column; }
+  .wz-step + .wz-step { border-left: 0; border-top: 1px solid var(--rule); }
+  .wz-name-card { grid-template-columns: minmax(0, 1fr); }
+  .wz-name-card .span2 { grid-column: auto; }
+  .teams-grid { grid-template-columns: minmax(0, 1fr); }
+  .roles-foot .order { white-space: normal; }
+  .dpanel .action-grid { grid-template-columns: minmax(0, 1fr); }
+  /* Tables (.dr, .team-mr, roles rows) live inside .rows-scroll wrappers;
+     keep their designed min widths there instead of the global flex wrap. */
+  .dr { min-width: 620px; }
+  .team-mr { min-width: 680px; }
+  /* At the table's minimum width the person column is ~122px of text:
+     let the email break inside its cell rather than run under the
+     role tag, unreadable at any scroll position. */
+  .team-mr .person small { overflow-wrap: anywhere; }
+}
