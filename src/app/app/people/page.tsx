@@ -58,13 +58,22 @@ export async function generateMetadata({
   return { title: "Crewspace — Directory" };
 }
 
+/* Screen-literal avatar tints for the X-06 register window
+   (SysReconnect.html draws these exact hexes per person). */
+const OFFLINE_AVATAR_TINTS: Record<string, string> = {
+  "035": "#DCE3F4", // Sofia Duarte
+  "036": "#E9E3D6", // Zoe Adams
+  "038": "#F0DDDA", // Hannah Lee
+  "040": "#DDEBE2", // Yusuf Ali
+};
+
 /**
  * X-06 offline register row (SysReconnect.html): five columns — No.,
  * Person, Role, Teams, Status — with roles as plain text and people as
- * names only; rows are not links because membership actions are paused.
- * Zoe Adams' row is the pending one: sheet tint, seal "Waiting to save"
- * marker, role "Member · now Analyst", teams "Product" struck through
- * → "Partnerships".
+ * avatar + name; rows are not links because membership actions are paused.
+ * Zoe Adams' row is the pending one: row-tint-allow with an inset seal
+ * rule, a seal ".chg" "Waiting to save" chip, role "Member · now Analyst",
+ * teams "Product" struck through → "Partnerships".
  */
 function OfflineDirectoryRow({ id }: { id: string }) {
   const member = getMember(id)!;
@@ -84,33 +93,56 @@ function OfflineDirectoryRow({ id }: { id: string }) {
     <div
       role="row"
       className="omr"
-      style={pending ? { background: "var(--sheet-tint)" } : undefined}
+      style={
+        pending
+          ? {
+              background: "var(--row-tint-allow)",
+              boxShadow: "inset 3px 0 0 var(--seal)",
+            }
+          : undefined
+      }
     >
       <span role="cell" className="rg">
         {member.id}
       </span>
-      <span role="cell">
-        <b style={{ fontWeight: 600 }}>{member.name}</b>
-        {pending ? (
-          <>
-            {" "}
+      <span
+        role="cell"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          minWidth: 0,
+        }}
+      >
+        <span
+          className="av"
+          aria-hidden="true"
+          style={{ border: 0, background: OFFLINE_AVATAR_TINTS[member.id] }}
+        >
+          {member.name
+            .split(" ")
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join("")}
+        </span>
+        <span>
+          <b style={{ fontWeight: 600 }}>{member.name}</b>
+          {pending ? (
             <span
-              style={{
-                fontSize: 12,
-                color: "var(--seal)",
-                fontWeight: 600,
-                whiteSpace: "nowrap",
-              }}
+              className="chg"
+              style={{ margin: "0 0 0 6px", verticalAlign: 1 }}
             >
               Waiting to save
             </span>
-          </>
-        ) : null}
+          ) : null}
+        </span>
       </span>
       {pending ? (
         <span role="cell">
           {role.name}{" "}
-          <span style={{ color: "var(--muted)" }}>· now Analyst</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            · now Analyst
+          </span>
         </span>
       ) : (
         <span role="cell">{role.name}</span>
@@ -223,65 +255,78 @@ export default async function DirectoryPage({
     return `/app/people?${params.toString()}`;
   })();
 
+  /* The page head renders verbatim in both branches; only its
+     placement differs (X-06 puts it inside the two-column grid). */
+  const headBlock = (
+    <div className="page-head" style={{ paddingTop: 26 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <h1 className="p-title">Directory</h1>
+        {offline ? (
+          <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
+            As of <span className="mono">10:41 AM</span>. Changes you make now
+            wait until the connection is back.
+          </span>
+        ) : (
+          <p className="p-lede">
+            Everyone in Sevyn Labs, by register number. Open a person to see
+            what they can do and why, without leaving the list.
+          </p>
+        )}
+      </div>
+      {/* X-06: the offline header is the title and the "As of" line
+          only — SysReconnect.html draws no actions at all. */}
+      {offline ? null : (
+        <div className="head-actions">
+          <ButtonLink href="/app/invitations/import">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M8 10.5V2.5M4.8 5.5 8 2.3l3.2 3.2" />
+              <path d="M2.5 10.5v2.5h11v-2.5" />
+            </svg>
+            Import CSV
+          </ButtonLink>
+          <ButtonLink variant="pri" href="/app/invitations">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+            Invite member
+          </ButtonLink>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <AppShell
       current="directory"
       banner={offline ? <ReconnectBanner pausedAt="10:41 AM" /> : undefined}
     >
-      <div className="page-head" style={{ paddingTop: 22 }}>
-        <div className="stack">
-          <h1 className="title">Directory</h1>
-          {offline ? (
-            <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
-              As of <span className="mono">10:41 AM</span>. Changes you make now
-              wait until the connection is back.
-            </span>
-          ) : (
-            <p className="lead">
-              Everyone in Sevyn Labs, by register number. Open a person to see
-              what they can do and why, without leaving the list.
-            </p>
-          )}
-        </div>
-        {/* X-06: the offline header is the title and the "As of" line
-            only — SysReconnect.html draws no actions at all. */}
-        {offline ? null : (
-          <div className="head-actions">
-            <ButtonLink href="/app/invitations/import">Import CSV</ButtonLink>
-            <ButtonLink variant="pri" href="/app/invitations">
-              Invite member
-            </ButtonLink>
-          </div>
-        )}
-      </div>
-
-      {offline ? <ConflictSheet /> : null}
-
-      <DirectoryFilters
-        q={q}
-        status={status}
-        role={roleId}
-        team={teamId}
-        counts={counts}
-        params={serialize(sp)}
-      />
-
       {offline ? (
-        /* X-06 (SysReconnect.html): the offline sheet is its own
-           composition — the designed four-row register window on a
-           700px five-column table, the paused-actions note, and no
-           "Showing N of 45" counts footer. */
-        <section
-          className="sheet"
-          style={{ overflow: "hidden", opacity: 0.94 }}
-        >
+        /* X-06 (SysReconnect.html): the screen's main is a two-column
+           grid — head + roster in the left column, the conflict panel
+           as the 340px right aside — and it draws no filter bar. */
+        <div className="p-cols">
+          <div className="p-stack">
+            {headBlock}
+
+        {/* X-06 (SysReconnect.html): the offline sheet is its own
+            composition — the designed four-row register window on a
+            700px five-column table, the paused-actions note, and no
+            "Showing N of 45" counts footer. */}
+        <section className="sheet" style={{ overflow: "hidden" }}>
           <div className="rows-scroll">
             <div
               role="table"
               aria-label="People, as of 10:41"
               style={{ minWidth: 700 }}
             >
-              <div role="row" className="omr head">
+              <div
+                role="row"
+                className="omr head"
+                style={{
+                  background: "var(--sheet-sunk)",
+                  borderTop: "1px solid var(--rule-strong)",
+                }}
+              >
                 <span role="columnheader">No.</span>
                 <span role="columnheader">Person</span>
                 <span role="columnheader">Role</span>
@@ -296,9 +341,10 @@ export default async function DirectoryPage({
           <p
             style={{
               margin: 0,
-              padding: "12px 24px",
+              padding: "13px 22px",
               borderTop: "1px solid var(--rule-strong)",
-              fontSize: 12,
+              background: "var(--sheet-sunk)",
+              fontSize: 12.5,
               color: "var(--muted)",
             }}
           >
@@ -306,8 +352,23 @@ export default async function DirectoryPage({
             offline. Reading and searching still work.
           </p>
         </section>
+          </div>
+          <aside className="p-aside" style={{ paddingTop: 26 }}>
+            <ConflictSheet />
+          </aside>
+        </div>
       ) : (
-        <section className="sheet" style={{ overflow: "hidden" }}>
+        <>
+          {headBlock}
+          <section className="card p-dir" style={{ overflow: "hidden" }}>
+          <DirectoryFilters
+            q={q}
+            status={status}
+            role={roleId}
+            team={teamId}
+            counts={counts}
+            params={serialize(sp)}
+          />
           <div className="rows-scroll">
             <div role="table" aria-label="People" style={{ minWidth: 860 }}>
               <div role="row" className="mr head">
@@ -352,18 +413,7 @@ export default async function DirectoryPage({
             ) : null}
           </div>
         </div>
-        <div
-          style={{
-            padding: "12px 24px",
-            borderTop: "1px solid var(--rule-strong)",
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            gap: 10,
-            fontSize: 13,
-            color: "var(--muted)",
-          }}
-        >
+        <div className="p-dirfoot">
           <span>
             Showing {displayEntries.length} of {counts.all} · {counts.active}{" "}
             active, {counts.deactivated} deactivated, {counts.invited} invited
@@ -374,7 +424,8 @@ export default async function DirectoryPage({
             </Link>
           ) : null}
         </div>
-        </section>
+          </section>
+        </>
       )}
 
       {openMember ? (

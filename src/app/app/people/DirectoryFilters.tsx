@@ -73,28 +73,36 @@ export function DirectoryFilters({
     team && !TEAM_OPTIONS.some((o) => o.value === team) ? team : null;
 
   return (
-    <div
-      role="search"
-      className="dir-filters"
-      style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}
-    >
+    <div role="search" className="p-dirbar">
       <label htmlFor="q" className="sr-only">
         Find a person
       </label>
-      <input
-        id="q"
-        className="in"
-        placeholder="Name, email or number"
-        style={{ width: 240 }}
-        defaultValue={q}
-        onChange={(e) => onSearch(e.target.value)}
-      />
-      <div role="group" aria-label="Status" style={{ display: "flex", gap: 6 }}>
+      <span className="p-srch">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden="true"
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3.5 3.5" />
+        </svg>
+        <input
+          id="q"
+          className="in"
+          placeholder="Name, email or number"
+          defaultValue={q}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </span>
+      <div role="group" aria-label="Status" className="p-seg2">
         {chips.map((chip) => (
           <button
             key={chip.value}
             type="button"
-            className="fl"
             aria-pressed={status === chip.value}
             onClick={() => update({ status: chip.value })}
           >
@@ -102,48 +110,50 @@ export function DirectoryFilters({
           </button>
         ))}
       </div>
-      <label htmlFor="r" className="sr-only">
-        Role
-      </label>
-      <select
-        id="r"
-        className="in"
-        value={role}
-        onChange={(e) => update({ role: e.target.value || null })}
-      >
-        <option value="">Any role</option>
-        {extraRole ? (
-          <option value={extraRole}>
-            {getRole(extraRole)?.name ?? extraRole}
-          </option>
-        ) : null}
-        {ROLE_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <label htmlFor="t" className="sr-only">
-        Team
-      </label>
-      <select
-        id="t"
-        className="in"
-        value={team}
-        onChange={(e) => update({ team: e.target.value || null })}
-      >
-        <option value="">Any team</option>
-        {extraTeam ? (
-          <option value={extraTeam}>
-            {getTeam(extraTeam)?.name ?? extraTeam}
-          </option>
-        ) : null}
-        {TEAM_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <span className="p-dirsel">
+        <label htmlFor="r" className="sr-only">
+          Role
+        </label>
+        <select
+          id="r"
+          className="in p-sel"
+          value={role}
+          onChange={(e) => update({ role: e.target.value || null })}
+        >
+          <option value="">Any role</option>
+          {extraRole ? (
+            <option value={extraRole}>
+              {getRole(extraRole)?.name ?? extraRole}
+            </option>
+          ) : null}
+          {ROLE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="t" className="sr-only">
+          Team
+        </label>
+        <select
+          id="t"
+          className="in p-sel"
+          value={team}
+          onChange={(e) => update({ team: e.target.value || null })}
+        >
+          <option value="">Any team</option>
+          {extraTeam ? (
+            <option value={extraTeam}>
+              {getTeam(extraTeam)?.name ?? extraTeam}
+            </option>
+          ) : null}
+          {TEAM_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </span>
     </div>
   );
 }
