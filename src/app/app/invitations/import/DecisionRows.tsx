@@ -3,27 +3,23 @@
 import { useState } from "react";
 import type { ImportRow } from "@/lib/types";
 
-const CR_GRID = "44px minmax(0,1.3fr) minmax(0,1fr) 170px minmax(0,1.4fr)";
-
-function crStyle(extra?: React.CSSProperties): React.CSSProperties {
-  return {
-    display: "grid",
-    gridTemplateColumns: CR_GRID,
-    gap: 14,
-    alignItems: "center",
-    padding: "11px 24px",
-    borderTop: "1px solid var(--rule)",
-    fontSize: 13,
-    ...extra,
-  };
+function WarnIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+      style={{ flex: "none" }}
+    >
+      <path d="M8 2.2 14.2 13H1.8z" />
+      <path d="M8 6.5v3M8 11.2v.1" />
+    </svg>
+  );
 }
-
-const smallText: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  color: "var(--muted)",
-  marginTop: 2,
-};
 
 /**
  * The result a fix choice produces, in the screen's own constructions:
@@ -62,17 +58,8 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
   const [choices, setChoices] = useState<Record<number, string>>({});
 
   return (
-    <div role="table" aria-label="Rows that need a decision" style={{ minWidth: 760 }}>
-      <div
-        role="row"
-        style={crStyle({
-          paddingTop: 8,
-          paddingBottom: 8,
-          fontSize: 12,
-          color: "var(--muted)",
-          borderTop: "1px solid var(--rule-strong)",
-        })}
-      >
+    <div role="table" className="tbl-stack" aria-label="Rows that need a decision" style={{ minWidth: 760 }}>
+      <div role="row" className="gov-cr head">
         <span role="columnheader">Row</span>
         <span role="columnheader">Person</span>
         <span role="columnheader">Problem</span>
@@ -83,23 +70,25 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
       {rows.map((r) => {
         if (r.status === "skipped") {
           return (
-            <div role="row" key={r.row} style={crStyle({ background: "var(--sheet-sunk)" })}>
-              <span role="cell" className="mono" style={{ color: "var(--muted)" }}>
+            <div role="row" key={r.row} className="gov-cr skipped">
+              <span role="cell" className="rg">
                 {r.row}
               </span>
               <span role="cell">
-                <b style={{ fontWeight: 600, color: "var(--ink-2)" }}>{r.name}</b>
-                <small style={smallText}>{r.email}</small>
+                <b style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-2)" }}>
+                  {r.name}
+                </b>
+                <small>{r.email}</small>
               </span>
               <span role="cell" style={{ color: "var(--ink-2)", fontWeight: 600 }}>
                 Already a member
               </span>
-              <span role="cell" style={{ color: "var(--muted)" }}>
-                Skipped
+              <span role="cell">
+                <span className="gov-chip quiet">Skipped</span>
               </span>
-              <span role="cell" style={{ color: "var(--ink-2)" }}>
-                Member <span className="mono">012</span>. His role and teams
-                stay as they are.
+              <span role="cell" style={{ color: "var(--ink-2)", lineHeight: 1.45 }}>
+                Member <span className="mono">012</span>. His role and teams stay
+                as they are.
               </span>
             </div>
           );
@@ -111,15 +100,25 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
         const choice = choices[r.row] ?? options[0]!;
         const result = resultFor(r, choice);
         return (
-          <div role="row" key={r.row} style={crStyle()}>
-            <span role="cell" className="mono" style={{ color: "var(--muted)" }}>
+          <div role="row" key={r.row} className="gov-cr">
+            <span role="cell" className="rg">
               {r.row}
             </span>
             <span role="cell">
-              <b style={{ fontWeight: 600 }}>{r.name}</b>
-              <small style={smallText}>{r.email}</small>
+              <b style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</b>
+              <small>{r.email}</small>
             </span>
-            <span role="cell" style={{ color: "var(--deny)", fontWeight: 600 }}>
+            <span
+              role="cell"
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                color: "var(--deny)",
+                fontWeight: 600,
+              }}
+            >
+              <WarnIcon />
               {isPersonal ? "Personal email" : r.issue}
             </span>
             <span role="cell">
@@ -129,7 +128,6 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
               <select
                 id={`f${r.row}`}
                 className="in"
-                style={{ height: 34, width: "100%", fontSize: 13 }}
                 value={choice}
                 onChange={(e) =>
                   setChoices((c) => ({ ...c, [r.row]: e.target.value }))
@@ -142,7 +140,10 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
             </span>
             <span
               role="cell"
-              style={{ color: result.resolved ? "var(--ink-2)" : "var(--muted)" }}
+              style={{
+                color: result.resolved ? "var(--ink-2)" : "var(--muted)",
+                lineHeight: 1.45,
+              }}
             >
               {result.text}
             </span>

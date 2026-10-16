@@ -8,8 +8,7 @@ import {
   getSeats,
   importCounts,
 } from "@/lib/api";
-import { FocusedShell } from "@/components/Shell";
-import { WizardSteps } from "@/components/WizardSteps";
+import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
 import { DecisionRows } from "./DecisionRows";
 
@@ -40,168 +39,216 @@ export default function CsvImportPage() {
   const breakdownRows = [...breakdown.entries()].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
   );
+  const maxBreakdown = Math.max(...breakdownRows.map(([, n]) => n), 1);
 
   const mapping = getImportMapping();
   const extraSeats = counts.seatsNeeded - seats.total;
 
   return (
-    <FocusedShell
-      flowName="Import members"
-      cancelLabel="Cancel and go back to invitations"
-      cancelHref="/app/invitations"
-    >
-      <WizardSteps
-        steps={[
-          { n: "1", name: "Upload", summary: getImportFileName(), state: "done" },
-          { n: "2", name: "Check", summary: `${total} rows read`, state: "current" },
-          { n: "3", name: "Send", summary: "", state: "todo" },
-        ]}
-      />
+    <AppShell current="invitations">
+      <div className="gov-crumb-row">
+        <span>Import members</span>
+        <Link href="/app/invitations">Cancel and go back to invitations</Link>
+      </div>
 
-      <main
-        style={{
-          flex: "999 1 600px",
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h1 className="title">
-            {counts.ready} ready, {counts.fix} to fix, {counts.skipped} skipped
-          </h1>
-          <p className="lead">
-            Nothing is sent yet. Fix the {counts.fix} rows below or leave them
-            out; the {counts.ready} ready rows go out together when you send.
-          </p>
+      <nav aria-label="Steps" className="card gov-steps">
+        <div className="stp done">
+          <span className="sr-only">Step 1</span>
+          <span className="n" aria-hidden="true">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 8.5l3 3 7-7" />
+            </svg>
+          </span>
+          <span className="stp-text">
+            <b>Upload</b>
+            <br />
+            <span className="stp-file">{getImportFileName()}</span>
+          </span>
         </div>
+        <div className="stp current" aria-current="step">
+          <span className="n">2</span>
+          <span className="stp-text">
+            <b>Check</b>
+            <br />
+            <span className="stp-sub">{total} rows read</span>
+          </span>
+        </div>
+        <div className="stp todo">
+          <span className="n">3</span>
+          <span className="stp-text">Send</span>
+        </div>
+      </nav>
 
-        <section className="sheet" aria-labelledby="fx" style={{ overflow: "hidden" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: 8,
-              padding: "16px 24px 12px",
-            }}
-          >
-            <h2 id="fx" className="section">
-              Needs a decision
-            </h2>
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>
-              {decisionRows.length} of {total} rows
-            </span>
-          </div>
-          <div className="rows-scroll">
-            <DecisionRows rows={decisionRows} />
-          </div>
-        </section>
-
-        <section className="sheet" aria-labelledby="rd" style={{ padding: "16px 24px 12px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              gap: 8,
-              paddingBottom: 6,
-            }}
-          >
-            <h2 id="rd" className="section">
-              Ready · {counts.ready}
-            </h2>
-            <a href="#" style={{ fontSize: 13 }}>
-              See all {counts.ready}
-            </a>
-          </div>
-          {breakdownRows.map(([label, n]) => (
-            <div className="ll" key={label}>
-              <span>{label}</span>
-              <i />
-              <span className="mono">{n}</span>
-            </div>
-          ))}
-        </section>
-      </main>
-
-      <aside
+      <div
         style={{
-          flex: "1 1 300px",
-          maxWidth: 340,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          flex: "999 1 820px",
+          minWidth: 0,
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) 340px",
+          gap: 20,
+          alignItems: "start",
         }}
+        className="gov-inv-cols"
       >
-        <section className="sheet panel-box flush" aria-labelledby="mp">
-          <h2 id="mp" className="panel">
-            How your columns were read
-          </h2>
-          <div>
-            {mapping.map((m) => (
-              <div
-                key={m.from}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0,1fr) 20px minmax(0,1fr)",
-                  gap: 10,
-                  alignItems: "center",
-                  padding: "8px 0",
-                  fontSize: 13,
-                  borderTop: "1px solid var(--rule)",
-                }}
+        <main
+          style={{
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "8px 0 2px",
+            }}
+          >
+            <h1 className="gov-title">
+              {counts.ready} ready, {counts.fix} to fix, {counts.skipped} skipped
+            </h1>
+            <p className="gov-lede">
+              Nothing is sent yet. Fix the {counts.fix} rows below or leave them
+              out; the {counts.ready} ready rows go out together when you send.
+            </p>
+          </div>
+
+          <section className="card" aria-labelledby="fx" style={{ overflow: "hidden" }}>
+            <div className="gov-sheet-head" style={{ padding: "18px 22px" }}>
+              <h2 id="fx">Needs a decision</h2>
+              <span
+                className="spacer"
+                style={{ fontSize: 12.5, color: "var(--muted)" }}
               >
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {m.from}
+                {decisionRows.length} of {total} rows
+              </span>
+            </div>
+            <div className="rows-scroll">
+              <DecisionRows rows={decisionRows} />
+            </div>
+          </section>
+
+          <section
+            className="card"
+            aria-labelledby="rd"
+            style={{ padding: "18px 22px 10px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                gap: 8,
+                paddingBottom: 8,
+              }}
+            >
+              <h2
+                id="rd"
+                style={{ margin: 0, font: "700 17px/1.2 var(--font-sans)" }}
+              >
+                Ready · {counts.ready}
+              </h2>
+              <a href="#" style={{ fontSize: 13, fontWeight: 600 }}>
+                See all {counts.ready}
+              </a>
+            </div>
+            {breakdownRows.map(([label, n]) => (
+              <div className="gov-ready-row" key={label}>
+                <span>{label}</span>
+                <span className="track" aria-hidden="true">
+                  <i style={{ width: `${(n / maxBreakdown) * 100}%` }} />
                 </span>
-                <span aria-hidden="true">→</span>
-                <span style={m.to === "Not used" ? { color: "var(--muted)" } : undefined}>
-                  {m.to}
-                </span>
+                <span className="n">{n}</span>
               </div>
             ))}
-          </div>
-        </section>
+          </section>
+        </main>
 
-        <section
-          className="sheet panel-box"
-          aria-labelledby="se"
-          style={{ fontSize: 13, lineHeight: 1.5 }}
-        >
-          <h2 id="se" className="panel">
-            Seats
-          </h2>
-          <span style={{ color: "var(--ink-2)" }}>
-            {seats.used} seats are used and {seats.held} are held by open
-            invitations. Sending these {counts.ready} would need{" "}
-            <b style={{ fontWeight: 600, color: "var(--ink)" }}>
-              {counts.seatsNeeded} of your {seats.total}
-            </b>
-            .
-          </span>
-          <span style={{ color: "var(--ink-2)" }}>
-            {extraSeats} seats are added only when people accept, at $
-            {org.plan.pricePerSeat} a month each, prorated to {org.plan.renews}.
-          </span>
-          <Link href="/app/settings/billing">Plan and billing</Link>
-        </section>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <ButtonLink size="h40" href="/app/invitations">
-            Back
-          </ButtonLink>
-          <ButtonLink
-            size="h40"
-            variant="pri"
-            href="/app/invitations"
-            style={{ flex: 1 }}
+        <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <section
+            className="card"
+            aria-labelledby="mp"
+            style={{ padding: "18px 18px 8px" }}
           >
-            Send {counts.ready} invitations
-          </ButtonLink>
-        </div>
-      </aside>
-    </FocusedShell>
+            <h2
+              id="mp"
+              style={{
+                margin: "0 0 8px",
+                font: "700 15px/1.3 var(--font-sans)",
+              }}
+            >
+              How your columns were read
+            </h2>
+            <div>
+              {mapping.map((m) => (
+                <div className="gov-mp" key={m.from}>
+                  <span className="gov-rno">{m.from}</span>
+                  <span aria-hidden="true" style={{ color: "var(--muted)" }}>
+                    →
+                  </span>
+                  <span
+                    style={m.to === "Not used" ? { color: "var(--muted)" } : undefined}
+                  >
+                    {m.to}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className="dpanel"
+            aria-labelledby="se"
+            style={{ fontSize: 13, lineHeight: 1.5, gap: 12 }}
+          >
+            <h2 id="se">Seats</h2>
+            <span style={{ color: "var(--panel-muted)" }}>
+              {seats.used} seats are used and {seats.held} are held by open
+              invitations. Sending these {counts.ready} would need{" "}
+              <b style={{ fontWeight: 600, color: "var(--panel-deny)" }}>
+                {counts.seatsNeeded} of your {seats.total}
+              </b>
+              .
+            </span>
+            <div className="dchg" style={{ color: "#c9d0da" }}>
+              {extraSeats} seats are added only when people accept, at $
+              {org.plan.pricePerSeat} a month each, prorated to {org.plan.renews}.
+            </div>
+            <Link
+              href="/app/settings/billing"
+              style={{ fontWeight: 600, color: "var(--panel-allow)" }}
+            >
+              Plan and billing
+            </Link>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1.8fr",
+                gap: 8,
+                paddingTop: 4,
+              }}
+            >
+              <ButtonLink size="h40" variant="on-dark" href="/app/invitations">
+                Back
+              </ButtonLink>
+              <ButtonLink size="h40" variant="white" href="/app/invitations">
+                Send {counts.ready} invitations
+              </ButtonLink>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </AppShell>
   );
 }
