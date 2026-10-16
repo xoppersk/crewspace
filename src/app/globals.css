@@ -1,5 +1,14 @@
-/* Crewspace — tokens copied exactly from design-system/tokens.css,
-   shared styles translated from the approved screens (token values only). */
+@import "../styles/structure.css";
+@import "../styles/people.css";
+@import "../styles/governance.css";
+@import "../styles/foundation.css";
+@import "../styles/system.css";
+
+/* Crewspace Premium v2 — tokens copied exactly from
+   design-system/tokens.css (which already carries the §13 premium
+   radius + shadow values). Screen-literal extension values follow in
+   their own block: tints and panel shades the final screens draw but
+   the token sheet does not name. */
 :root {
   --ground: #f2f3f5;
   --sheet: #ffffff;
@@ -33,10 +42,13 @@
   --space-6: 24px;
   --space-7: 28px;
   --radius-s: 4px;
-  --radius-m: 6px;
-  --radius-l: 8px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --radius-strip: 2px;
   --deny-width: 1.5px;
   --step-current: 2px;
+  --shadow-ring: 0 0 0 1px #d5d9df, 0 1px 2px rgba(22, 27, 34, 0.04);
+  --shadow-panel: 0 24px 50px -24px rgba(22, 27, 34, 0.6);
 }
 [data-theme="dark"] {
   --ground: #0f1216;
@@ -61,6 +73,37 @@
   --deny-line: #5a2a26;
   --scrim: rgba(0, 0, 0, 0.55);
   --ink-bar: #05070a;
+}
+
+/* Screen-literal values (final screens draw these; the token sheet
+   does not name them). Light values are the screens' own hexes. */
+:root {
+  --seal-tint: #e8edf8;
+  --seal-hatch: #8ea2d6;
+  --deny-tint: #f8e7e5;
+  --row-tint-allow: #f6f8fd;
+  --row-tint-deny: #fdf7f6;
+  --strip-off: #e2e6ec;
+  --panel-card: #222936;
+  --panel-muted: #aeb6c2;
+  --panel-faint: #8a93a0;
+  --panel-allow: #9fb4ec;
+  --panel-deny: #f0a79e;
+  --panel-line: #3a424d;
+}
+[data-theme="dark"] {
+  --seal-tint: #1b2232;
+  --seal-hatch: #5b6fa8;
+  --deny-tint: #5a2a26;
+  --row-tint-allow: #1b2232;
+  --row-tint-deny: #2a1d1b;
+  --strip-off: #2a3039;
+  --panel-card: #1c2128;
+  --panel-muted: #9aa3ae;
+  --panel-faint: #9aa3ae;
+  --panel-allow: #b4c4f5;
+  --panel-deny: #f08b80;
+  --panel-line: #343b45;
 }
 
 /* next/font wiring: the loaded families register under the variables the
@@ -117,46 +160,68 @@ a:hover { color: var(--seal-deep); }
 .btn.pri:hover { background: var(--seal-deep); border-color: var(--seal-deep); color: var(--on-seal); }
 .btn.dest { background: var(--sheet); border-color: var(--deny); color: var(--deny); }
 .btn.dest:hover { border-color: var(--deny); color: var(--deny); }
-.btn.on-dark { background: transparent; color: #fff; border-color: var(--muted); }
+.btn.on-dark { background: transparent; color: #fff; border-color: var(--panel-line); }
 .btn.on-dark:hover { border-color: #fff; color: #fff; }
 .btn.white { background: #fff; border-color: #fff; color: var(--ink-bar); }
+.btn.white:hover { color: var(--ink-bar); }
 .btn.h40 { height: 40px; }
 .btn.h44 { height: 44px; padding: 0 18px; font-size: 14px; }
 .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
 .btn[disabled]:hover { border-color: var(--control); }
 
-/* ------------------------------------------------ app shell */
+/* ------------------------------------------------ avatars */
+.av {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 11px/1 var(--font-sans); background: var(--fill); color: var(--ink);
+  border: 2px solid var(--sheet); flex: none;
+}
+.av.ink { background: var(--ink-bar); color: #fff; border: 0; }
+.av-stack { display: flex; }
+.av-stack .av + .av { margin-left: -9px; }
+.monogram {
+  width: 32px; height: 32px; border-radius: var(--radius-m); flex: none;
+  background: var(--ink-bar); color: #fff; display: grid; place-items: center;
+  font: 800 13px/1 var(--font-sans);
+}
+
+/* ------------------------------------------------ app shell (rail) */
 .shell { display: flex; flex-wrap: wrap; align-items: flex-start; min-height: 100vh; }
 .sidenav {
-  flex: 1 0 220px; max-width: 248px; padding: 20px 16px;
+  flex: 1 0 230px; max-width: 244px; padding: 20px 14px; align-self: stretch;
   display: flex; flex-direction: column; gap: 22px;
 }
-.sidenav .org { display: flex; flex-direction: column; gap: 3px; padding: 0 10px; }
-.sidenav .org b { font: 700 16px/1.2 var(--font-sans); }
+.sidenav .org { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.sidenav .org .org-text { display: flex; flex-direction: column; gap: 3px; }
+.sidenav .org b { font: 700 15px/1.1 var(--font-sans); }
 .sidenav .org span { font-size: 12px; color: var(--muted); }
-.sidenav .who {
-  border-top: 1px solid var(--frame); padding: 14px 10px 0;
-  display: flex; flex-direction: column; gap: 2px; font-size: 13px;
-}
-.sidenav .who span { color: var(--muted); }
+.navlist { display: flex; flex-direction: column; gap: 2px; }
 .nv {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 10px;
   height: 34px; padding: 0 10px; border-radius: var(--radius-m);
   color: var(--ink-2); text-decoration: none; font-size: 14px;
 }
+.nv svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .nv:hover { background: var(--fill); color: var(--ink); }
-.nv span { font: 500 12px/1 var(--font-mono); color: var(--muted); }
+.nv .ct { margin-left: auto; font: 500 12px/1 var(--font-mono); color: var(--muted); }
 .nv[aria-current="page"] {
   background: var(--sheet); color: var(--ink); font-weight: 600;
-  box-shadow: 0 0 0 1px var(--frame);
+  box-shadow: var(--shadow-ring);
 }
-.navlist { display: flex; flex-direction: column; gap: 2px; }
+.nv[aria-current="page"] svg { color: var(--seal); }
+.sidenav .who {
+  margin-top: auto; padding: 14px 8px 0; border-top: 1px solid var(--frame);
+  display: flex; gap: 10px; align-items: center; font-size: 13px; line-height: 1.35;
+}
+.sidenav .who .who-text b { font-weight: 600; display: block; }
+.sidenav .who .who-text span { color: var(--muted); }
+.sidenav .who .who-text .mono { font-size: 12px; }
+a.who { text-decoration: none; color: inherit; }
 .main-col {
-  flex: 999 1 760px; min-width: 0; padding: 20px 28px 48px 8px;
+  flex: 999 1 820px; min-width: 0; padding: 20px 28px 48px 6px;
   display: flex; flex-direction: column; gap: 16px;
 }
-.crumb { font-size: 13px; color: var(--muted); }
-.crumb a { color: var(--muted); }
+.crumb { font-size: 13px; color: var(--muted); padding-top: 6px; }
+.crumb .sep { margin: 0 6px; }
 .page-head {
   display: flex; flex-wrap: wrap; justify-content: space-between;
   align-items: flex-end; gap: 14px;
@@ -164,9 +229,11 @@ a:hover { color: var(--seal-deep); }
 .page-head .stack { display: flex; flex-direction: column; gap: 6px; }
 .head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-.sheet {
-  background: var(--sheet); border: 1px solid var(--frame);
-  border-radius: var(--radius-l);
+
+/* Sheets are cards now (§13): ring shadow instead of a border. */
+.sheet, .card {
+  background: var(--sheet); border: 0;
+  border-radius: var(--radius-l); box-shadow: var(--shadow-ring);
 }
 .main-sheet { flex: 999 1 620px; min-width: 0; }
 .side-col {
@@ -177,62 +244,100 @@ a:hover { color: var(--seal-deep); }
 .panel-box.flush { padding: 18px 20px 10px; }
 .sheet-head {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline;
-  gap: 8px; padding: 14px 24px; border-top: 1px solid var(--frame);
+  gap: 8px; padding: 16px 22px; border-top: 1px solid var(--rule-strong);
 }
 .sheet-head:first-child { border-top: 0; }
 .rows-scroll { overflow-x: auto; }
 
 /* ------------------------------------------------ permission register */
-.gh {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  padding: 18px 24px 8px; border-top: 1px solid var(--rule-strong);
+.grp {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 22px; background: var(--sheet-sunk);
+  border-top: 1px solid var(--rule-strong);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-2);
 }
-.gh h3 { margin: 0; font: 600 13px/1.2 var(--font-sans); color: var(--ink); }
-.gh span { font-size: 12px; color: var(--muted); }
+.grp .cnt {
+  display: flex; gap: 10px; align-items: center;
+  text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted);
+}
+.mini { display: flex; gap: 3px; }
+.mini i { width: 10px; height: 16px; border-radius: var(--radius-strip); background: var(--strip-off); display: block; }
+.mini i.on { background: var(--seal); }
 .pr {
-  display: grid; grid-template-columns: minmax(0, 1fr) 232px 150px; gap: 20px;
-  align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
+  display: grid; grid-template-columns: minmax(0, 1fr) 206px 160px; gap: 18px;
+  align-items: center; padding: 14px 22px; border-top: 1px solid var(--rule);
 }
 .pr b { display: block; font-weight: 600; font-size: 14px; color: var(--ink); }
-.pr small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.pr small { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
 .pr.head { padding-top: 8px; padding-bottom: 8px; border-top: 1px solid var(--rule-strong); font-size: 12px; color: var(--muted); }
+.pr.chg-allow { background: var(--row-tint-allow); box-shadow: inset 3px 0 0 var(--seal); }
+.pr.chg-deny { background: var(--row-tint-deny); box-shadow: inset 3px 0 0 var(--deny); }
+.chg {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  height: 22px; padding: 0 8px; border-radius: var(--radius-s);
+  background: var(--seal-tint); color: var(--seal);
+  font-size: 11.5px; font-weight: 600;
+}
+.chg.deny { background: var(--deny-tint); color: var(--deny); }
+.chg s { font-weight: 500; }
 .seg {
-  display: inline-grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%; border: 1px solid var(--frame); border-radius: var(--radius-m);
-  padding: 2px; gap: 2px; background: var(--sheet);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%; border: 0; border-radius: var(--radius-m);
+  padding: 3px; gap: 2px; background: var(--rule);
 }
 .seg button {
-  height: 30px; border: 0; border-radius: var(--radius-s); background: transparent;
-  color: var(--muted); font: 500 13px/1 var(--font-sans); cursor: pointer;
+  height: 28px; border: 0; border-radius: var(--radius-m); background: transparent;
+  color: var(--muted); font: 600 12.5px/1 var(--font-sans); cursor: pointer;
 }
-.seg button:hover { background: var(--ground); color: var(--ink); }
-.seg .a { background: var(--seal); color: var(--on-seal); font-weight: 600; }
-.seg .a:hover { background: var(--seal); color: var(--on-seal); }
-.seg .d {
-  background: var(--sheet); color: var(--deny); font-weight: 600;
-  box-shadow: inset 0 0 0 var(--deny-width) var(--deny);
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] {
+  background: var(--sheet); color: var(--ink);
+  box-shadow: 0 1px 2px rgba(22, 27, 34, 0.12), 0 0 0 1px var(--frame);
 }
-.seg .d:hover { background: var(--sheet); color: var(--deny); }
-.seg .i { background: var(--fill); color: var(--ink); font-weight: 600; }
-.seg .i:hover { background: var(--fill); }
+.seg button.a[aria-pressed="true"] { background: var(--seal); color: var(--on-seal); box-shadow: none; }
+.seg button.d[aria-pressed="true"] {
+  background: var(--sheet); color: var(--deny);
+  box-shadow: 0 0 0 1px var(--deny-line);
+}
 .seg button[disabled] { cursor: not-allowed; opacity: 0.6; }
-.ef { font-size: 13px; color: var(--ink); }
-.ef.bl { color: var(--muted); }
-.ef em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 2px; }
-.chg { background: var(--sheet-tint); }
-.was { display: inline-block; margin-top: 5px; font-size: 12px; color: var(--seal); font-weight: 600; }
-.was s { color: var(--muted); font-weight: 400; }
+.res { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.res small { margin: 0; font-weight: 400; display: block; font-size: 12px; color: var(--muted); }
+.res.bl { color: var(--ink-2); }
+.res.dn { color: var(--deny); }
+.dot {
+  width: 22px; height: 22px; border-radius: var(--radius-m);
+  display: grid; place-items: center; flex: none;
+  background: var(--rule); color: var(--muted);
+}
+.dot svg { width: 12px; height: 12px; }
+.dot.ok { background: var(--seal-tint); color: var(--seal); }
+.dot.dn { background: var(--deny-tint); color: var(--deny); }
 .owner-only { font-size: 13px; color: var(--muted); padding-left: 4px; }
 
-/* ------------------------------------------------ strips, tags, rows */
+/* ------------------------------------------------ strips */
 .strip { display: block; }
 .strip .cells { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 2px; }
-.strip .cells i {
-  height: 14px; border-radius: 2px; background: var(--fill);
-  display: block;
-}
+.strip .cells i { height: 14px; border-radius: var(--radius-strip); background: var(--strip-off); display: block; }
 .strip .cells i.on { background: var(--seal); }
 .strip .n { display: block; margin-top: 5px; font-size: 12px; color: var(--muted); }
+.strip-full { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 2px; width: 100%; }
+.strip-full i { display: block; height: 14px; border-radius: var(--radius-strip); background: var(--strip-off); }
+.strip-full i.on { background: var(--seal); }
+/* The role header card strip (R-04): tall cells, pending states ringed. */
+.strip-big { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 4px; width: 100%; }
+.strip-big i { display: block; height: 26px; border-radius: var(--radius-s); background: var(--strip-off); }
+.strip-big i.on { background: var(--seal); }
+.strip-big i.pend-allow {
+  background: repeating-linear-gradient(135deg, var(--seal) 0 3px, var(--seal-hatch) 3px 6px);
+  box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--seal);
+}
+.strip-big i.pend-deny {
+  background: var(--strip-off);
+  box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--deny);
+}
+
+/* ------------------------------------------------ tags, rows, lists */
 .ro {
   display: inline-flex; align-items: center; height: 24px; padding: 0 8px;
   border-radius: var(--radius-s); border: 1px solid var(--frame);
@@ -260,7 +365,7 @@ a.mr:hover { background: var(--sheet-sunk); color: var(--ink); }
 .newmark { font-size: 12px; color: var(--seal); font-weight: 600; }
 .mem {
   display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px;
-  align-items: baseline; padding: 9px 0; border-top: 1px solid var(--rule); font-size: 13px;
+  align-items: center; padding: 9px 0; border-top: 1px solid var(--rule); font-size: 13px;
 }
 .kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 12px; font-size: 13px; line-height: 1.5; }
 .kv.wide { grid-template-columns: 130px minmax(0, 1fr); gap: 8px 14px; font-size: 14px; }
@@ -307,7 +412,7 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
 .field-row .flabel span { font-size: 12px; color: var(--muted); line-height: 1.45; }
 .field-row.changed { background: var(--sheet-tint); }
 
-/* ------------------------------------------------ review bar, drawer, banner */
+/* ------------------------------------------------ review bar + dark panel */
 .reviewbar {
   position: sticky; bottom: 0; z-index: 5;
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
@@ -315,6 +420,31 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
   border-radius: 0 0 var(--radius-l) var(--radius-l); font-size: 14px;
 }
 .reviewbar .sub { color: var(--control); }
+/* The dark sticky review panel (§13 signature): holds the most
+   important summary/action on role and review surfaces. */
+.dpanel {
+  border-radius: var(--radius-l); background: var(--ink-bar); color: #fff;
+  padding: 20px; box-shadow: var(--shadow-panel);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.dpanel h2 { margin: 0; font: 700 18px/1.2 var(--font-sans); }
+.dpanel .sub { margin: 4px 0 0; font-size: 13px; color: var(--panel-muted); }
+.dchg { padding: 12px; border-radius: var(--radius-l); background: var(--panel-card); }
+.dchg .dchg-head { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.dchg .dchg-head .mono { font-size: 11.5px; color: var(--panel-muted); }
+.dchg .fromto { margin-top: 6px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.dchg .fromto s, .dchg .fromto .arr { color: var(--panel-faint); }
+.dchg .fromto b.allow { color: var(--panel-allow); }
+.dchg .fromto b.deny { color: var(--panel-deny); }
+.dchg p { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--panel-muted); }
+.dpanel dl {
+  margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px; font-size: 12.5px;
+}
+.dpanel dt { color: var(--panel-faint); }
+.dpanel dd { margin: 0; }
+
+/* ------------------------------------------------ drawer, banner */
 .scrim {
   position: fixed; inset: 0; background: var(--scrim); z-index: 40;
   display: flex; justify-content: flex-end;
@@ -322,8 +452,13 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
 .drawer {
   background: var(--sheet); width: 100%; max-width: 480px; height: 100%;
   overflow-y: auto; display: flex; flex-direction: column;
+  box-shadow: var(--shadow-panel);
+  border-radius: var(--radius-l) 0 0 var(--radius-l);
   transition: transform 150ms ease;
 }
+.ds { padding: 16px 24px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 10px; }
+.ds h3 { margin: 0; font: 600 13px/1.2 var(--font-sans); color: var(--muted); }
+.ds .kv { grid-template-columns: 110px minmax(0, 1fr); gap: 6px 12px; margin: 0; }
 .banner {
   background: var(--ink-bar); color: #fff; padding: 10px 28px;
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
@@ -340,8 +475,22 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
 /* ------------------------------------------------ focused flows */
 .topbar {
   background: var(--sheet); border-bottom: 1px solid var(--frame);
-  padding: 14px 28px; display: flex; flex-wrap: wrap; gap: 10px;
+  padding: 18px 28px; display: flex; flex-wrap: wrap; gap: 10px;
   justify-content: space-between; align-items: center;
+}
+.topbar .brand { display: flex; gap: 12px; align-items: center; }
+.topbar .brand b { font: 700 15px/1.2 var(--font-sans); }
+/* Flow name = the screens' white chip (Onboarding.html .chip): sheet
+   fill, ring, radius-m, seal dot; text Public Sans 600 as drawn. */
+.topbar .brand .flow {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px;
+  padding: 0 10px; border-radius: var(--radius-m); background: var(--sheet);
+  box-shadow: var(--shadow-ring); font: 600 12px/1 var(--font-sans);
+  color: var(--ink-2); white-space: nowrap;
+}
+.topbar .brand .flow i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--seal); flex: none;
 }
 .focused-wrap { max-width: 1240px; margin: 0 auto; padding: 28px; display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
 .focused-wrap .btn { font-size: 14px; }
@@ -359,11 +508,50 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
 /* ------------------------------------------------ state notice */
 .notice-wrap { max-width: 640px; margin: 0 auto; padding: 48px 24px; }
 .notice {
-  background: var(--sheet); border: 1px solid var(--frame); border-radius: var(--radius-l);
+  background: var(--sheet); border: 0; border-radius: var(--radius-l);
+  box-shadow: var(--shadow-ring);
   padding: 28px; display: flex; flex-direction: column; gap: 14px;
 }
 .notice .stamp { font: 500 12px/1 var(--font-mono); color: var(--muted); }
 .notice .facts { background: var(--sheet-sunk); border-radius: var(--radius-m); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5; }
+
+/* ------------------------------------------------ shared bits */
+.can { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; font-size: 13px; line-height: 1.45; }
+.tint-note { margin: 0; padding: 10px 12px; background: var(--sheet-tint); border-radius: var(--radius-m); font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.tint-note b { font-weight: 600; color: var(--ink); }
+.legend-box { margin: 0; padding: 10px 12px; background: var(--ground); border-radius: var(--radius-m); font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.legend-box b { font-weight: 600; color: var(--ink); }
+.legend-box b.deny { color: var(--deny); }
+.tmr {
+  display: grid; grid-template-columns: 52px minmax(0, 1.4fr) 150px minmax(0, 1fr) 90px 40px;
+  gap: 16px; align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
+  font-size: 14px; color: var(--ink);
+}
+.tmr small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tmr.head { padding-top: 8px; padding-bottom: 8px; font-size: 12px; color: var(--muted); border-top-color: var(--rule-strong); }
+.omr {
+  display: grid; grid-template-columns: 52px minmax(0, 1.5fr) 150px minmax(0, 1fr) 110px;
+  gap: 16px; align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
+  font-size: 14px; color: var(--ink);
+}
+.omr.head {
+  padding-top: 10px; padding-bottom: 10px; font-size: 12px;
+  font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-2); border-top: 0;
+}
+.frag-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 210px 120px;
+  gap: 16px; align-items: center; padding: 11px 20px;
+  border-top: 1px solid var(--rule); font-size: 13px;
+}
+.spec-list {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px 24px; font-size: 15px; line-height: 1.55;
+}
+.pf-row {
+  display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px 20px;
+  align-items: center; padding: 12px 24px; border-top: 1px solid var(--rule);
+}
 
 /* ------------------------------------------------ public pages */
 .pub { background: var(--sheet); color: var(--ink); min-height: 100vh; }
@@ -386,351 +574,49 @@ textarea.in { height: auto; padding: 10px 12px; line-height: 1.5; }
   justify-content: center;
   padding: 40px 40px 64px;
 }
-.auth-form { flex: 1 1 380px; max-width: 440px; display: flex; flex-direction: column; gap: 16px; }
+.auth-form { flex: 1 1 380px; max-width: 440px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .auth-side { flex: 1 1 300px; max-width: 420px; }
 
-/* ------------------------------------------------ responsive */
+/* ------------------------------------------------ responsive foundation
+   (fluid per §6: no horizontal page scroll at 375px; tables live in
+   .rows-scroll wrappers; the drawer goes full width. Screen-specific
+   phone rules live in the src/styles/<area>.css files.) */
 @media (max-width: 760px) {
   .display { font-size: 44px; }
   .public-h2 { font-size: 30px; }
   .public-title { font-size: 28px; }
-  .sidenav { flex: 1 1 100%; max-width: none; }
-  .main-col { padding: 16px 16px 40px; }
-  .pr { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .mr { grid-template-columns: 40px minmax(0, 1fr) 100px; }
-  /* Inside a scroll table the scroller does the work: rows keep their
-     designed columns at phone widths instead of collapsing. */
-  .rows-scroll .mr { grid-template-columns: 52px minmax(0, 1.5fr) 150px minmax(0, 1fr) 110px 110px; }
-  .rows-scroll .tmr { grid-template-columns: 52px minmax(0, 1.4fr) 150px minmax(0, 1fr) 90px 40px; }
-  .field-row { grid-template-columns: minmax(0, 1fr); }
-  .steps { flex: 1 1 100%; }
-  .focused-wrap { padding: 18px 16px; }
-  .pub-wrap { padding: 0 18px; }
-  .auth-grid { padding: 26px 18px 18px; }
-  .drawer { max-width: none; }
-}
-
-/* ------------------------------------------------ drawer sections + full strip */
-.ds { padding: 16px 24px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 10px; }
-.ds h3 { margin: 0; font: 600 13px/1.2 var(--font-sans); color: var(--muted); }
-.ds .kv { grid-template-columns: 110px minmax(0, 1fr); gap: 6px 12px; margin: 0; }
-.strip-full { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 2px; width: 100%; }
-.strip-full i { display: block; height: 14px; border-radius: 2px; background: var(--fill); }
-.strip-full i.on { background: var(--seal); }
-.can { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; font-size: 13px; line-height: 1.45; }
-.tint-note { margin: 0; padding: 10px 12px; background: var(--sheet-tint); border-radius: var(--radius-m); font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-.tint-note b { font-weight: 600; color: var(--ink); }
-.legend-box { margin: 0; padding: 10px 12px; background: var(--ground); border-radius: var(--radius-m); font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-.legend-box b { font-weight: 600; color: var(--ink); }
-.legend-box b.deny { color: var(--deny); }
-
-/* ------------------------------------------------ team member rows */
-.tmr {
-  display: grid; grid-template-columns: 52px minmax(0, 1.4fr) 150px minmax(0, 1fr) 90px 40px;
-  gap: 16px; align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
-  font-size: 14px; color: var(--ink);
-}
-.tmr small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
-.tmr.head { padding-top: 8px; padding-bottom: 8px; font-size: 12px; color: var(--muted); border-top-color: var(--rule-strong); }
-@media (max-width: 760px) { .tmr { grid-template-columns: 40px minmax(0, 1fr) 110px; } }
-
-/* ------------------------------------------------ offline directory rows (X-06) */
-/* SysReconnect.html: the register window is a 5-column row (no Last
-   active column); roles are plain text, people are names only. */
-.omr {
-  display: grid; grid-template-columns: 52px minmax(0, 1.5fr) 150px minmax(0, 1fr) 110px;
-  gap: 16px; align-items: center; padding: 11px 24px; border-top: 1px solid var(--rule);
-  font-size: 14px; color: var(--ink);
-}
-.omr.head { padding-top: 10px; padding-bottom: 10px; font-size: 12px; color: var(--muted); border-top: 0; }
-
-/* ------------------------------------------------ marketing fragment rows */
-/* Desktop metrics are the Marketing screen's own (moved here from
-   inline styles so the phone stack below can apply). */
-.frag-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) 210px 120px;
-  gap: 16px; align-items: center; padding: 11px 20px;
-  border-top: 1px solid var(--rule); font-size: 13px;
-}
-
-/* Marketing "by the numbers" definition list (same treatment: desktop
-   metrics are the screen's own; phones stack term above description). */
-.spec-list {
-  display: grid; grid-template-columns: 200px minmax(0, 1fr);
-  gap: 16px 24px; font-size: 15px; line-height: 1.55;
-}
-
-/* ------------------------------------------------ profile form rows (P-05) */
-/* Desktop metrics match Profile.html's form rows (moved here from
-   inline styles so the phone stack below can apply). */
-.pf-row {
-  display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px 20px;
-  align-items: center; padding: 12px 24px; border-top: 1px solid var(--rule);
-}
-
-/* Phone stacks for the class-based rows above — kept after their base
-   rules so the cascade applies them (equal specificity, later wins). */
-@media (max-width: 760px) {
-  .frag-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .pf-row { grid-template-columns: minmax(0, 1fr); }
-  .spec-list { grid-template-columns: minmax(0, 1fr); gap: 6px 24px; }
-  .spec-list dt { margin-top: 10px; }
-  .spec-list dt:first-child { margin-top: 0; }
-  /* Long button labels (e.g. "Accept with <email>") wrap on phones
-     instead of forcing the form wider than the screen. */
-  .auth-form .btn { white-space: normal; }
-}
-
-/* ------------------------------------------------ mobile fix pass
-   (visual audit 2026-10-12: desktop-width tables were clipped inside
-   their cards at phone widths — the last column sliced with no cue.
-   Everything below is phone-only; desktop layouts are untouched.
-   Scroll-table shells lose their designed min-width floors and each
-   register re-stacks instead of scrolling sideways.) */
-@media (max-width: 760px) {
-  /* App navigation: a compact horizontal chip list + one-line user
-     block, instead of the full desktop sidebar stacked above the
-     content on every screen. */
-  .sidenav { gap: 12px; padding: 14px 16px 12px; }
+  .sidenav { flex: 1 1 100%; max-width: none; gap: 12px; padding: 14px 16px 12px; }
   .sidenav .org { padding: 0; }
   .navlist { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .nv { height: 30px; padding: 0 9px; gap: 8px; }
-  .sidenav .who {
-    flex-direction: row; flex-wrap: wrap; align-items: baseline;
-    gap: 2px 8px; padding: 9px 2px 0;
-  }
-
-  /* The min-width floors on scroll tables (inline styles) come off;
-     the registers below re-stack at card width. */
-  .rows-scroll > [role="table"] { min-width: 0 !important; }
-  [aria-label="Audit entries"] { min-width: 0 !important; }
-  [aria-label="Effective permissions"] { min-width: 0 !important; }
-
-  /* Member rows — Directory, offline Directory, team members, demos:
-     number + person + role on the first line, remaining cells flow
-     underneath. Full role chips, status reachable, nothing sliced. */
+  .nv { height: 30px; padding: 0 9px; }
+  .nv .ct { margin-left: 2px; }
+  .sidenav .who { margin-top: 0; padding: 10px 2px 0; }
+  .main-col { padding: 16px 16px 40px; }
+  .cols .side-col { flex: 1 1 100%; max-width: none; }
+  .pr { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .pr.head { display: none; }
   .mr, .omr, .tmr {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
   }
   .mr > [role="cell"]:nth-child(2),
   .omr > [role="cell"]:nth-child(2),
   .tmr > [role="cell"]:nth-child(2) { flex: 1 1 150px; min-width: 0; }
-
-  /* Permission register (role detail): the stacked rows get the full
-     card width; the Permission / Setting / Result label row describes
-     columns that no longer exist — hide it. */
-  .pr.head { display: none; }
-
-  /* Member record — "What X can do, and why": permission + result on
-     one line, the "Comes from" text full width beneath. */
-  [aria-label="Effective permissions"] [role="row"] {
-    grid-template-columns: minmax(0, 1fr) auto !important;
-  }
-  [aria-label="Effective permissions"] [role="cell"]:nth-child(3) {
-    grid-column: 1 / -1;
-  }
-  [aria-label="Effective permissions"] > [role="row"]:first-child {
-    display: none !important;
-  }
-
-  /* Roles register: name + summary full width, type / members / last
-     change on one line, the 18-cell strip full width under it. */
-  [aria-label="Roles"] [role="row"] {
-    grid-template-columns: auto auto minmax(0, 1fr) !important;
-    align-items: center !important;
-  }
-  [aria-label="Roles"] [role="cell"]:nth-child(1) {
-    grid-column: 1 / -1; grid-row: 1;
-  }
-  [aria-label="Roles"] [role="cell"]:nth-child(2) { grid-row: 2; }
-  [aria-label="Roles"] [role="cell"]:nth-child(3) { grid-row: 2; }
-  [aria-label="Roles"] [role="cell"]:nth-child(4) {
-    grid-column: 1 / -1; grid-row: 3;
-  }
-  [aria-label="Roles"] [role="cell"]:nth-child(5) {
-    grid-row: 2; justify-self: end;
-  }
-  [aria-label="Roles"] > [role="row"]:first-child { display: none !important; }
-
-  /* Teams register: team + count, lead, the role-mix bar with its
-     caption, then last change — everything the footer describes is
-     on the page again. */
-  [aria-label="Teams"] [role="row"] {
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: start !important;
-  }
-  [aria-label="Teams"] [role="cell"]:nth-child(1) { grid-row: 1; }
-  [aria-label="Teams"] [role="cell"]:nth-child(3) { grid-row: 1; }
-  [aria-label="Teams"] [role="cell"]:nth-child(2) {
-    grid-column: 1 / -1; grid-row: 2;
-  }
-  [aria-label="Teams"] [role="cell"]:nth-child(4) {
-    grid-column: 1 / -1; grid-row: 3;
-  }
-  [aria-label="Teams"] [role="cell"]:nth-child(5) {
-    grid-column: 1 / -1; grid-row: 4;
-  }
-  [aria-label="Teams"] > [role="row"]:first-child { display: none !important; }
-
-  /* Invitations register: invited + role chip, then team, status and
-     actions full width — the chip no longer sits on the email. */
-  [aria-label$="invitations"] [role="row"] {
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: start !important;
-  }
-  [aria-label$="invitations"] [role="cell"]:nth-child(1) {
-    grid-column: 1; grid-row: 1;
-  }
-  [aria-label$="invitations"] [role="cell"]:nth-child(2) {
-    grid-column: 2; grid-row: 1;
-  }
-  [aria-label$="invitations"] [role="cell"]:nth-child(3) {
-    grid-column: 1 / -1; grid-row: 2;
-  }
-  [aria-label$="invitations"] [role="cell"]:nth-child(4) {
-    grid-column: 1 / -1; grid-row: 3;
-  }
-  [aria-label$="invitations"] [role="cell"]:nth-child(5) {
-    grid-column: 1 / -1; grid-row: 4;
-  }
-  [aria-label$="invitations"] > [role="row"]:first-child { display: none !important; }
-
-  /* CSV import decisions: row number + person, then problem, fix
-     select and result stacked in the wide column — problem text wraps
-     in full instead of clipping. */
-  [aria-label="Rows that need a decision"] [role="row"] {
-    grid-template-columns: 36px minmax(0, 1fr) !important;
-    align-items: start !important;
-  }
-  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(3),
-  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(4),
-  [aria-label="Rows that need a decision"] [role="cell"]:nth-child(5) {
-    grid-column: 2;
-  }
-  [aria-label="Rows that need a decision"] > [role="row"]:first-child {
-    display: none !important;
-  }
-
-  /* Role wizard diff: permission + the from → to chips on one line
-     (the NEW value is the point of the diff — never clipped), the
-     meaning full width beneath. */
-  [aria-label*="Changes from"] [role="row"] {
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: start !important;
-  }
-  [aria-label*="Changes from"] [role="cell"]:nth-child(3) {
-    grid-column: 1 / -1;
-  }
-  [aria-label*="Changes from"] > [role="row"]:first-child { display: none !important; }
-
-  /* Onboarding invite rows: email full width with the remove button,
-     role and team selects paired beneath — no sliced chevrons. */
-  [aria-label="Invitations to send"] [role="row"] {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px !important;
-  }
-  [aria-label="Invitations to send"] [role="cell"]:nth-child(1) {
-    grid-column: 1 / 3; grid-row: 1;
-  }
-  [aria-label="Invitations to send"] [role="cell"]:nth-child(2) {
-    grid-row: 2;
-  }
-  [aria-label="Invitations to send"] [role="cell"]:nth-child(3) {
-    grid-row: 2;
-  }
-  [aria-label="Invitations to send"] [role="cell"]:nth-child(4) {
-    grid-column: 3; grid-row: 1;
-  }
-  [aria-label="Invitations to send"] > [role="row"]:first-child {
-    display: none !important;
-  }
-
-  /* Billing invoices: all four columns fit the card — amounts are
-     never ambiguous. */
-  [aria-label="Invoices"] [role="row"] {
-    grid-template-columns: auto minmax(0, 1fr) auto auto !important;
-  }
-
-  /* Audit log: entry sentences wrap inside the card; the actor moves
-     under the sentence; the expanded detail keeps its Before / After
-     columns at a narrower label width. */
-  [aria-label="Audit entries"] [role="listitem"] > button {
-    grid-template-columns: 52px minmax(0, 1fr) 24px !important;
-  }
-  [aria-label="Audit entries"] [role="listitem"] > button > span:nth-child(3) {
-    grid-column: 2; grid-row: 2;
-  }
-  [aria-label="Audit entries"] [role="listitem"] > button > span:nth-child(4) {
-    grid-column: 3; grid-row: 1;
-  }
-  [aria-label="Audit entries"] [role="listitem"] > div {
-    padding: 0 24px 16px !important;
-  }
-  [aria-label="Audit entries"] [role="listitem"] dl {
-    grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr) !important;
-  }
-
-  /* Overview "Needs an owner": the action button goes under the text
-     instead of squeezing it into half the card. */
-  section[aria-labelledby="no"] > div + div {
-    grid-template-columns: minmax(0, 1fr) !important;
-    justify-items: start;
-  }
-
-  /* Settings: the transfer-ownership card stacks (select full width,
-     steps beneath); the "Change in Roles" link never breaks
-     mid-phrase; denied-state facts get a narrower label column. */
-  section[aria-labelledby="h4s"] > div:nth-of-type(2) {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-  section[aria-labelledby="h3s"] a[href="/app/roles"] {
-    white-space: nowrap;
-  }
-  .kv.wide { grid-template-columns: 96px minmax(0, 1fr); }
-
-  /* Role wizard name / register-number sheet stacks, so the register
-     number never breaks mid-token. (Other focused flows' first sheets
-     are not grids — the rule is inert there.) */
-  .focused-wrap main > section:first-of-type {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-  /* The description field spans 2 on desktop; left alone it forces an
-     implicit second column track and defeats the stack above. */
-  .focused-wrap main > section:first-of-type > * {
-    grid-column: auto !important;
-  }
-
-  /* Sign-in helper: "Start a register" stays on one line. */
-  .auth-form a[href="/signup"] { white-space: nowrap; }
-
-  /* Member drawer: the granted-permissions list goes single column —
-     no uneven two-column pairing. */
+  .field-row { grid-template-columns: minmax(0, 1fr); }
+  .steps { flex: 1 1 100%; max-width: none; }
+  .focused-wrap { padding: 18px 16px; }
+  .pub-wrap { padding: 0 18px; }
+  /* Tables whose rows stack at this width (permission register,
+     governance and invoice rows) must size to the sheet, not to their
+     desktop min-width, or the stacked rows stay off-canvas. */
+  .tbl-stack { min-width: 0 !important; }
+  .auth-grid { padding: 26px 18px 18px; gap: 32px; }
+  .auth-head { padding: 18px; }
+  .drawer { max-width: none; border-radius: 0; }
   .can { grid-template-columns: minmax(0, 1fr); }
-
-  /* Landing footer: brand spans the top; the three link columns sit
-     in an even two-column grid instead of wrapping raggedly. */
-  footer.pub-wrap {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 28px 24px;
-  }
-  footer.pub-wrap > div:first-child { grid-column: 1 / -1; }
-
-  /* Filter bars: search spans the full width; selects pair up evenly;
-     status chips keep their counts on the label's line. */
-  .dir-filters input.in { flex: 1 1 100%; width: auto !important; }
-  .dir-filters [role="group"] { flex-wrap: wrap; }
-  .dir-filters .fl { white-space: nowrap; }
-  .dir-filters select.in { flex: 1 1 calc(50% - 4px); min-width: 0; }
-  .audit-filters { flex: 1 1 100%; }
-  .audit-filters form { flex: 1 1 100%; }
-  .audit-filters form .in { width: 100% !important; }
-  .audit-filters select.in { flex: 1 1 calc(50% - 4px); min-width: 0; }
-  .team-search input.in { flex: 1 1 100%; width: auto !important; }
-
-  /* Component demos: the strip demo's cells get a definite width to
-     resolve against, and its count aligns to the right edge. */
-  section[aria-label="PermissionStrip"] .strip {
-    flex: 1 1 auto; min-width: 0;
-  }
-  section[aria-label="PermissionStrip"] .strip .n { text-align: right; }
+  .frag-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pf-row { grid-template-columns: minmax(0, 1fr); }
+  .spec-list { grid-template-columns: minmax(0, 1fr); gap: 6px 24px; }
+  .banner { padding: 10px 16px; }
+  .topbar { padding: 12px 16px; }
+  .auth-form .btn { white-space: normal; }
 }

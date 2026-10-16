@@ -1,108 +1,36 @@
 import Link from "next/link";
 import {
   deactivateScopeCount,
+  getOrg,
   getRole,
   roleMemberCount,
 } from "@/lib/api";
 import { ButtonLink } from "@/components/Button";
+import { GoogleMark } from "@/components/GoogleButton";
+import { PermissionStrip } from "@/components/PermissionStrip";
+import { PublicHeader } from "@/components/Shell";
+import {
+  IconCheck,
+  IconDocument,
+  IconLock,
+  IconShieldCheck,
+  IconTeams,
+} from "@/components/icons";
 
 /**
- * F-01 — Marketing. Public page, always light.
- * NOTE: the header is composed here from the shared public classes,
- * exactly as the screen shows it (How it works · Security · Pricing ·
- * Docs / Sign in / Start your register). The shared PublicHeader
- * marketing variant renders the same header.
+ * F-01 — Marketing. Public page, always light; the v2 page sits on the
+ * grey ground with white cards and dark panels. All copy and geometry
+ * from Marketing.html; counts derive from the fixtures.
  */
 export default function MarketingPage() {
+  const org = getOrg();
   const role = getRole("product-admin")!;
   const members = roleMemberCount(role.id);
   const scope = deactivateScopeCount();
 
-  /* The hero fragment is drawn statically, at the Marketing screen's
-   * own metrics and with that screen's own permission wording — it is
-   * not the interactive app PermissionRow. Row metrics live in the
-   * .frag-row class (globals.css) so phones can stack the cells. */
-  const fragName = {
-    display: "block",
-    fontSize: 14,
-    fontWeight: 600,
-  } as const;
-  const fragSmall = {
-    display: "block",
-    fontSize: 12,
-    color: "var(--muted)",
-    marginTop: 2,
-  } as const;
-  const fragSeg = {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    border: "1px solid var(--frame)",
-    borderRadius: 6,
-    padding: 2,
-    gap: 2,
-  } as const;
-  const fragSegSpan = {
-    height: 28,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-    color: "var(--muted)",
-    fontSize: 12,
-  } as const;
-  const fragSegA = {
-    ...fragSegSpan,
-    background: "var(--seal)",
-    color: "var(--on-seal)",
-    fontWeight: 600,
-  } as const;
-  const fragSegD = {
-    ...fragSegSpan,
-    color: "var(--deny)",
-    fontWeight: 600,
-    boxShadow: "inset 0 0 0 1.5px var(--deny)",
-  } as const;
-
   return (
-    <div className="pub">
-      <header
-        className="pub-head pub-wrap"
-        style={{ maxWidth: 1200, paddingTop: 20, paddingBottom: 20 }}
-      >
-        <Link href="/" className="wordmark">
-          Crewspace
-        </Link>
-        <nav
-          aria-label="Main"
-          className="pub-nav"
-          style={{ gap: 28, fontSize: 15 }}
-        >
-          <Link href="#how">How it works</Link>
-          <Link href="#">Security</Link>
-          <Link href="#">Pricing</Link>
-          <Link href="#">Docs</Link>
-        </nav>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Link
-            href="/signin"
-            style={{
-              color: "var(--ink-2)",
-              textDecoration: "none",
-              fontSize: 15,
-            }}
-          >
-            Sign in
-          </Link>
-          <ButtonLink
-            variant="pri"
-            size="h40"
-            href="/signup"
-            style={{ fontSize: 15 }}
-          >
-            Start your register
-          </ButtonLink>
-        </div>
-      </header>
+    <div className="pub fpub">
+      <PublicHeader variant="marketing" />
 
       {/* Hero + live product fragment */}
       <section
@@ -112,8 +40,8 @@ export default function MarketingPage() {
           flexWrap: "wrap",
           gap: 56,
           alignItems: "center",
-          paddingTop: 56,
-          paddingBottom: 72,
+          paddingTop: 60,
+          paddingBottom: 88,
         }}
       >
         <div
@@ -121,7 +49,7 @@ export default function MarketingPage() {
             flex: "1 1 440px",
             display: "flex",
             flexDirection: "column",
-            gap: 22,
+            gap: 24,
           }}
         >
           <h1 className="display">Access everyone can explain.</h1>
@@ -151,7 +79,18 @@ export default function MarketingPage() {
               See how a change happens
             </ButtonLink>
           </div>
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--muted)",
+            }}
+          >
+            <span className="g14">
+              <GoogleMark />
+            </span>
             Sign in with Google. Invite people from a list or a CSV.
           </span>
         </div>
@@ -159,115 +98,167 @@ export default function MarketingPage() {
         <figure
           aria-label="Product fragment: three permissions on the Product admin role"
           style={{
-            flex: "1 1 520px",
+            flex: "1 1 560px",
             margin: 0,
-            background: "var(--ground)",
-            borderRadius: 12,
-            padding: 28,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <div
-            className="sheet"
-            style={{ overflow: "hidden" }}
-            role="table"
-            aria-label="Product admin permissions"
+            className="sheet fm-frag"
+            style={{
+              overflow: "hidden",
+              boxShadow:
+                "0 0 0 1px var(--frame), 0 30px 60px -30px rgba(22,27,34,.35)",
+            }}
           >
             <div
               style={{
-                padding: "16px 20px",
+                padding: "20px 22px 18px",
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 10,
+                flexDirection: "column",
+                gap: 16,
               }}
             >
-              <b style={{ fontSize: 17 }}>{role.name}</b>
-              <span className="register">
-                {role.regNumber} · {members} members
-              </span>
-            </div>
-            <div className="frag-row">
-              <span>
-                <b style={fragName}>Invite members</b>
-                <small style={fragSmall}>
-                  Can invite people and pick their first role.
-                </small>
-              </span>
-              <span style={fragSeg}>
-                <span style={fragSegA}>Allow</span>
-                <span style={fragSegSpan}>Deny</span>
-                <span style={fragSegSpan}>Inherit</span>
-              </span>
-              <span>Allowed</span>
-            </div>
-            {/* The pending change: Deny → Allow. The name cell carries
-              * only the "Changed" line, as the Marketing screen draws it. */}
-            <div
-              className="frag-row"
-              style={{ background: "var(--sheet-tint)" }}
-            >
-              <span>
-                <b style={fragName}>Deactivate members</b>
-                <small
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <span
+                  style={{ display: "flex", alignItems: "center", gap: 12 }}
+                >
+                  <span className="fm-tile" aria-hidden="true">
+                    <IconShieldCheck />
+                  </span>
+                  <b
+                    style={{
+                      font: "800 20px/1.1 var(--font-sans)",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {role.name}
+                  </b>
+                </span>
+                <span
+                  className="mono"
                   style={{
-                    ...fragSmall,
-                    color: "var(--seal)",
-                    fontWeight: 600,
+                    height: 24,
+                    padding: "0 8px",
+                    borderRadius: "var(--radius-s)",
+                    background: "var(--rule)",
+                    fontSize: 12,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    color: "var(--ink-2)",
                   }}
                 >
-                  Changed · was Deny
-                </small>
-              </span>
-              <span style={fragSeg}>
-                <span style={fragSegA}>Allow</span>
-                <span style={fragSegSpan}>Deny</span>
-                <span style={fragSegSpan}>Inherit</span>
-              </span>
+                  {role.regNumber} · {members} members
+                </span>
+              </div>
+              <PermissionStrip
+                role={role}
+                big
+                ariaLabel="Product admin: permissions 1, 3, 4, 7, 9, 10 and 11 allowed; permission 2 changed, waiting for review; permission 8 blocked"
+              />
+            </div>
+
+            <div className="pr">
               <span>
+                <b>Invite members</b>
+                <small>Can invite people and pick their first role.</small>
+              </span>
+              <span className="fseg" aria-hidden="true">
+                <span className="a">Allow</span>
+                <span>Deny</span>
+                <span>Inherit</span>
+              </span>
+              <span className="res">
+                <span className="dot ok">
+                  <IconCheck />
+                </span>
                 Allowed
-                <small style={fragSmall}>{scope} people in scope</small>
               </span>
             </div>
-            <div className="frag-row">
+            <div className="pr chg-allow">
               <span>
-                <b style={fragName}>Export audit records</b>
-                <small style={fragSmall}>
-                  Can download the audit archive.
-                </small>
+                <b>Deactivate members</b>
+                <span className="chg">Changed · was Deny</span>
               </span>
-              <span style={fragSeg}>
-                <span style={fragSegSpan}>Allow</span>
-                <span style={fragSegD}>Deny</span>
-                <span style={fragSegSpan}>Inherit</span>
+              <span className="fseg" aria-hidden="true">
+                <span className="a">Allow</span>
+                <span>Deny</span>
+                <span>Inherit</span>
               </span>
-              <span style={{ color: "var(--muted)" }}>Blocked</span>
+              <span className="res">
+                <span className="dot ok">
+                  <IconCheck />
+                </span>
+                <span>
+                  Allowed
+                  <small>{scope} people in scope</small>
+                </span>
+              </span>
             </div>
-            <div
-              style={{
-                padding: "12px 20px",
-                background: "var(--ink-bar)",
-                color: "var(--on-seal)",
-                fontSize: 13,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="pr" style={{ paddingBottom: 54 }}>
               <span>
-                <b style={{ fontWeight: 600 }}>1 change ready</b> · affects{" "}
-                {members} members
+                <b>Export audit records</b>
+                <small>Can download the audit archive.</small>
               </span>
-              <Link
-                href="/app/roles/product-admin"
-                style={{ color: "var(--on-seal)" }}
-              >
-                Review changes
-              </Link>
+              <span className="fseg" aria-hidden="true">
+                <span>Allow</span>
+                <span className="d">Deny</span>
+                <span>Inherit</span>
+              </span>
+              <span className="res dn">
+                <span className="dot dn">
+                  <IconLock />
+                </span>
+                Blocked
+              </span>
             </div>
           </div>
+
+          {/* The review bar overlaps the fragment card, as drawn. */}
+          <div
+            style={{
+              margin: "-34px 22px 0",
+              position: "relative",
+              borderRadius: "var(--radius-l)",
+              background: "var(--ink-bar)",
+              color: "#fff",
+              padding: "14px 16px 14px 20px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              fontSize: 14,
+              boxShadow: "var(--shadow-panel)",
+            }}
+          >
+            <span>
+              {/* The screen's fragment bar literally reads "1 change
+                  ready" (it illustrates the one change its rows show);
+                  the role's full pending set lives on R-04. */}
+              <b style={{ fontWeight: 700 }}>1 change ready</b>{" "}
+              <span style={{ color: "var(--panel-muted)" }}>
+                · affects {members} members
+              </span>
+            </span>
+            <ButtonLink
+              variant="white"
+              href="/app/roles/product-admin"
+              style={{ height: 34, fontSize: 13 }}
+            >
+              Review changes
+            </ButtonLink>
+          </div>
           <figcaption
-            style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}
+            style={{ marginTop: 16, fontSize: 13, color: "var(--muted)" }}
           >
             Every setting shows what it actually does, and nothing applies
             until someone reviews it.
@@ -276,76 +267,60 @@ export default function MarketingPage() {
       </section>
 
       {/* Principles */}
-      <section
-        className="pub-wrap"
-        style={{
-          paddingBottom: 80,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 32,
-        }}
-      >
-        {[
-          {
-            h: "Every permission says what it does",
-            p: "“Allowed”, “Blocked, from baseline”, “36 people in scope.” No grid of ticks to decode, no guessing what Inherit means today.",
-          },
-          {
-            h: "Roles grant. Teams organize.",
-            p: "Move someone between teams without changing what they can do. Change a role and see exactly who gains or loses what.",
-          },
-          {
-            h: "Nothing changes silently",
-            p: "Changes wait for review, people are told by email, and the audit log keeps the before and after for two years.",
-          },
-        ].map((x) => (
-          <div
-            key={x.h}
-            style={{
-              flex: "1 1 260px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              paddingTop: 18,
-              borderTop: "2px solid var(--ink)",
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                font: "700 19px/1.25 var(--font-sans)",
-              }}
-            >
-              {x.h}
-            </h3>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 15,
-                lineHeight: 1.6,
-                color: "var(--ink-2)",
-              }}
-            >
-              {x.p}
+      <section className="pub-wrap" style={{ paddingBottom: 96 }}>
+        <div className="fm-principles">
+          <div className="sheet fm-pt">
+            <span className="fm-tile" aria-hidden="true">
+              <IconShieldCheck />
+            </span>
+            <h3>Every permission says what it does</h3>
+            <p>
+              “Allowed”, “Blocked, from baseline”, “36 people in scope.” No
+              grid of ticks to decode, no guessing what Inherit means today.
             </p>
           </div>
-        ))}
+          <div className="sheet fm-pt">
+            <span className="fm-tile" aria-hidden="true">
+              <IconTeams />
+            </span>
+            <h3>Roles grant. Teams organize.</h3>
+            <p>
+              Move someone between teams without changing what they can do.
+              Change a role and see exactly who gains or loses what.
+            </p>
+          </div>
+          <div className="sheet fm-pt">
+            <span className="fm-tile" aria-hidden="true">
+              <IconDocument />
+            </span>
+            <h3>Nothing changes silently</h3>
+            <p>
+              Changes wait for review, people are told by email, and the
+              audit log keeps the before and after for two years.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* How a change happens */}
       <section
         id="how"
-        style={{ background: "var(--ground)", padding: "80px 0" }}
+        style={{
+          background: "var(--sheet)",
+          borderTop: "1px solid var(--frame)",
+          borderBottom: "1px solid var(--frame)",
+          padding: "88px 0",
+        }}
       >
         <div
           className="pub-wrap"
-          style={{ display: "flex", flexDirection: "column", gap: 28 }}
+          style={{ display: "flex", flexDirection: "column", gap: 36 }}
         >
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: 10,
+              gap: 12,
               maxWidth: "44em",
             }}
           >
@@ -361,61 +336,38 @@ export default function MarketingPage() {
               One person joining, from invitation to the permanent record.
             </p>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-            {[
-              {
-                n: "01 · Invite",
-                h: "Appointment issued",
-                p: "Maya Jordan, invited as Product admin to the Product team.",
-              },
-              {
-                n: "02 · Accept",
-                h: "Identity verified",
-                p: "She signs in with the exact work address the invitation named.",
-              },
-              {
-                n: "03 · Assign",
-                h: "Access active",
-                p: "Product admin applies to Member 042. She can see why, in plain words.",
-              },
-              {
-                n: "04 · Audit",
-                h: "Permanent record",
-                p: "“Product admin applied to Maya Jordan, Member 042.” Can’t be edited.",
-              },
-            ].map((s) => (
-              <div
-                key={s.n}
-                className="sheet"
-                style={{
-                  flex: "1 1 200px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  padding: "18px 20px",
-                }}
-              >
-                <b
-                  className="mono"
-                  style={{
-                    font: "500 12px/1 var(--font-mono)",
-                    color: "var(--seal)",
-                  }}
-                >
-                  {s.n}
-                </b>
-                <span style={{ fontWeight: 600 }}>{s.h}</span>
-                <span
-                  style={{
-                    fontSize: 14,
-                    color: "var(--ink-2)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {s.p}
-                </span>
-              </div>
-            ))}
+          <div className="fm-steps">
+            <div className="sheet fm-step">
+              <b>01 · Invite</b>
+              <span className="t">Appointment issued</span>
+              <span className="p">
+                Maya Jordan, invited as Product admin to the Product team.
+              </span>
+            </div>
+            <div className="sheet fm-step">
+              <b>02 · Accept</b>
+              <span className="t">Identity verified</span>
+              <span className="p">
+                She signs in with the exact work address the invitation
+                named.
+              </span>
+            </div>
+            <div className="sheet fm-step">
+              <b>03 · Assign</b>
+              <span className="t">Access active</span>
+              <span className="p">
+                Product admin applies to Member 042. She can see why, in
+                plain words.
+              </span>
+            </div>
+            <div className="fm-step dark">
+              <b>04 · Audit</b>
+              <span className="t">Permanent record</span>
+              <span className="p">
+                “Product admin applied to Maya Jordan, Member 042.” Can’t be
+                edited.
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -424,8 +376,8 @@ export default function MarketingPage() {
       <section
         className="pub-wrap"
         style={{
-          paddingTop: 80,
-          paddingBottom: 80,
+          paddingTop: 96,
+          paddingBottom: 96,
           display: "flex",
           flexWrap: "wrap",
           gap: 48,
@@ -437,7 +389,7 @@ export default function MarketingPage() {
             flex: "1 1 380px",
             display: "flex",
             flexDirection: "column",
-            gap: 14,
+            gap: 16,
           }}
         >
           <h2 className="public-h2">
@@ -456,44 +408,63 @@ export default function MarketingPage() {
           </p>
         </div>
         <dl
-          className="spec-list"
+          className="sheet"
           style={{
-            flex: "1 1 480px",
+            flex: "1 1 520px",
             margin: 0,
+            overflow: "hidden",
           }}
         >
-          <dt style={{ fontWeight: 700 }}>18 permissions</dt>
-          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
-            in 8 groups, each with a one-sentence description.
-          </dd>
-          <dt style={{ fontWeight: 700 }}>Custom roles</dt>
-          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
-            copied from a safe starting point and reviewed before they exist.
-          </dd>
-          <dt style={{ fontWeight: 700 }}>Drawers, not pop-ups</dt>
-          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
-            open a person without losing your place in the list.
-          </dd>
-          <dt style={{ fontWeight: 700 }}>Plain-language audit</dt>
-          <dd style={{ margin: 0, color: "var(--ink-2)" }}>
-            exportable, filterable, kept for two years.
-          </dd>
+          <div className="fm-dl">
+            <dt>18 permissions</dt>
+            <dd>
+              in 8 groups, each with a one-sentence description.
+              <div style={{ marginTop: 12 }}>
+                <div
+                  className="fgroupstrip light"
+                  role="img"
+                  aria-label="18 permissions in 8 groups"
+                >
+                  {org.groups.map((g) => (
+                    <span
+                      key={g.name}
+                      className="fg"
+                      style={{
+                        gridTemplateColumns: `repeat(${g.permissionIds.length}, minmax(0, 1fr))`,
+                        flex: `${g.permissionIds.length} 1 0`,
+                      }}
+                    >
+                      {g.permissionIds.map((id) => (
+                        <i key={id} />
+                      ))}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </dd>
+          </div>
+          <div className="fm-dl">
+            <dt>Custom roles</dt>
+            <dd>
+              copied from a safe starting point and reviewed before they
+              exist.
+            </dd>
+          </div>
+          <div className="fm-dl">
+            <dt>Drawers, not pop-ups</dt>
+            <dd>open a person without losing your place in the list.</dd>
+          </div>
+          <div className="fm-dl">
+            <dt>Plain-language audit</dt>
+            <dd>exportable, filterable, kept for two years.</dd>
+          </div>
         </dl>
       </section>
 
-      {/* CTA band */}
-      <section className="cta-band" style={{ padding: "72px 0" }}>
-        <div
-          className="pub-wrap"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 24,
-          }}
-        >
-          <h2 className="public-h2" style={{ maxWidth: "16em" }}>
+      {/* CTA card */}
+      <section className="pub-wrap" style={{ paddingBottom: 88 }}>
+        <div className="fm-cta">
+          <h2 className="public-h2" style={{ maxWidth: "15em", color: "#fff" }}>
             Know who can do what, and why, by this afternoon.
           </h2>
           <ButtonLink
@@ -509,73 +480,78 @@ export default function MarketingPage() {
       {/* Full marketing footer */}
       <footer
         className="pub-wrap"
-        style={{
-          paddingTop: 40,
-          paddingBottom: 48,
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          gap: 24,
-          fontSize: 14,
-          color: "var(--muted)",
-        }}
+        style={{ paddingBottom: 52, fontSize: 14, color: "var(--muted)" }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span
-            style={{
-              font: "800 17px/1 var(--font-sans)",
-              color: "var(--ink)",
-            }}
+        <div
+          style={{
+            paddingTop: 40,
+            borderTop: "1px solid var(--frame)",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            gap: 24,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <span className="fm-word">
+              <span className="shieldmark s28" aria-hidden="true">
+                <IconShieldCheck />
+              </span>
+              <span
+                className="fm-name"
+                style={{ fontSize: 17, color: "var(--ink)" }}
+              >
+                Crewspace
+              </span>
+            </span>
+            <span>© 2026 [Company]</span>
+          </div>
+          <nav
+            aria-label="Product"
+            style={{ display: "flex", flexDirection: "column", gap: 9 }}
           >
-            Crewspace
-          </span>
-          <span>© 2026 [Company]</span>
+            <b style={{ color: "var(--ink)", fontWeight: 600 }}>Product</b>
+            <Link href="#how" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              How it works
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Pricing
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Changelog
+            </Link>
+          </nav>
+          <nav
+            aria-label="Trust"
+            style={{ display: "flex", flexDirection: "column", gap: 9 }}
+          >
+            <b style={{ color: "var(--ink)", fontWeight: 600 }}>Trust</b>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Security
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Privacy
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Terms
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Status
+            </Link>
+          </nav>
+          <nav
+            aria-label="Help"
+            style={{ display: "flex", flexDirection: "column", gap: 9 }}
+          >
+            <b style={{ color: "var(--ink)", fontWeight: 600 }}>Help</b>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              Docs
+            </Link>
+            <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              hello@sevynlabs.io
+            </Link>
+          </nav>
         </div>
-        <nav
-          aria-label="Product"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Product</b>
-          <Link href="#how" style={{ color: "var(--ink-2)" }}>
-            How it works
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Pricing
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Changelog
-          </Link>
-        </nav>
-        <nav
-          aria-label="Trust"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Trust</b>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Security
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Privacy
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Terms
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Status
-          </Link>
-        </nav>
-        <nav
-          aria-label="Help"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <b style={{ color: "var(--ink)", fontWeight: 600 }}>Help</b>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            Docs
-          </Link>
-          <Link href="#" style={{ color: "var(--ink-2)" }}>
-            hello@sevynlabs.io
-          </Link>
-        </nav>
       </footer>
     </div>
   );
