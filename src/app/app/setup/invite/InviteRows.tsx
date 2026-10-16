@@ -10,19 +10,24 @@ interface Row {
   team: string;
 }
 
-const rowGrid = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1.6fr) 190px 190px 36px",
-  gap: 12,
-  alignItems: "center",
-  padding: "10px 24px",
-  borderTop: "1px solid var(--rule)",
-} as const;
+/* Screen-literal avatar tints for the three seeded rows (Onboarding.html). */
+const AVATAR_TINTS = ["#dce3f4", "#e9e3d6", "#ddebe2"];
+
+function initialsOfEmail(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  return local
+    .split(".")
+    .map((w) => w[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 /**
  * F-05 invitation rows as one live state: Remove deletes a row,
  * "Add another" appends an editable blank row, and the heading count
- * and Send label both derive from the current rows.
+ * and Send label both derive from the current rows. Roles are limited
+ * to Member or Guest, as the screen draws them.
  */
 export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
   const nextKey = useRef(initialEmails.length);
@@ -47,20 +52,31 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
 
   return (
     <>
-      <section className="sheet" aria-labelledby="iv">
+      <section
+        className="sheet"
+        aria-labelledby="iv"
+        style={{ overflow: "hidden" }}
+      >
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "baseline",
             gap: 8,
-            padding: "16px 24px 10px",
+            padding: "18px 22px",
           }}
         >
-          <h2 id="iv" className="section">
+          <h2
+            id="iv"
+            className="section"
+            style={{ fontWeight: 700 }}
+          >
             First invitations · {rows.length}
           </h2>
-          <a href="/app/invitations/import" style={{ fontSize: 13 }}>
+          <a
+            href="/app/invitations/import"
+            style={{ fontSize: 13, fontWeight: 600 }}
+          >
             Import a CSV instead
           </a>
         </div>
@@ -70,25 +86,25 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
             aria-label="Invitations to send"
             style={{ minWidth: 640 }}
           >
-            <div
-              role="row"
-              style={{
-                ...rowGrid,
-                paddingTop: 6,
-                paddingBottom: 6,
-                fontSize: 12,
-                color: "var(--muted)",
-                borderTopColor: "var(--rule-strong)",
-              }}
-            >
+            <div role="row" className="fir-head">
               <span role="columnheader">Work email</span>
               <span role="columnheader">Role</span>
               <span role="columnheader">Team</span>
               <span role="columnheader" />
             </div>
             {rows.map((row, i) => (
-              <div role="row" key={row.key} style={rowGrid}>
-                <span role="cell">
+              <div role="row" key={row.key} className="fir">
+                <span role="cell" className="emcell">
+                  <span
+                    className="rav"
+                    aria-hidden="true"
+                    style={{
+                      background:
+                        AVATAR_TINTS[row.key % AVATAR_TINTS.length],
+                    }}
+                  >
+                    {initialsOfEmail(row.email)}
+                  </span>
                   <label htmlFor={`e${i + 1}`} className="sr-only">
                     Email {i + 1}
                   </label>
@@ -97,7 +113,6 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                     className="in"
                     value={row.email}
                     onChange={(e) => update(row.key, { email: e.target.value })}
-                    style={{ width: "100%", height: 38 }}
                   />
                 </span>
                 <span role="cell">
@@ -107,7 +122,6 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                   <select
                     id={`r${i + 1}`}
                     className="in"
-                    style={{ width: "100%", height: 38 }}
                     value={row.role}
                     onChange={(e) => update(row.key, { role: e.target.value })}
                   >
@@ -122,7 +136,6 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                   <select
                     id={`t${i + 1}`}
                     className="in"
-                    style={{ width: "100%", height: 38 }}
                     value={row.team}
                     onChange={(e) => update(row.key, { team: e.target.value })}
                   >
@@ -136,14 +149,24 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                     aria-label={`Remove row ${i + 1}`}
                     onClick={() => remove(row.key)}
                   >
-                    ×
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      aria-hidden="true"
+                    >
+                      <path d="m4 4 8 8M12 4l-8 8" />
+                    </svg>
                   </button>
                 </span>
               </div>
             ))}
             <div
               style={{
-                padding: "10px 24px 16px",
+                padding: "12px 22px 16px",
                 borderTop: "1px solid var(--rule)",
               }}
             >
@@ -152,6 +175,17 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                 style={{ height: 34, fontSize: 13 }}
                 onClick={add}
               >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M8 3v10M3 8h10" />
+                </svg>
                 Add another
               </Button>
             </div>
@@ -168,14 +202,27 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
           gap: 10,
         }}
       >
-        <ButtonLink size="h40" href="/signup">
+        <ButtonLink size="h40" href="/signup" style={{ fontSize: 14 }}>
           Back
         </ButtonLink>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ButtonLink size="h40" href="/app">
+          <ButtonLink
+            size="h40"
+            href="/app"
+            style={{
+              fontSize: 14,
+              borderColor: "transparent",
+              background: "transparent",
+            }}
+          >
             Skip for now
           </ButtonLink>
-          <ButtonLink variant="pri" size="h40" href="/app/roles">
+          <ButtonLink
+            variant="pri"
+            size="h40"
+            href="/app/roles"
+            style={{ fontSize: 14 }}
+          >
             Send {rows.length} invitations
           </ButtonLink>
         </div>
