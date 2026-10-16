@@ -35,28 +35,28 @@
       ]
     },
     {
-      "name": "Teams",
+      "name": "Governance",
       "permissionIds": [
         7,
         8
       ]
     },
     {
-      "name": "Invitations",
+      "name": "Teams",
       "permissionIds": [
         9,
         10
       ]
     },
     {
-      "name": "Security",
+      "name": "Invitations",
       "permissionIds": [
         11,
         12
       ]
     },
     {
-      "name": "Governance",
+      "name": "Security",
       "permissionIds": [
         13,
         14
@@ -116,51 +116,51 @@
     },
     {
       "id": 7,
-      "group": "Teams",
-      "name": "Create teams",
-      "description": "Can start a team and name its lead."
-    },
-    {
-      "id": 8,
-      "group": "Teams",
-      "name": "Manage team membership",
-      "description": "Can add people to teams and remove them."
-    },
-    {
-      "id": 9,
-      "group": "Invitations",
-      "name": "Resend or revoke invitations",
-      "description": "Can resend a pending invitation or cancel its link."
-    },
-    {
-      "id": 10,
-      "group": "Invitations",
-      "name": "Import members from CSV",
-      "description": "Can invite many people at once from a file."
-    },
-    {
-      "id": 11,
-      "group": "Security",
-      "name": "Manage sign-in methods",
-      "description": "Can change passwords, single sign-on and two-step rules for everyone."
-    },
-    {
-      "id": 12,
-      "group": "Security",
-      "name": "Sign members out everywhere",
-      "description": "Can end every active session for a member."
-    },
-    {
-      "id": 13,
       "group": "Governance",
       "name": "Read audit log",
       "description": "Can review access changes, sign-ins and exports."
     },
     {
-      "id": 14,
+      "id": 8,
       "group": "Governance",
       "name": "Export audit records",
       "description": "Can download the organization’s audit archive."
+    },
+    {
+      "id": 9,
+      "group": "Teams",
+      "name": "Create teams",
+      "description": "Can start a team and name its lead."
+    },
+    {
+      "id": 10,
+      "group": "Teams",
+      "name": "Manage team membership",
+      "description": "Can add people to teams and remove them."
+    },
+    {
+      "id": 11,
+      "group": "Invitations",
+      "name": "Resend or revoke invitations",
+      "description": "Can resend a pending invitation or cancel its link."
+    },
+    {
+      "id": 12,
+      "group": "Invitations",
+      "name": "Import members from CSV",
+      "description": "Can invite many people at once from a file."
+    },
+    {
+      "id": 13,
+      "group": "Security",
+      "name": "Manage sign-in methods",
+      "description": "Can change passwords, single sign-on and two-step rules for everyone."
+    },
+    {
+      "id": 14,
+      "group": "Security",
+      "name": "Sign members out everywhere",
+      "description": "Can end every active session for a member."
     },
     {
       "id": 15,
@@ -286,13 +286,13 @@
         "5": "inherit",
         "6": "deny",
         "7": "allow",
-        "8": "allow",
+        "8": "inherit",
         "9": "allow",
-        "10": "inherit",
-        "11": "deny",
-        "12": "deny",
-        "13": "allow",
-        "14": "inherit",
+        "10": "allow",
+        "11": "allow",
+        "12": "inherit",
+        "13": "deny",
+        "14": "deny",
         "15": "inherit",
         "16": "deny",
         "17": "deny",
@@ -305,7 +305,7 @@
           "to": "allow"
         },
         {
-          "permissionId": 14,
+          "permissionId": 8,
           "from": "inherit",
           "to": "deny"
         }
@@ -327,14 +327,14 @@
         "4": "inherit",
         "5": "deny",
         "6": "deny",
-        "7": "deny",
+        "7": "allow",
         "8": "deny",
-        "9": "allow",
-        "10": "inherit",
-        "11": "deny",
-        "12": "allow",
-        "13": "allow",
-        "14": "deny",
+        "9": "deny",
+        "10": "deny",
+        "11": "allow",
+        "12": "inherit",
+        "13": "deny",
+        "14": "allow",
         "15": "deny",
         "16": "deny",
         "17": "deny",
@@ -355,14 +355,14 @@
         "4": "deny",
         "5": "deny",
         "6": "deny",
-        "7": "deny",
+        "7": "allow",
         "8": "deny",
-        "9": "inherit",
-        "10": "inherit",
+        "9": "deny",
+        "10": "deny",
         "11": "inherit",
         "12": "inherit",
-        "13": "allow",
-        "14": "deny",
+        "13": "inherit",
+        "14": "inherit",
         "15": "allow",
         "16": "deny",
         "17": "inherit",
@@ -383,14 +383,14 @@
         "4": "deny",
         "5": "deny",
         "6": "deny",
-        "7": "deny",
+        "7": "inherit",
         "8": "deny",
-        "9": "inherit",
+        "9": "deny",
         "10": "deny",
         "11": "inherit",
-        "12": "inherit",
+        "12": "deny",
         "13": "inherit",
-        "14": "deny",
+        "14": "inherit",
         "15": "allow",
         "16": "deny",
         "17": "inherit",
@@ -411,14 +411,14 @@
         "4": "deny",
         "5": "deny",
         "6": "deny",
-        "7": "deny",
-        "8": "deny",
-        "9": "inherit",
-        "10": "inherit",
+        "7": "allow",
+        "8": "allow",
+        "9": "deny",
+        "10": "deny",
         "11": "inherit",
         "12": "inherit",
-        "13": "allow",
-        "14": "allow",
+        "13": "inherit",
+        "14": "inherit",
         "15": "deny",
         "16": "deny",
         "17": "inherit",
@@ -439,14 +439,14 @@
         "4": "deny",
         "5": "deny",
         "6": "deny",
-        "7": "deny",
+        "7": "allow",
         "8": "deny",
-        "9": "inherit",
-        "10": "inherit",
+        "9": "deny",
+        "10": "deny",
         "11": "inherit",
         "12": "inherit",
-        "13": "allow",
-        "14": "deny",
+        "13": "inherit",
+        "14": "inherit",
         "15": "allow",
         "16": "allow",
         "17": "inherit",
