@@ -4,26 +4,6 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { AuditEntryView } from "./auditView";
 
-const AE_GRID = "64px minmax(0,1fr) 140px 24px";
-
-const rowGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: AE_GRID,
-  gap: 14,
-  alignItems: "baseline",
-  padding: "12px 24px",
-  fontSize: 14,
-  lineHeight: 1.5,
-  width: "100%",
-  boxSizing: "border-box",
-  textAlign: "left",
-  background: "transparent",
-  border: 0,
-  font: "inherit",
-  color: "inherit",
-  cursor: "pointer",
-};
-
 /** Render a summary with the screen's 600-weight names and mono numbers. */
 function RichSummary({ e }: { e: AuditEntryView }) {
   const marks: { text: string; kind: "strong" | "mono"; at: number }[] = [];
@@ -59,16 +39,92 @@ function RichSummary({ e }: { e: AuditEntryView }) {
   return <>{out}</>;
 }
 
-function ActorLabel({ e }: { e: AuditEntryView }) {
+function GearIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="#5E6773"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="2" />
+      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" />
+    </svg>
+  );
+}
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.charAt(0))
+    .join("")
+    .toUpperCase();
+}
+
+/* Avatar tints exactly as the screen draws them for these actors
+   (screen-literal hexes; everyone else takes the token fill). */
+const AVATAR_BG: Record<string, string> = {
+  "001": "#F0DDDA",
+  "011": "#F0DDDA",
+  "017": "#E9E3D6",
+};
+
+function ActorCell({ e }: { e: AuditEntryView }) {
   const label = e.actorLabel ?? e.actorName;
-  if (e.actorLabelDeny) {
-    return (
-      <span style={{ fontSize: 12, color: "var(--deny)", fontWeight: 600 }}>
-        {label}
-      </span>
-    );
-  }
-  return <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>;
+  return (
+    <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {e.actorId === "system" ? (
+        <span
+          className="gov-avr"
+          aria-hidden="true"
+          style={{ background: "var(--rule)" }}
+        >
+          <GearIcon />
+        </span>
+      ) : (
+        <span
+          className="gov-avr"
+          aria-hidden="true"
+          style={{ background: AVATAR_BG[e.actorId] ?? "var(--fill)" }}
+        >
+          {initials(e.actorName)}
+        </span>
+      )}
+      <span className={`k${e.actorLabelDeny ? " deny" : ""}`}>{label}</span>
+    </span>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        color: open ? "var(--seal)" : "#9AA3AE",
+        display: "grid",
+      }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        {open ? (
+          <path d="m3.5 6 4.5 4.5L12.5 6" />
+        ) : (
+          <path d="m6 3.5 4.5 4.5L6 12.5" />
+        )}
+      </svg>
+    </span>
+  );
 }
 
 /** Split a fixture "Inherit (Blocked, from baseline)" value into setting + result. */
@@ -85,58 +141,59 @@ function hasDetail(e: AuditEntryView): boolean {
 function EntryDetail({ e }: { e: AuditEntryView }) {
   const before = splitValue(e.before ?? "");
   const after = splitValue(e.after ?? "");
-  const dt: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "120px minmax(0,1fr) minmax(0,1fr)",
-    gap: "8px 16px",
-    margin: 0,
-    fontSize: 13,
-    lineHeight: 1.5,
-  };
-  const label: React.CSSProperties = { color: "var(--muted)" };
   return (
-    <div
-      style={{
-        padding: "0 24px 16px 102px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
-    >
-      <dl style={dt}>
-        <dt />
-        <dd style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Before</dd>
-        <dd style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>After</dd>
+    <div className="gov-ae-detail">
+      <div className="gov-ae-card">
+        <dl className="gov-dt">
+          <dt />
+          <dd className="colhead">Before</dd>
+          <dd className="colhead">After</dd>
 
-        <dt style={label}>Setting</dt>
-        <dd style={{ margin: 0 }}>
-          <s style={{ color: "var(--muted)" }}>{before.setting}</s>
-        </dd>
-        <dd style={{ margin: 0 }}>
-          <b style={{ fontWeight: 600 }}>{after.setting}</b>
-        </dd>
+          <dt>Setting</dt>
+          <dd>
+            <s style={{ color: "var(--muted)" }}>{before.setting}</s>
+          </dd>
+          <dd>
+            <span className="gov-va">{after.setting}</span>
+          </dd>
 
-        <dt style={label}>Result</dt>
-        <dd style={{ margin: 0 }}>
-          <s style={{ color: "var(--muted)" }}>{before.result}</s>
-        </dd>
-        <dd style={{ margin: 0 }}>
-          <b style={{ fontWeight: 600 }}>{after.result}</b>
-        </dd>
+          <dt>Result</dt>
+          <dd>
+            <s style={{ color: "var(--muted)" }}>{before.result}</s>
+          </dd>
+          <dd>
+            <span className="res" style={{ fontSize: 13 }}>
+              <span className="dot ok">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  aria-hidden="true"
+                >
+                  <path d="m3 8.5 3 3 7-7" />
+                </svg>
+              </span>
+              {after.result}
+            </span>
+          </dd>
 
-        <dt style={label}>Affected</dt>
-        <dd style={{ margin: 0, gridColumn: "span 2" }}>
-          {e.affected?.length} people: {e.affected?.join(", ")}
-        </dd>
+          <dt>Affected</dt>
+          <dd style={{ gridColumn: "span 2" }}>
+            {e.affected?.length} people: {e.affected?.join(", ")}
+          </dd>
 
-        <dt style={label}>From</dt>
-        <dd style={{ margin: 0, gridColumn: "span 2" }}>
-          {e.from} ·{" "}
-          <span className="mono" style={{ fontSize: 12 }}>
-            entry {e.id}
-          </span>
-        </dd>
-      </dl>
+          <dt>From</dt>
+          <dd style={{ gridColumn: "span 2" }}>
+            {e.from} ·{" "}
+            <span className="gov-rno" style={{ height: 20, fontSize: 11.5 }}>
+              entry {e.id}
+            </span>
+          </dd>
+        </dl>
+      </div>
       {e.note ? (
         <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{e.note}</span>
       ) : null}
@@ -167,61 +224,60 @@ export function AuditList({
       {groups.map((g, gi) => (
         <div key={g.day}>
           <div
+            className="grp"
             style={{
-              padding: "10px 24px",
-              borderTop: gi === 0 ? 0 : "1px solid var(--rule-strong)",
-              background: "var(--sheet-sunk)",
-              font: "600 13px/1.2 var(--font-sans)",
-              color: "var(--ink-2)",
+              padding: "10px 22px",
+              ...(gi === 0 ? { borderTop: 0 } : {}),
             }}
           >
             {g.day}
           </div>
           {g.entries.map((e) => {
             const open = openId === e.id;
+            const row = (
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpenId(open ? null : e.id)}
+                className="gov-ae"
+                style={open ? { borderTop: 0 } : undefined}
+              >
+                <span className="t">{e.time}</span>
+                <span>
+                  {e.expanded ? (
+                    <>
+                      <b style={{ fontWeight: 600 }}>You</b> changed{" "}
+                      <Link
+                        href="/app/roles/product-admin"
+                        onClick={(ev) => ev.stopPropagation()}
+                      >
+                        Product admin
+                      </Link>
+                      : Create teams
+                    </>
+                  ) : (
+                    <RichSummary e={e} />
+                  )}
+                </span>
+                <ActorCell e={e} />
+                <Chevron open={open} />
+              </button>
+            );
+            if (open) {
+              return (
+                <div role="listitem" key={e.id} className="gov-ae-open">
+                  {row}
+                  {hasDetail(e) ? <EntryDetail e={e} /> : null}
+                </div>
+              );
+            }
             return (
               <div
                 role="listitem"
                 key={e.id}
-                style={{
-                  borderTop: "1px solid var(--rule)",
-                  ...(open ? { background: "var(--sheet-tint)" } : {}),
-                }}
+                style={{ borderTop: "1px solid var(--rule)" }}
               >
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  onClick={() => setOpenId(open ? null : e.id)}
-                  style={rowGrid}
-                >
-                  <span
-                    className="mono"
-                    style={{ fontSize: 12, color: "var(--muted)" }}
-                  >
-                    {e.time}
-                  </span>
-                  <span>
-                    {e.expanded ? (
-                      <>
-                        <b style={{ fontWeight: 600 }}>You</b> changed{" "}
-                        <Link
-                          href="/app/roles/product-admin"
-                          onClick={(ev) => ev.stopPropagation()}
-                        >
-                          Product admin
-                        </Link>
-                        : Create teams
-                      </>
-                    ) : (
-                      <RichSummary e={e} />
-                    )}
-                  </span>
-                  <ActorLabel e={e} />
-                  <span aria-hidden="true" style={{ color: "var(--muted)" }}>
-                    {open ? "⌄" : "›"}
-                  </span>
-                </button>
-                {open && hasDetail(e) ? <EntryDetail e={e} /> : null}
+                {row}
               </div>
             );
           })}

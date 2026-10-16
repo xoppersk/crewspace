@@ -102,50 +102,88 @@ export default async function AuditPage({
 
   return (
     <AppShell current="audit">
-      <div className="page-head" style={{ paddingTop: 22 }}>
+      <div className="gov-head">
         <div className="stack">
-          <h1 className="title">Audit log</h1>
-          <p className="lead">
+          <h1 className="gov-title">Audit log</h1>
+          <p className="gov-lede" style={{ maxWidth: 680 }}>
             Every change to people, roles, teams, invitations and settings,
             with who did it and what it was before. Entries can’t be edited or
             deleted and are kept for 2 years.
           </p>
         </div>
         <div className="head-actions">
-          <ButtonLink href="#">Export these {totals.accessChanges} entries</ButtonLink>
+          <ButtonLink href="#">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path d="M8 2.5v8M4.8 7.5 8 10.7l3.2-3.2" />
+              <path d="M2.5 12.5h11" />
+            </svg>
+            Export these {totals.accessChanges} entries
+          </ButtonLink>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <Suspense fallback={null}>
-          <AuditFilters q={q} who={who} kind={kind} range={range} />
-        </Suspense>
-        <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--muted)" }}>
-          {totals.accessChanges} access changes · {totals.entries} entries with sign-ins
-        </span>
-      </div>
+      <section className="card" style={{ overflow: "hidden" }}>
+        <div
+          role="search"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+            padding: "14px 22px",
+          }}
+        >
+          <Suspense fallback={null}>
+            <AuditFilters q={q} who={who} kind={kind} range={range} />
+          </Suspense>
+          <span
+            className="mono"
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              color: "var(--muted)",
+            }}
+          >
+            {totals.accessChanges} access changes · {totals.entries} entries
+            with sign-ins
+          </span>
+        </div>
 
-      <section className="sheet" style={{ overflow: "hidden" }}>
         <div className="rows-scroll">
-          <div role="list" aria-label="Audit entries" style={{ minWidth: 680 }}>
+          <div
+            role="list"
+            className="tbl-stack"
+            aria-label="Audit entries"
+            style={{ minWidth: 680, borderTop: "1px solid var(--rule-strong)" }}
+          >
             <AuditList groups={groups} />
             {filtered.length === 0 ? (
-              <p style={{ margin: 0, padding: "16px 24px", fontSize: 13, color: "var(--muted)" }}>
-                No entries match these filters.
-              </p>
-            ) : (
-              <div
+              <p
                 style={{
-                  padding: "12px 24px",
-                  borderTop: "1px solid var(--rule-strong)",
+                  margin: 0,
+                  padding: "16px 22px",
                   fontSize: 13,
                   color: "var(--muted)",
                 }}
               >
+                No entries match these filters.
+              </p>
+            ) : (
+              <div className="gov-audit-foot">
                 {range === "7" ? (
                   <>
                     That’s everything for the last 7 days.{" "}
-                    <Link href="/app/audit?range=30">Show the 30 days before</Link>
+                    <Link href="/app/audit?range=30" style={{ fontWeight: 600 }}>
+                      Show the 30 days before
+                    </Link>
                   </>
                 ) : range === "30" ? (
                   <>That’s everything for the last 30 days.</>

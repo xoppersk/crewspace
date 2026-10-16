@@ -48,11 +48,7 @@ export function AuditFilters({
   const selectStyle: React.CSSProperties = { height: 36 };
 
   return (
-    <div
-      role="search"
-      className="audit-filters"
-      style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}
-    >
+    <>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -63,14 +59,28 @@ export function AuditFilters({
         <label htmlFor="q" className="sr-only">
           Search
         </label>
-        <input
-          id="q"
-          name="q"
-          className="in"
-          placeholder="Person, role or team"
-          style={{ width: 220 }}
-          defaultValue={q}
-        />
+        <span className="gov-search">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="m10.5 10.5 3.5 3.5" />
+          </svg>
+          <input
+            id="q"
+            name="q"
+            className="in"
+            placeholder="Person, role or team"
+            style={{ width: 230 }}
+            defaultValue={q}
+          />
+        </span>
       </form>
 
       <label htmlFor="who" className="sr-only">
@@ -122,6 +132,6 @@ export function AuditFilters({
         <option value="30">Last 30 days</option>
         <option value="quarter">This quarter</option>
       </select>
-    </div>
+    </>
   );
 }
