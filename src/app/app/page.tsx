@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
+import { IconEnvelope, IconShieldCheck } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Crewspace — Overview" };
 
@@ -35,6 +36,59 @@ const ROLE_ORDER = [
   "member",
   "guest",
 ];
+
+/* Roles whose "Who has what" bar the screen draws grey instead of seal. */
+const GREY_BAR_ROLES = new Set(["member", "guest"]);
+
+/* Avatar tints the Overview screen draws for the three invitees
+   (screen-literal; the shared per-person map lives in MemberRow). */
+const INVITEE_TINTS: Record<string, string> = {
+  "inv-priya": "#E9E3D6",
+  "inv-noah": "#DDEBE2",
+  "inv-leah": "#F0DDDA",
+};
+
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function IconKey() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <circle cx="5.5" cy="10.5" r="2.8" />
+      <path d="m7.5 8.5 6-6M11.5 4.5l1.8 1.8" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 4.8V8l2.2 1.6" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M8 3v10M3 8h10" />
+    </svg>
+  );
+}
+
+const NEED_ICONS: Record<string, { cls: string; icon: ReactNode }> = {
+  "role-review": { cls: "is-seal", icon: <IconShieldCheck /> },
+  "leah-invite": { cls: "is-deny", icon: <IconEnvelope /> },
+  "two-step": { cls: "is-pend", icon: <IconKey /> },
+  "priya-expiring": { cls: "is-flat", icon: <IconClock /> },
+};
 
 export default function OverviewPage() {
   const org = getOrg();
@@ -135,16 +189,19 @@ export default function OverviewPage() {
     roleMemberCount("owner") +
     roleMemberCount("product-admin") +
     roleMemberCount("support-lead");
+  const maxRoleCount = Math.max(
+    ...ROLE_ORDER.map((id) => roleMemberCount(id)),
+  );
 
   return (
     <AppShell current="overview">
-      <div className="page-head" style={{ paddingTop: 22 }}>
-        <div className="stack">
+      <div className="page-head" style={{ paddingTop: 26 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 13, color: "var(--muted)" }}>
             {org.today}
           </span>
-          <h1 className="title">Overview</h1>
-          <p className="lead" style={{ maxWidth: "50em" }}>
+          <h1 className="p-title">Overview</h1>
+          <p className="p-lede">
             {getMembers().length} members across {getTeams().length} teams
             and {getRoles().length} roles. {open.length} invitations are
             open, one role has changes waiting for your review, and{" "}
@@ -152,69 +209,41 @@ export default function OverviewPage() {
           </p>
         </div>
         <ButtonLink variant="pri" href="/app/people">
+          <IconPlus />
           Invite member
         </ButtonLink>
       </div>
 
-      <div className="cols">
-        <div
-          style={{
-            flex: "999 1 620px",
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
-          <section className="sheet" aria-labelledby="no">
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 8,
-                padding: "16px 24px 10px",
-              }}
-            >
-              <h2 id="no" className="section">
+      <div className="p-cols">
+        <div className="p-stack">
+          <section className="card" aria-labelledby="no" style={{ overflow: "hidden" }}>
+            <div className="p-ch">
+              <h2 id="no" className="p-h2">
                 Needs an owner
               </h2>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                Most consequential first
-              </span>
+              <span className="p-sub">Most consequential first</span>
             </div>
-            {needs.map((item) => {
+            {needs.map((item, i) => {
               const copy = needsCopy[item.id] ?? {
                 title: item.title,
                 detail: item.detail,
                 action: item.action,
               };
+              const icon = NEED_ICONS[item.id] ?? {
+                cls: "is-flat",
+                icon: <IconClock />,
+              };
               return (
                 <div
                   key={item.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(0, 1fr) auto",
-                    gap: 16,
-                    alignItems: "center",
-                    padding: "14px 24px",
-                    borderTop: "1px solid var(--rule)",
-                  }}
+                  className={i === 0 ? "p-need first" : "p-need"}
                 >
+                  <span className={`p-ico ${icon.cls}`} aria-hidden="true">
+                    {icon.icon}
+                  </span>
                   <span>
-                    <b style={{ fontWeight: 600 }}>{copy.title}</b>
-                    <small
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        color: "var(--ink-2)",
-                        marginTop: 3,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {copy.detail}
-                    </small>
+                    <b>{copy.title}</b>
+                    <small>{copy.detail}</small>
                   </span>
                   <ButtonLink
                     variant={copy.pri ? "pri" : "outline"}
@@ -227,77 +256,77 @@ export default function OverviewPage() {
             })}
           </section>
 
-          <section className="sheet" aria-labelledby="rc">
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 8,
-                padding: "16px 24px 10px",
-              }}
-            >
-              <h2 id="rc" className="section">
+          <section className="card" aria-labelledby="rc">
+            <div className="p-ch tight">
+              <h2 id="rc" className="p-h2">
                 Recent access changes
               </h2>
-              <Link href="/app/audit" style={{ fontSize: 13 }}>
+              <Link href="/app/audit" style={{ fontSize: 13, fontWeight: 600 }}>
                 Open audit log
               </Link>
             </div>
-            {recent.map((row, i) => (
-              <div
-                key={row.day}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "56px minmax(0, 1fr)",
-                  gap: 12,
-                  padding:
-                    i === recent.length - 1
-                      ? "10px 24px 14px"
-                      : "10px 24px",
-                  borderTop: "1px solid var(--rule)",
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                }}
-              >
-                <span
-                  className="mono"
-                  style={{ fontSize: 12, color: "var(--muted)" }}
-                >
-                  {row.day}
-                </span>
-                <span>{row.body}</span>
-              </div>
-            ))}
+            <div
+              style={{
+                padding: "16px 22px 20px",
+                borderTop: "1px solid var(--rule)",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {recent.map((row, i) => {
+                const last = i === recent.length - 1;
+                return (
+                  <div key={row.day} className={last ? "p-tl last" : "p-tl"}>
+                    <span className="when mono">{row.day}</span>
+                    <span className="rail" aria-hidden="true">
+                      <i className={i === 0 ? "dotty" : "dotty grey"} />
+                      {last ? null : <i className="line" />}
+                    </span>
+                    <span className="body">{row.body}</span>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         </div>
 
-        <aside className="side-col">
-          <section className="sheet panel-box" aria-labelledby="hc">
-            <h2 id="hc" className="panel">
+        <aside className="p-aside">
+          <section
+            className="card"
+            aria-labelledby="hc"
+            style={{ padding: "18px 18px 16px" }}
+          >
+            <h2 id="hc" className="p-panel" style={{ marginBottom: 8 }}>
               Who has what
             </h2>
             <div>
               {ROLE_ORDER.map((id) => {
                 const role = getRole(id)!;
+                const count = roleMemberCount(id);
                 return (
-                  <div className="ll" key={id}>
+                  <div className="p-whw" key={id}>
                     {id === "product-admin" ? (
                       <Link href="/app/roles/product-admin">{role.name}</Link>
                     ) : (
                       <span>{role.name}</span>
                     )}
-                    <i />
-                    <span className="mono">{roleMemberCount(id)}</span>
+                    <span className="track" aria-hidden="true">
+                      <i
+                        className={GREY_BAR_ROLES.has(id) ? "grey" : undefined}
+                        style={{
+                          width: `${Math.max(5, Math.round((count / maxRoleCount) * 100))}%`,
+                        }}
+                      />
+                    </span>
+                    <span className="mono n">{count}</span>
                   </div>
                 );
               })}
             </div>
             <p
               style={{
-                margin: 0,
-                paddingTop: 10,
+                margin: "10px 0 0",
+                paddingTop: 12,
                 borderTop: "1px solid var(--rule)",
                 fontSize: 13,
                 lineHeight: 1.5,
@@ -311,18 +340,23 @@ export default function OverviewPage() {
             </p>
           </section>
 
-          <section className="sheet panel-box" aria-labelledby="iv">
+          <section
+            className="card"
+            aria-labelledby="iv"
+            style={{ padding: "18px 18px 8px" }}
+          >
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "baseline",
+                marginBottom: 6,
               }}
             >
-              <h2 id="iv" className="panel">
+              <h2 id="iv" className="p-panel">
                 Open invitations · {open.length}
               </h2>
-              <Link href="/app/invitations" style={{ fontSize: 13 }}>
+              <Link href="/app/invitations" style={{ fontSize: 13, fontWeight: 600 }}>
                 All
               </Link>
             </div>
@@ -330,35 +364,27 @@ export default function OverviewPage() {
               {open.map((inv) => {
                 const role = getRole(inv.roleId)!;
                 return (
-                  <div className="ll" key={inv.id}>
-                    <span>
-                      {inv.name} · {role.name}
-                    </span>
-                    <i />
-                    {inv.status === "bounced" ? (
+                  <div className="p-inv-row" key={inv.id}>
+                    <span className="p-pm">
                       <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "var(--deny)",
-                        }}
+                        className="p-avr sm"
+                        aria-hidden="true"
+                        style={{ background: INVITEE_TINTS[inv.id] ?? "var(--fill)" }}
                       >
-                        didn’t arrive
+                        {initialsOf(inv.name)}
                       </span>
+                      <span>
+                        {inv.name} · {role.name}
+                      </span>
+                    </span>
+                    {inv.status === "bounced" ? (
+                      <span className="p-st is-bad">didn’t arrive</span>
                     ) : inv.openedAt ? (
-                      <span style={{ fontSize: 12, color: "var(--ink-2)" }}>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
                         opened {inv.openedAt}
                       </span>
                     ) : (
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "var(--pending)",
-                        }}
-                      >
-                        expires {inv.expires}
-                      </span>
+                      <span className="p-st is-pe">expires {inv.expires}</span>
                     )}
                   </div>
                 );
