@@ -34,13 +34,13 @@ export function InviteForm({
 
   return (
     <form
-      className="sheet"
+      className="card"
       aria-labelledby="ni"
       style={{
-        padding: "18px 20px",
+        padding: "20px 18px",
         display: "flex",
         flexDirection: "column",
-        gap: 14,
+        gap: 16,
       }}
       onSubmit={(e) => {
         e.preventDefault();
@@ -55,35 +55,44 @@ export function InviteForm({
         setRoleId(roles[0]?.id ?? "member");
       }}
     >
-      <h2 id="ni" className="panel" style={{ margin: 0 }}>
-        Invite someone
-      </h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span className="gov-ico" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
+            <rect x="2" y="3.5" width="12" height="9" rx="1.5" />
+            <path d="m2.5 4.5 5.5 4 5.5-4" />
+          </svg>
+        </span>
+        <h2 id="ni" style={{ margin: 0, font: "700 17px/1.2 var(--font-sans)" }}>
+          Invite someone
+        </h2>
+      </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label htmlFor="em" style={{ fontSize: 13, fontWeight: 600 }}>
-          Work email
-        </label>
+      <div className="gov-f">
+        <label htmlFor="em">Work email</label>
         <input
           id="em"
           name="email"
-          className="in h38"
+          className="in"
           type="email"
           required
           placeholder="name@sevynlabs.io"
-          style={{ width: "100%" }}
         />
-        <span className="caption">Other domains join as Guest.</span>
+        <span className="hint">Other domains join as Guest.</span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label htmlFor="rl" style={{ fontSize: 13, fontWeight: 600 }}>
-          Role
-        </label>
+      <div className="gov-f">
+        <label htmlFor="rl">Role</label>
         <select
           id="rl"
           name="role"
-          className="in h38"
-          style={{ width: "100%" }}
+          className="in"
           value={roleId}
           onChange={(e) => setRoleId(e.target.value)}
         >
@@ -93,17 +102,15 @@ export function InviteForm({
             </option>
           ))}
         </select>
-        <span className="caption">
+        <span className="hint">
           {role ? `${role.name} allows ${role.allows} of 18 permissions. ` : ""}
           <Link href="/app/roles">Compare roles</Link>
         </span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label htmlFor="tm" style={{ fontSize: 13, fontWeight: 600 }}>
-          Team
-        </label>
-        <select id="tm" name="team" className="in h38" style={{ width: "100%" }}>
+      <div className="gov-f">
+        <label htmlFor="tm">Team</label>
+        <select id="tm" name="team" className="in">
           {teams.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
@@ -112,8 +119,8 @@ export function InviteForm({
         </select>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label htmlFor="ms" style={{ fontSize: 13, fontWeight: 600 }}>
+      <div className="gov-f">
+        <label htmlFor="ms">
           Note{" "}
           <span style={{ fontWeight: 400, color: "var(--muted)" }}>optional</span>
         </label>
@@ -121,11 +128,16 @@ export function InviteForm({
           id="ms"
           name="note"
           className="in"
-          style={{ height: 64, padding: "8px 12px", lineHeight: 1.45, resize: "vertical" }}
+          style={{
+            height: 72,
+            padding: "9px 12px",
+            lineHeight: 1.45,
+            resize: "vertical",
+          }}
         />
       </div>
 
-      <Button type="submit" variant="pri">
+      <Button type="submit" variant="pri" size="h40">
         Send invitation
       </Button>
       <span style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)" }}>

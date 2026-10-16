@@ -33,39 +33,14 @@ export interface InvitationView {
    invitation is sent today and expires 7 days later (§10). */
 const RESENT = { sent: "Oct 6", expires: "Oct 13" };
 
-const GRID = "minmax(0,1.4fr) 140px minmax(0,1fr) minmax(0,1.2fr) 150px";
-
-function rowStyle(extra?: React.CSSProperties): React.CSSProperties {
-  return {
-    display: "grid",
-    gridTemplateColumns: GRID,
-    gap: 16,
-    alignItems: "center",
-    padding: "13px 24px",
-    borderTop: "1px solid var(--rule)",
-    fontSize: 14,
-    ...extra,
-  };
-}
-
-const smallBtn: React.CSSProperties = { height: 30, padding: "0 10px", fontSize: 12 };
-
-const smallText: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  color: "var(--muted)",
-  marginTop: 2,
-  lineHeight: 1.4,
-};
-
 function StatusCell({ inv }: { inv: InvitationView }) {
   if (inv.status === "bounced") {
     return (
       <span role="cell">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--deny)" }}>
+        <span className="gov-st bad" style={{ fontSize: 13 }}>
           Didn’t arrive
         </span>
-        <small style={smallText}>
+        <small>
           Mail server says the address doesn’t exist. Maybe “lea.kim”?
         </small>
       </span>
@@ -74,10 +49,10 @@ function StatusCell({ inv }: { inv: InvitationView }) {
   if (inv.status === "open" && inv.openedAt) {
     return (
       <span role="cell">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--pending)" }}>
+        <span className="gov-st pe" style={{ fontSize: 13 }}>
           Opened, not accepted
         </span>
-        <small style={smallText}>
+        <small>
           Opened {inv.openedAt} · expires {inv.expires}
         </small>
       </span>
@@ -86,21 +61,22 @@ function StatusCell({ inv }: { inv: InvitationView }) {
   if (inv.status === "open") {
     return (
       <span role="cell">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)" }}>
+        <span className="gov-st plain" style={{ fontSize: 13 }}>
           Delivered, not opened
         </span>
-        <small style={smallText}>Expires {inv.expires}</small>
+        <small>Expires {inv.expires}</small>
       </span>
     );
   }
   if (inv.status === "accepted") {
     return (
       <span role="cell">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--active)" }}>
+        <span className="gov-st ok" style={{ fontSize: 13 }}>
           Accepted
         </span>
-        <small style={smallText}>
-          {inv.acceptedOn ? `Accepted ${inv.acceptedOn}` : "Accepted"} · sent {inv.sent}
+        <small>
+          {inv.acceptedOn ? `Accepted ${inv.acceptedOn}` : "Accepted"} · sent{" "}
+          {inv.sent}
         </small>
       </span>
     );
@@ -108,10 +84,10 @@ function StatusCell({ inv }: { inv: InvitationView }) {
   if (inv.status === "expired") {
     return (
       <span role="cell">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+        <span className="gov-st off" style={{ fontSize: 13 }}>
           Expired
         </span>
-        <small style={smallText}>
+        <small>
           Expired {inv.expires} · sent {inv.sent}
         </small>
       </span>
@@ -119,10 +95,10 @@ function StatusCell({ inv }: { inv: InvitationView }) {
   }
   return (
     <span role="cell">
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+      <span className="gov-st off" style={{ fontSize: 13 }}>
         Revoked
       </span>
-      <small style={smallText}>Sent {inv.sent} · the link no longer works</small>
+      <small>Sent {inv.sent} · the link no longer works</small>
     </span>
   );
 }
@@ -133,6 +109,8 @@ function StatusCell({ inv }: { inv: InvitationView }) {
  * shows the new sent/expiry), Revoke moves the row to the Revoked tab,
  * Fix address applies the suggested address and clears the bounce, and
  * the invite form adds its invitation straight into the Open tab.
+ * Tab state lives in the URL (?tab=) via history.replaceState so it
+ * survives a reload without a server round-trip.
  */
 export function InvitationsClient({
   initialInvitations,
@@ -146,7 +124,14 @@ export function InvitationsClient({
   teams: InviteTeamOption[];
 }) {
   const [invitations, setInvitations] = useState(initialInvitations);
-  const [tab, setTab] = useState<TabKey>(initialTab);
+  const [tab, setTabState] = useState<TabKey>(initialTab);
+
+  function setTab(next: TabKey) {
+    setTabState(next);
+    const url =
+      next === "open" ? "/app/invitations" : `/app/invitations?tab=${next}`;
+    window.history.replaceState(null, "", url);
+  }
 
   const counts = {
     open: invitations.filter((i) => i.status === "open" || i.status === "bounced").length,
@@ -240,7 +225,7 @@ export function InvitationsClient({
     if (inv.status === "bounced") {
       return (
         <span role="cell" style={wrap}>
-          <Button variant="pri" style={smallBtn} onClick={() => fixAddress(inv)}>
+          <Button variant="pri" className="gov-sm" onClick={() => fixAddress(inv)}>
             Fix address
           </Button>
         </span>
@@ -249,10 +234,10 @@ export function InvitationsClient({
     if (inv.status === "open") {
       return (
         <span role="cell" style={wrap}>
-          <Button style={smallBtn} onClick={() => resend(inv)}>
+          <Button className="gov-sm" onClick={() => resend(inv)}>
             Resend
           </Button>
-          <Button style={smallBtn} onClick={() => revoke(inv)}>
+          <Button className="gov-sm" onClick={() => revoke(inv)}>
             Revoke
           </Button>
         </span>
@@ -261,7 +246,7 @@ export function InvitationsClient({
     if (inv.status === "expired" || inv.status === "revoked") {
       return (
         <span role="cell" style={wrap}>
-          <Button style={smallBtn} onClick={() => inviteAgain(inv)}>
+          <Button className="gov-sm" onClick={() => inviteAgain(inv)}>
             Invite again
           </Button>
         </span>
@@ -271,49 +256,40 @@ export function InvitationsClient({
   }
 
   return (
-    <div className="cols">
-      <section className="sheet main-sheet" style={{ overflow: "hidden" }}>
-        <div
-          role="tablist"
-          aria-label="Invitation status"
-          className="tabs"
-          style={{ padding: "14px 24px", gap: 6 }}
-        >
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              className="tab"
-              onClick={() => setTab(t.key)}
-              style={
-                tab === t.key
-                  ? undefined
-                  : { border: "1px solid var(--frame)", background: "var(--sheet)" }
-              }
-            >
-              {t.label} {t.count}
-            </button>
-          ))}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) 340px",
+        gap: 20,
+        alignItems: "start",
+      }}
+      className="gov-inv-cols"
+    >
+      <section className="card" style={{ minWidth: 0, overflow: "hidden" }}>
+        <div style={{ padding: "14px 22px" }}>
+          <div role="tablist" aria-label="Invitation status" className="gov-seg2">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label} {t.count}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="rows-scroll">
           <div
             role="table"
+            className="tbl-stack"
             aria-label={`${tabs.find((t) => t.key === tab)?.label} invitations`}
             style={{ minWidth: 760 }}
           >
-            <div
-              role="row"
-              style={rowStyle({
-                paddingTop: 8,
-                paddingBottom: 8,
-                fontSize: 12,
-                color: "var(--muted)",
-                borderTop: "1px solid var(--rule-strong)",
-              })}
-            >
+            <div role="row" className="gov-ir head">
               <span role="columnheader">Invited</span>
               <span role="columnheader">Role</span>
               <span role="columnheader">Team · sent by</span>
@@ -323,17 +299,21 @@ export function InvitationsClient({
               </span>
             </div>
             {rows.map((inv) => (
-              <div role="row" style={rowStyle()} key={inv.id}>
-                <span role="cell">
+              <div
+                role="row"
+                className={`gov-ir${inv.status === "bounced" ? " bounced" : ""}`}
+                key={inv.id}
+              >
+                <span role="cell" style={{ minWidth: 0 }}>
                   <b style={{ fontWeight: 600 }}>{inv.name}</b>
-                  <small style={smallText}>{inv.email}</small>
+                  <small>{inv.email}</small>
                 </span>
                 <span role="cell">
                   <span className="ro dashed">{inv.roleName}</span>
                 </span>
                 <span role="cell">
                   {inv.teamName}
-                  <small style={smallText}>
+                  <small>
                     {inv.inviterName} · {inv.sent}
                   </small>
                 </span>
@@ -342,29 +322,28 @@ export function InvitationsClient({
               </div>
             ))}
             {rows.length === 0 ? (
-              <p style={{ margin: 0, padding: "16px 24px", fontSize: 13, color: "var(--muted)" }}>
+              <p
+                style={{
+                  margin: 0,
+                  padding: "16px 22px",
+                  fontSize: 13,
+                  color: "var(--muted)",
+                }}
+              >
                 No invitations in this tab.
               </p>
             ) : null}
           </div>
         </div>
         {tab === "open" ? (
-          <p
-            style={{
-              margin: 0,
-              padding: "12px 24px 14px",
-              borderTop: "1px solid var(--rule-strong)",
-              fontSize: 12,
-              color: "var(--muted)",
-            }}
-          >
-            Resending makes a new link and cancels the old one. Revoking
-            can’t be undone; you’d send a new invitation.
+          <p className="gov-invite-note">
+            Resending makes a new link and cancels the old one. Revoking can’t
+            be undone; you’d send a new invitation.
           </p>
         ) : null}
       </section>
 
-      <aside className="side-col">
+      <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <InviteForm roles={roles} teams={teams} onInvite={addInvite} />
       </aside>
     </div>

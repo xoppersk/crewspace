@@ -58,17 +58,31 @@ export default async function InvitationsPage({
 
   return (
     <AppShell current="invitations">
-      <div className="page-head" style={{ paddingTop: 22 }}>
+      <div className="gov-head">
         <div className="stack">
-          <h1 className="title">Invitations</h1>
-          <p className="lead">
+          <h1 className="gov-title">Invitations</h1>
+          <p className="gov-lede">
             {counts.open} invitations are open. One didn’t arrive and one
             expires in 3 days. An invitation becomes a member only when the
             person signs in with the address it was sent to.
           </p>
         </div>
         <div className="head-actions">
-          <ButtonLink href="/app/invitations/import">Import from CSV</ButtonLink>
+          <ButtonLink href="/app/invitations/import">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path d="M8 10.5V2.5M4.8 5.5 8 2.3l3.2 3.2" />
+              <path d="M2.5 10.5v2.5h11v-2.5" />
+            </svg>
+            Import from CSV
+          </ButtonLink>
         </div>
       </div>
 
