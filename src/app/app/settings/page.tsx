@@ -30,6 +30,7 @@ export default function OrgSettingsPage() {
     twoStepMissing: members.filter((m) => m.twoStep === false).length,
     baseline: {
       allowsCount: org.baseline.allowedPermissionIds.length,
+      permissionId: baselinePerm.id,
       permissionName: baselinePerm.name,
       inheritCount: customInheritCount(),
       customRoles: getRoles().filter((r) => r.type === "Custom").length,
