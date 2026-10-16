@@ -13,14 +13,14 @@ import {
 import type { Role, Team } from "@/lib/types";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
+import { IconTeams } from "@/components/icons";
 
 /**
- * R-01 Teams (screens/Teams.html).
- * Counts, leads and the role-mix bar/captions are derived from the
- * fixtures via teamRoleMix / teamMemberCount. The one-line team
- * descriptions and "last change" strings are the screen's exact copy —
- * the fixture `blurb` strings differ for four teams and the fixtures
- * carry no per-team last-change field, so those strings live here.
+ * R-01 Teams (screens/Teams.html): a 3-column grid of team cards —
+ * icon tile, member count, role-mix bar + caption, lead and last
+ * change. Counts, leads and mixes are derived from the fixtures.
+ * The one-line team descriptions and "last change" strings are the
+ * screen's exact copy.
  */
 const LIST_BLURB: Record<string, string> = {
   "customer-operations": "Support, onboarding and renewals",
@@ -38,6 +38,16 @@ const LIST_LAST_CHANGE: Record<string, string> = {
   finance: "Sep 22",
   marketing: "Sep 18",
   leadership: "Sep 10",
+};
+
+/** Lead avatar tints, exactly as Teams.html draws each team's lead. */
+const LEAD_TINTS: Record<string, string> = {
+  "customer-operations": "#F0DDDA",
+  product: "#E9E3D6",
+  engineering: "#F0DDDA",
+  finance: "#DDEBE2",
+  marketing: "#E3DDF0",
+  leadership: "#F0DDDA",
 };
 
 export const metadata: Metadata = { title: "Crewspace — Teams" };
@@ -64,11 +74,9 @@ function orderedMix(team: Team): { role: Role; count: number }[] {
 /**
  * Bar colours anchored by role tier, not segment position (Teams.html):
  * Organization owner → --ink-bar; the admin tier (roles allowing ≥ 3)
- * → --seal; viewer roles (Analyst, Finance viewer, Auditor) →
- * --seal-mid; Member/Guest → --control. Only the first admin-tier
- * segment in the ordered mix takes --seal — in Customer operations
- * the seal segment sits on the Support leads (the lead's role) and
- * Product admin takes --seal-mid, exactly as the canvas draws it.
+ * → --seal for the first such segment and --seal-mid after; viewer
+ * roles (Analyst, Finance viewer, Auditor) → --seal-mid;
+ * Member/Guest → --control.
  */
 function mixColor(role: Role, firstAdmin: boolean): string {
   if (role.id === "owner") return "var(--ink-bar)";
@@ -87,29 +95,31 @@ function isAdminTier(role: Role): boolean {
   );
 }
 
-const ROW_GRID: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0,1.4fr) 170px 90px minmax(0,1.3fr) 120px",
-  gap: 18,
-  alignItems: "center",
-  padding: "14px 24px",
-  borderTop: "1px solid var(--rule)",
-  fontSize: 14,
-  color: "var(--ink)",
-  textDecoration: "none",
-};
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+}
 
 function mixCaption(team: Team): string {
   const mix = orderedMix(team);
+  /* Teams.html folds the Guest into "Members" in the caption (the
+     Marketing card reads "3 Members" for 2 Members + 1 Guest, and the
+     bar draws them as one --control segment). */
+  const guestCount = mix.find((x) => x.role.id === "guest")?.count ?? 0;
   return mix
+    .filter(({ role }) => role.id !== "guest")
     .map(({ role, count }) => {
       if (role.id === "owner") return "Owner";
-      return `${count} ${role.name}${count === 1 ? "" : "s"}`;
+      const n = role.id === "member" ? count + guestCount : count;
+      return `${n} ${role.name}${n === 1 ? "" : "s"}`;
     })
     .join(" · ");
 }
 
-function TeamRow({ team }: { team: Team }) {
+function TeamCard({ team }: { team: Team }) {
   const lead = team.leadId ? getMember(team.leadId) : undefined;
   const leadRole = lead ? getRole(lead.roleId) : undefined;
   const count = teamMemberCount(team.id);
@@ -129,80 +139,76 @@ function TeamRow({ team }: { team: Team }) {
   }
 
   return (
-    <Link role="row" href={`/app/teams/${team.id}`} style={ROW_GRID}>
-      <span role="cell">
-        <b style={{ fontWeight: 600 }}>{team.name}</b>
-        <small
-          style={{
-            display: "block",
-            fontSize: 12,
-            color: "var(--muted)",
-            marginTop: 2,
-          }}
-        >
-          {LIST_BLURB[team.id] ?? team.blurb}
-        </small>
+    <Link role="listitem" href={`/app/teams/${team.id}`} className="card team-card">
+      <span className="tc-head">
+        <span className="tc-id">
+          <span className="tile40" aria-hidden="true">
+            <IconTeams strokeWidth={1.4} />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span className="tname">{team.name}</span>
+            <span className="tblurb">
+              {LIST_BLURB[team.id] ?? team.blurb}
+            </span>
+          </span>
+        </span>
+        <span className="tcount">
+          <span className="mono">{count}</span>
+          <span className="lbl">members</span>
+        </span>
       </span>
-      <span role="cell">
-        {lead ? (
-          <>
-            {lead.name}
-            <small
-              style={{
-                display: "block",
-                fontSize: 12,
-                color: "var(--muted)",
-                marginTop: 2,
-              }}
-            >
-              {leadRole?.name}
-            </small>
-          </>
-        ) : (
-          "—"
-        )}
-      </span>
-      <span role="cell" className="mono">
-        {count}
-      </span>
-      <span role="cell">
-        <span
-          aria-hidden="true"
-          style={{
-            display: "flex",
-            height: 8,
-            borderRadius: 2,
-            overflow: "hidden",
-            background: "var(--rule)",
-          }}
-        >
+      <span className="mix">
+        <span className="mlbl">Roles inside the team</span>
+        <span className="mixbar" aria-hidden="true">
           {segments.map((seg, i) => (
             <i
               key={i}
-              style={{
-                display: "block",
-                height: "100%",
-                width: `${seg.pct}%`,
-                background: seg.color,
-              }}
+              style={{ width: `${seg.pct}%`, background: seg.color }}
             />
           ))}
         </span>
-        <small
-          style={{
-            display: "block",
-            fontSize: 12,
-            color: "var(--muted)",
-            marginTop: 2,
-          }}
-        >
-          {mixCaption(team)}
-        </small>
+        <span className="mixcap">{mixCaption(team)}</span>
       </span>
-      <span role="cell" style={{ color: "var(--ink-2)" }}>
-        {LIST_LAST_CHANGE[team.id] ?? "—"}
+      <span className="tc-foot">
+        {lead ? (
+          <span className="lead">
+            <span
+              className="lead-av"
+              aria-hidden="true"
+              style={{ background: LEAD_TINTS[team.id] ?? "var(--fill)" }}
+            >
+              {initialsOf(lead.name)}
+            </span>
+            <span>
+              <b>{lead.name}</b>
+              <small>{leadRole?.name}</small>
+            </span>
+          </span>
+        ) : (
+          <span className="lead">No lead yet</span>
+        )}
+        <span className="lastchg">
+          <span className="lbl">Last change</span>
+          {LIST_LAST_CHANGE[team.id] ?? "—"}
+        </span>
       </span>
     </Link>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M8 3v10M3 8h10" />
+    </svg>
   );
 }
 
@@ -215,95 +221,78 @@ export default function TeamsPage() {
 
   return (
     <AppShell current="teams">
-      <div className="page-head">
+      <header className="spage-head">
         <div className="stack">
-          <h1 className="title">Teams</h1>
-          <p className="lead" style={{ maxWidth: "48em" }}>
+          <h1 className="stitle">Teams</h1>
+          <p className="sled">
             {teams.length} teams group the work. Everyone is on at least one
             team and {onTwoTeams} people are on two. Teams never grant
             access on their own: what someone can do comes from their role.
           </p>
         </div>
-        <div className="head-actions">
-          <ButtonLink variant="pri" href="#">
-            New team
-          </ButtonLink>
-        </div>
-      </div>
+        <ButtonLink variant="pri" href="#">
+          <PlusIcon />
+          New team
+        </ButtonLink>
+      </header>
 
-      <div
-        role="search"
-        className="team-search"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-        <label htmlFor="q" className="sr-only">
-          Find a team or person
-        </label>
-        <input
-          id="q"
-          className="in"
-          placeholder="Find a team or person"
-          style={{ width: 260 }}
-        />
-        <label htmlFor="s" className="sr-only">
-          Sort
-        </label>
-        <select id="s" className="in" defaultValue="Most members">
-          <option>Most members</option>
-          <option>Name</option>
-          <option>Recently changed</option>
-        </select>
-      </div>
-
-      <section className="sheet">
-        <div className="rows-scroll">
-          <div role="table" aria-label="Teams" style={{ minWidth: 820 }}>
-            <div
-              role="row"
-              style={{
-                ...ROW_GRID,
-                borderTop: 0,
-                paddingTop: 10,
-                paddingBottom: 10,
-                fontSize: 12,
-                color: "var(--muted)",
-              }}
-            >
-              <span role="columnheader">Team</span>
-              <span role="columnheader">Lead</span>
-              <span role="columnheader">Members</span>
-              <span role="columnheader">Roles inside the team</span>
-              <span role="columnheader">Last change</span>
-            </div>
-            {teams.map((team) => (
-              <TeamRow key={team.id} team={team} />
-            ))}
-          </div>
-        </div>
+      <div className="teams-toolbar">
         <div
+          role="search"
           style={{
-            padding: "12px 24px",
-            borderTop: "1px solid var(--rule-strong)",
             display: "flex",
             flexWrap: "wrap",
-            justifyContent: "space-between",
-            gap: 10,
-            fontSize: 13,
-            color: "var(--muted)",
+            gap: 8,
+            alignItems: "center",
           }}
         >
-          <span>
-            {totalPlacements()} placements across {teams.length} teams ·{" "}
-            {members.length} people
+          <label htmlFor="q" className="sr-only">
+            Find a team or person
+          </label>
+          <span className="srch">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="m10.5 10.5 3.5 3.5" />
+            </svg>
+            <input
+              id="q"
+              className="in"
+              placeholder="Find a team or person"
+              style={{ width: 270 }}
+            />
           </span>
-          <span>Bar shows each team’s mix of roles, darkest = most access</span>
+          <label htmlFor="s" className="sr-only">
+            Sort
+          </label>
+          <select id="s" className="in" defaultValue="Most members">
+            <option>Most members</option>
+            <option>Name</option>
+            <option>Recently changed</option>
+          </select>
         </div>
-      </section>
+        <span className="note">
+          Bar shows each team’s mix of roles, darkest = most access
+        </span>
+      </div>
+
+      <div role="list" aria-label="Teams" className="teams-grid">
+        {teams.map((team) => (
+          <TeamCard key={team.id} team={team} />
+        ))}
+      </div>
+
+      <div className="teams-foot">
+        <span>
+          {totalPlacements()} placements across {teams.length} teams ·{" "}
+          {members.length} people
+        </span>
+      </div>
     </AppShell>
   );
 }
