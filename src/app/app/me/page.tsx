@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { AppShell } from "@/components/Shell";
 import { Button } from "@/components/Button";
+import { IconCheck, IconLock, IconShieldCheck } from "@/components/icons";
 import { EmailSettings, ProfileForm } from "./ProfileClient";
 
 export const metadata: Metadata = {
@@ -17,8 +18,9 @@ export const metadata: Metadata = {
 
 /* P-05 Profile — screens/Profile.html. Maya Jordan's own view (042).
    The "You can / You can't" lists are plain-word phrases keyed by
-   permission id, filtered by memberEffectivePermissions(042), so they
-   always agree with the register. */
+   permission id (§13 register), filtered by
+   memberEffectivePermissions(042), so they always agree with the
+   register. */
 
 const MONTHS: Record<string, string> = {
   Jan: "January",
@@ -72,154 +74,108 @@ export default function ProfilePage() {
     { ids: [1], text: "Invite people and pick their first role" },
     { ids: [4], text: "Move people between roles, up to Product admin" },
     { ids: [3], text: "Edit anyone’s name, title and team" },
-    { ids: [7, 8], text: "Create teams and change who’s on them" },
-    { ids: [9], text: "Resend or cancel invitations" },
-    { ids: [13], text: "Read the audit log" },
+    { ids: [9, 10], text: "Create teams and change who’s on them" },
+    { ids: [11], text: "Resend or cancel invitations" },
+    { ids: [7], text: "Read the audit log" },
   ].filter((row) => row.ids.some((id) => allowed.has(id)));
 
   const cant: { ids: number[]; text: string }[] = [
-    { ids: [2, 12], text: "Deactivate anyone or sign them out" },
+    { ids: [2, 14], text: "Deactivate anyone or sign them out" },
     { ids: [5, 6], text: "Change what a role allows, or create roles" },
-    { ids: [10], text: "Import people from a file" },
+    { ids: [12], text: "Import people from a file" },
     {
-      ids: [11, 15, 16, 17],
+      ids: [13, 15, 16, 17],
       text: "Change sign-in rules, billing or organization settings",
     },
-    { ids: [14], text: "Export the audit archive" },
+    { ids: [8], text: "Export the audit archive" },
   ].filter((row) => row.ids.some((id) => blocked.has(id)));
-
-  const listStyle: React.CSSProperties = {
-    margin: 0,
-    padding: 0,
-    listStyle: "none",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    fontSize: 14,
-    lineHeight: 1.45,
-  };
 
   return (
     <AppShell current="none" navVariant="profile" personId="042">
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 22 }}>
-        <span className="register">Member {me.id}</span>
-        <h1 className="title">Your profile and access</h1>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          paddingTop: 26,
+        }}
+      >
+        <span className="p-rno" style={{ alignSelf: "flex-start" }}>
+          Member {me.id}
+        </span>
+        <h1 className="p-title">Your profile and access</h1>
       </div>
 
-      <div className="cols">
-        <div
-          style={{
-            flex: "999 1 600px",
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
-          <section className="sheet" aria-labelledby="ya">
+      <div className="p-cols">
+        <div className="p-stack">
+          <section className="card" aria-labelledby="ya" style={{ overflow: "hidden" }}>
             <div
               style={{
-                padding: "18px 24px 16px",
+                padding: "22px 22px 18px",
                 display: "flex",
-                flexDirection: "column",
-                gap: 10,
+                gap: 16,
+                alignItems: "flex-start",
               }}
             >
-              <h2 id="ya" className="section">
-                What you can do here
-              </h2>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  color: "var(--ink-2)",
-                }}
-              >
-                You’re a{" "}
-                <b style={{ fontWeight: 600, color: "var(--ink)" }}>
-                  {role.name}
-                </b>{" "}
-                on the {team?.name} team.
-                {giver && invitation?.acceptedOn ? (
-                  <>
-                    {" "}
-                    {giver.name} gave you this role on{" "}
-                    {longDate(invitation.acceptedOn)}.
-                  </>
-                ) : null}
-              </p>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                borderTop: "1px solid var(--rule-strong)",
-              }}
-            >
-              <div
-                style={{
-                  flex: "1 1 260px",
-                  padding: "16px 24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                <h3
+              <span className="p-ibx" aria-hidden="true">
+                <IconShieldCheck width={28} height={28} strokeWidth={1.3} />
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <h2 id="ya" className="p-h20">
+                  What you can do here
+                </h2>
+                <p
                   style={{
                     margin: 0,
-                    font: "600 13px/1.2 var(--font-sans)",
-                  }}
-                >
-                  You can
-                </h3>
-                <ul style={listStyle}>
-                  {can.map((row) => (
-                    <li key={row.text}>{row.text}</li>
-                  ))}
-                </ul>
-              </div>
-              <div
-                style={{
-                  flex: "1 1 260px",
-                  padding: "16px 24px",
-                  borderLeft: "1px solid var(--rule)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                <h3
-                  style={{
-                    margin: 0,
-                    font: "600 13px/1.2 var(--font-sans)",
+                    fontSize: 14.5,
+                    lineHeight: 1.55,
                     color: "var(--ink-2)",
                   }}
                 >
-                  You can’t
-                </h3>
-                <ul style={{ ...listStyle, color: "var(--ink-2)" }}>
+                  You’re a{" "}
+                  <b style={{ fontWeight: 600, color: "var(--ink)" }}>
+                    {role.name}
+                  </b>{" "}
+                  on the {team?.name} team.
+                  {giver && invitation?.acceptedOn ? (
+                    <>
+                      {" "}
+                      {giver.name} gave you this role on{" "}
+                      {longDate(invitation.acceptedOn)}.
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </div>
+            <div className="p-can-grid">
+              <div className="p-can-cell can">
+                <h3>You can</h3>
+                <ul className="p-li">
+                  {can.map((row) => (
+                    <li key={row.text}>
+                      <span className="dot ok">
+                        <IconCheck />
+                      </span>
+                      <span>{row.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-can-cell cant">
+                <h3>You can’t</h3>
+                <ul className="p-li" style={{ color: "var(--ink-2)" }}>
                   {cant.map((row) => (
-                    <li key={row.text}>{row.text}</li>
+                    <li key={row.text}>
+                      <span className="dot">
+                        <IconLock />
+                      </span>
+                      <span>{row.text}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <div
-              style={{
-                padding: "14px 24px",
-                borderTop: "1px solid var(--rule-strong)",
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: "var(--ink-2)",
-              }}
-            >
+            <div className="p-askbar">
               <span>
                 Need something on the right? Ask {owner.name}, the owner.
                 {lead ? ` ${lead.name}, your team lead, is copied.` : ""}
@@ -235,52 +191,65 @@ export default function ProfilePage() {
           />
         </div>
 
-        <aside className="side-col">
+        <aside className="p-aside">
           <section
-            className="sheet"
+            className="card"
             aria-labelledby="se"
-            style={{ padding: "18px 20px 10px" }}
+            style={{ padding: "18px 18px 8px" }}
           >
-            <h2 id="se" className="panel" style={{ marginBottom: 6 }}>
+            <h2 id="se" className="p-panel" style={{ marginBottom: 8 }}>
               Where you’re signed in
             </h2>
             <div>
-              {(me.sessions ?? []).map((s) => (
-                <div
-                  key={s.device}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(0, 1fr) auto",
-                    gap: 10,
-                    alignItems: "center",
-                    padding: "10px 0",
-                    borderTop: "1px solid var(--rule)",
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <span>
-                    {deviceLabel(s.device)} · {placeLabel(s.place)}
-                    <br />
-                    <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                      {s.current
-                        ? `This device · today ${s.lastActive} AM`
-                        : s.lastActive}
+              {(me.sessions ?? []).map((s) => {
+                const phone = s.device.includes("iPhone");
+                return (
+                  <div
+                    key={s.device}
+                    className="p-sess"
+                    style={{ padding: "11px 0" }}
+                  >
+                    <span
+                      className={s.current ? "p-ico32 is-seal" : "p-ico32 is-flat"}
+                      aria-hidden="true"
+                    >
+                      {phone ? (
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <rect x="4.5" y="1.8" width="7" height="12.4" rx="1.5" />
+                          <path d="M7.3 11.8h1.4" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <rect x="2" y="3" width="12" height="8" rx="1.2" />
+                          <path d="M5.5 13.5h5" />
+                        </svg>
+                      )}
                     </span>
-                  </span>
-                  {s.current ? (
-                    <span />
-                  ) : (
-                    <Link href="#" style={{ fontSize: 13 }}>
-                      Sign out
-                    </Link>
-                  )}
-                </div>
-              ))}
+                    <span>
+                      {deviceLabel(s.device)} · {placeLabel(s.place)}
+                      <br />
+                      <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                        {s.current
+                          ? `This device · today ${s.lastActive} AM`
+                          : s.lastActive}
+                      </span>
+                    </span>
+                    {s.current ? (
+                      <span />
+                    ) : (
+                      <Link href="#" style={{ fontSize: 13, fontWeight: 600 }}>
+                        Sign out
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <p
               style={{
-                margin: "6px 0 8px",
+                margin: "0 0 8px",
+                paddingTop: 10,
+                borderTop: "1px solid var(--rule)",
                 fontSize: 12,
                 lineHeight: 1.45,
                 color: "var(--muted)",
@@ -292,7 +261,21 @@ export default function ProfilePage() {
 
           <EmailSettings />
 
-          <Link href="#" style={{ padding: "0 4px", fontSize: 13 }}>
+          <Link
+            href="#"
+            style={{
+              display: "inline-flex",
+              gap: 8,
+              alignItems: "center",
+              padding: "0 4px",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M8 2.5v8M4.8 7.5 8 10.7l3.2-3.2" />
+              <path d="M2.5 12.5h11" />
+            </svg>
             Download what Crewspace stores about you
           </Link>
         </aside>

@@ -2,30 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
+import { IconLock } from "@/components/icons";
 
 /* P-05 interactive parts — screens/Profile.html.
    The profile form's fields are controlled so edits are tracked. The
    screen shows no dirty-state styling and no post-save state, so none
-   is added. Row metrics live in the .pf-row class (globals.css) so
-   phones can stack label above control. */
-
-const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: 13 };
-
-function Small({ children }: { children: React.ReactNode }) {
-  return (
-    <small
-      style={{
-        display: "block",
-        fontWeight: 400,
-        color: "var(--muted)",
-        fontSize: 12,
-        marginTop: 2,
-      }}
-    >
-      {children}
-    </small>
-  );
-}
+   is added. Row metrics live in the .p-fr class (people.css, the
+   screen's .fr) so phones can stack label above control. */
 
 export function ProfileForm({
   initialName,
@@ -43,78 +26,72 @@ export function ProfileForm({
 
   return (
     <form
-      className="sheet"
+      className="card"
       aria-labelledby="pf"
+      style={{ overflow: "hidden" }}
       onSubmit={(e) => {
         e.preventDefault();
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 8,
-          padding: "16px 24px 12px",
-        }}
-      >
-        <h2 id="pf" className="section">
+      <div className="p-ch">
+        <h2 id="pf" className="p-h2">
           Profile
         </h2>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>
-          Everyone in Sevyn Labs sees this
-        </span>
+        <span className="p-sub">Everyone in Sevyn Labs sees this</span>
       </div>
-      <div className="pf-row">
-        <label htmlFor="nm" style={labelStyle}>
-          Name
-        </label>
+      <div className="p-fr">
+        <label htmlFor="nm">Name</label>
         <input
           id="nm"
           className="in"
-          style={{ height: 38, width: "100%", maxWidth: 360 }}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
-      <div className="pf-row">
-        <label htmlFor="tt" style={labelStyle}>
-          Title
-        </label>
+      <div className="p-fr">
+        <label htmlFor="tt">Title</label>
         <input
           id="tt"
           className="in"
-          style={{ height: 38, width: "100%", maxWidth: 360 }}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
       </div>
-      <div className="pf-row">
-        <label htmlFor="pr" style={labelStyle}>
-          Pronouns <Small>Optional</Small>
+      <div className="p-fr">
+        <label htmlFor="pr">
+          Pronouns <small>Optional</small>
         </label>
         <input
           id="pr"
           className="in"
-          style={{ height: 38, width: "100%", maxWidth: 360 }}
           value={pronouns}
           onChange={(e) => setPronouns(e.target.value)}
         />
       </div>
-      <div className="pf-row">
-        <span style={labelStyle}>
-          Work email <Small>Set by your invitation</Small>
+      <div className="p-fr">
+        <span className="lb">
+          Work email <small>Set by your invitation</small>
         </span>
-        <span style={{ fontSize: 14, color: "var(--ink-2)" }}>{email}</span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 14,
+            color: "var(--ink-2)",
+          }}
+        >
+          <span style={{ color: "var(--muted)", display: "inline-flex" }}>
+            <IconLock width={13} height={13} strokeWidth={1.6} />
+          </span>
+          {email}
+        </span>
       </div>
-      <div className="pf-row">
-        <label htmlFor="tz" style={labelStyle}>
-          Time zone
-        </label>
+      <div className="p-fr">
+        <label htmlFor="tz">Time zone</label>
         <select
           id="tz"
-          className="in"
-          style={{ height: 38, width: "100%", maxWidth: 360 }}
+          className="in p-sel"
           value={tz}
           onChange={(e) => setTz(e.target.value)}
         >
@@ -123,16 +100,7 @@ export function ProfileForm({
           <option>Pacific Time</option>
         </select>
       </div>
-      <div
-        style={{
-          padding: "14px 24px",
-          borderTop: "1px solid var(--rule-strong)",
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
+      <div className="p-formfoot">
         <Button variant="pri" type="submit">
           Save profile
         </Button>
@@ -144,52 +112,37 @@ export function ProfileForm({
 export function EmailSettings() {
   const [accepts, setAccepts] = useState(true);
   const [joins, setJoins] = useState(false);
-  const checkStyle: React.CSSProperties = {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-    padding: "8px 0",
-    fontSize: 13,
-    lineHeight: 1.45,
-    cursor: "pointer",
-  };
-  const boxStyle: React.CSSProperties = {
-    margin: "2px 0 0",
-    width: 16,
-    height: 16,
-    accentColor: "var(--seal)",
-  };
   return (
     <section
-      className="sheet"
+      className="card"
       aria-labelledby="nt"
-      style={{ padding: "18px 20px 10px" }}
+      style={{ padding: "18px 18px 8px" }}
     >
-      <h2 id="nt" className="panel" style={{ marginBottom: 4 }}>
+      <h2 id="nt" className="p-panel" style={{ marginBottom: 8 }}>
         Email me when
       </h2>
-      <label style={checkStyle}>
-        <input type="checkbox" checked disabled style={boxStyle} /> My role or
-        access changes{" "}
-        <span style={{ color: "var(--muted)" }}>· always on</span>
+      <label className="p-ck">
+        <input type="checkbox" checked disabled />{" "}
+        <span>
+          My role or access changes{" "}
+          <span className="always">· always on</span>
+        </span>
       </label>
-      <label style={checkStyle}>
+      <label className="p-ck">
         <input
           type="checkbox"
           checked={accepts}
           onChange={(e) => setAccepts(e.target.checked)}
-          style={boxStyle}
         />{" "}
-        Someone accepts an invitation I sent
+        <span>Someone accepts an invitation I sent</span>
       </label>
-      <label style={checkStyle}>
+      <label className="p-ck">
         <input
           type="checkbox"
           checked={joins}
           onChange={(e) => setJoins(e.target.checked)}
-          style={boxStyle}
         />{" "}
-        Someone joins a team I’m on
+        <span>Someone joins a team I’m on</span>
       </label>
     </section>
   );
