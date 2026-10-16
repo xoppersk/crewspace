@@ -10,10 +10,13 @@ import {
   teamMembers,
   teamRoleMix,
 } from "@/lib/api";
+import type { Member, Role } from "@/lib/types";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
+import { PermissionStrip } from "@/components/PermissionStrip";
 import { RoleTag } from "@/components/RoleTag";
 import { EmptyTeamState } from "@/components/States";
+import { IconTeams } from "@/components/icons";
 
 export async function generateMetadata({
   params,
@@ -31,6 +34,77 @@ export async function generateMetadata({
   return {
     title: team ? `Crewspace — ${team.name} team` : "Crewspace — Teams",
   };
+}
+
+/**
+ * R-02 Team detail (screens/TeamDetail.html): header card with the
+ * role-mix caption, the member table (avatars, Lead/New chips, the
+ * invited row), and side panels — access mix with 8px strips, the
+ * DARK lead panel, and recent changes in a card.
+ */
+
+/** Avatar tints exactly as TeamDetail.html draws the Product rows,
+    keyed by member id; other teams rotate the same palette. */
+const AV_TINTS: Record<string, string> = {
+  "017": "#E9E3D6",
+  "023": "#E3DDF0",
+  "031": "#DCE3F4",
+  "042": "#E6E9EE",
+  "019": "#E6E9EE",
+  "026": "#DCE3F4",
+  "035": "#F0DDDA",
+  "012": "#E9E3D6",
+  "021": "#DDEBE2",
+  "029": "#DDEBE2",
+  "036": "#E6E9EE",
+  "040": "#E6E9EE",
+};
+const AV_FALLBACK = ["#E9E3D6", "#E3DDF0", "#DCE3F4", "#DDEBE2", "#F0DDDA", "#E6E9EE"];
+
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+}
+
+function tintFor(m: Member, index: number): string {
+  return AV_TINTS[m.id] ?? AV_FALLBACK[index % AV_FALLBACK.length]!;
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M8 3v10M3 8h10" />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
+      <circle cx="3.5" cy="8" r="1" fill="currentColor" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" />
+      <circle cx="12.5" cy="8" r="1" fill="currentColor" />
+    </svg>
+  );
 }
 
 export default async function TeamDetailPage({
@@ -74,6 +148,13 @@ export default async function TeamDetailPage({
       ),
     )
     .sort((a, b) => roleAllows(b.role) - roleAllows(a.role));
+  const mixCaption = mix
+    .map(({ role, count }: { role: Role; count: number }) =>
+      role.id === "owner"
+        ? "Owner"
+        : `${count} ${role.name}${count === 1 ? "" : "s"}`,
+    )
+    .join(" · ");
   const recent =
     id === "product"
       ? [
@@ -86,61 +167,65 @@ export default async function TeamDetailPage({
   return (
     <AppShell current="teams">
       <div className="crumb">
-        <Link href="/app/teams">Teams</Link> / {team.name}
+        <Link href="/app/teams">Teams</Link>{" "}
+        <span className="sep">/</span>{" "}
+        {team.name}
       </div>
-      <div className="cols">
-        <div
-          className="main-sheet"
-          style={{ display: "flex", flexDirection: "column", gap: 16 }}
-        >
-          <header
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              gap: 14,
-              alignItems: "flex-start",
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <h1 className="title">{team.name}</h1>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                Team <span className="mono">{team.regNumber}</span> ·{" "}
-                {team.blurb}
-                {lead ? ` · led by ${lead.name}` : " · no lead yet"}
-              </span>
+      <div className="split-340">
+        <div className="main-col-stack">
+          <header className="card team-head">
+            <div className="head-top">
+              <div className="id-row">
+                <span className="tile52" aria-hidden="true">
+                  <IconTeams strokeWidth={1.3} />
+                </span>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  <h1 className="stitle">{team.name}</h1>
+                  <span className="subline">
+                    Team <span className="mono">{team.regNumber}</span> ·{" "}
+                    {team.blurb}
+                    {lead ? ` · led by ${lead.name}` : " · no lead yet"}
+                  </span>
+                </div>
+              </div>
+              <div className="head-actions">
+                <ButtonLink href="#">Team settings</ButtonLink>
+                <ButtonLink variant="pri" href="/app/invitations">
+                  <PlusIcon />
+                  Add people
+                </ButtonLink>
+              </div>
             </div>
-            <div className="head-actions">
-              <ButtonLink href="#">Team settings</ButtonLink>
-              <ButtonLink variant="pri" href="/app/invitations">
-                Add people
-              </ButtonLink>
+            <div className="meta-row">
+              <span className="av-stack" aria-hidden="true">
+                {rows.slice(0, 5).map((m, i) => (
+                  <span
+                    key={m.id}
+                    className="av"
+                    style={{ background: tintFor(m, i) }}
+                  >
+                    {initialsOf(m.name)}
+                  </span>
+                ))}
+              </span>
+              <span className="mixcap">{mixCaption}</span>
             </div>
           </header>
 
-          <section className="sheet">
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: 8,
-                padding: "14px 24px",
-              }}
-            >
-              <h2 className="section">Members · {rows.length}</h2>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                Sorted by role, then register number
-              </span>
+          <section className="card" style={{ overflow: "hidden" }}>
+            <div className="card-head">
+              <h2>Members · {rows.length}</h2>
+              <span className="sub">Sorted by role, then register number</span>
             </div>
             <div className="rows-scroll">
               <div
                 role="table"
                 aria-label={`${team.name} team members`}
-                style={{ minWidth: 760 }}
+                style={{ minWidth: 680 }}
               >
-                <div role="row" className="tmr head">
+                <div role="row" className="team-mr th">
                   <span role="columnheader">No.</span>
                   <span role="columnheader">Person</span>
                   <span role="columnheader">Role</span>
@@ -150,20 +235,37 @@ export default async function TeamDetailPage({
                     <span className="sr-only">Actions</span>
                   </span>
                 </div>
-                {rows.map((m) => {
+                {rows.map((m, i) => {
                   const role = getRole(m.roleId)!;
                   const alsoOn = m.teams.filter((t) => t.teamId !== id);
                   const isLead = m.teams.find((t) => t.teamId === id)?.lead;
                   return (
-                    <div role="row" className="tmr" key={m.id}
-                      style={m.isNew ? { background: "var(--sheet-tint)" } : undefined}
+                    <div
+                      role="row"
+                      className={`team-mr${m.isNew ? " hl" : ""}`}
+                      key={m.id}
                     >
-                      <span role="cell" className="rg">{m.id}</span>
-                      <span role="cell">
-                        <b style={{ fontWeight: 600 }}>{m.name}</b>{" "}
-                        {isLead ? <span className="newmark">Lead</span> : null}
-                        {m.isNew ? <span className="newmark">New</span> : null}
-                        <small>{m.email}</small>
+                      <span role="cell" className="rg">
+                        {m.id}
+                      </span>
+                      <span role="cell" className="person">
+                        <span
+                          className="avr"
+                          aria-hidden="true"
+                          style={{ background: tintFor(m, i) }}
+                        >
+                          {initialsOf(m.name)}
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                          <b>{m.name}</b>
+                          {isLead ? (
+                            <span className="lead-chip">Lead</span>
+                          ) : null}
+                          {m.isNew ? (
+                            <span className="lead-chip">New</span>
+                          ) : null}
+                          <small>{m.email}</small>
+                        </span>
                       </span>
                       <span role="cell">
                         {/* TeamDetail.html: only the Product admin tag
@@ -173,17 +275,30 @@ export default async function TeamDetailPage({
                           link={role.id === "product-admin"}
                         />
                       </span>
-                      <span role="cell" style={{ color: alsoOn.length ? "var(--ink-2)" : "var(--muted)" }}>
+                      <span
+                        role="cell"
+                        style={{
+                          color: alsoOn.length
+                            ? "var(--ink-2)"
+                            : "var(--muted)",
+                        }}
+                      >
                         {alsoOn.length
-                          ? alsoOn.map((t) => getTeam(t.teamId)?.name).join(", ")
+                          ? alsoOn
+                              .map((t) => getTeam(t.teamId)?.name)
+                              .join(", ")
                           : "—"}
                       </span>
                       <span role="cell" style={{ color: "var(--ink-2)" }}>
                         {m.joined}
                       </span>
                       <span role="cell">
-                        <button type="button" className="mx" aria-label={`More for ${m.name}`}>
-                          ⋯
+                        <button
+                          type="button"
+                          className="mx"
+                          aria-label={`More for ${m.name}`}
+                        >
+                          <DotsIcon />
                         </button>
                       </span>
                     </div>
@@ -193,31 +308,36 @@ export default async function TeamDetailPage({
                   const role = getRole(inv.roleId)!;
                   const inviter = getMember(inv.invitedById);
                   return (
-                    <div
-                      role="row"
-                      className="tmr"
-                      key={inv.id}
-                      style={{ background: "var(--sheet-sunk)" }}
-                    >
-                      <span role="cell" className="rg">—</span>
-                      <span role="cell">
-                        <b style={{ fontWeight: 600, color: "var(--ink-2)" }}>
-                          {inv.name}
-                        </b>
-                        <small>
-                          {inv.email} · invited {inv.sent} by {inviter?.name}
-                        </small>
+                    <div role="row" className="team-mr invited-row" key={inv.id}>
+                      <span role="cell" className="rg">
+                        —
+                      </span>
+                      <span role="cell" className="person">
+                        <span className="avr invited" aria-hidden="true">
+                          {initialsOf(inv.name)}
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                          <b style={{ color: "var(--ink-2)" }}>{inv.name}</b>
+                          <small>
+                            {inv.email} · invited {inv.sent} by {inviter?.name}
+                          </small>
+                        </span>
                       </span>
                       <span role="cell">
-                        <span className="ro dashed plain">{role.name}</span>
-                      </span>
-                      <span role="cell" className="pe big">
-                        Invited · expires {inv.expires}
+                        <RoleTag role={role} dashed quiet link={false} />
                       </span>
                       <span role="cell">
-                        <a href="/app/invitations" style={{ fontSize: 13 }}>
+                        <span className="inv-state">
+                          Invited · expires {inv.expires}
+                        </span>
+                      </span>
+                      <span role="cell">
+                        <Link
+                          href="/app/invitations"
+                          style={{ fontSize: 13, fontWeight: 600 }}
+                        >
                           Resend
-                        </a>
+                        </Link>
                       </span>
                       <span role="cell" />
                     </div>
@@ -228,9 +348,21 @@ export default async function TeamDetailPage({
           </section>
         </div>
 
-        <aside className="side-col">
-          <section className="sheet panel-box" aria-labelledby="acc">
-            <h2 id="acc" className="panel">
+        <aside className="aside-sticky" style={{ position: "static" }}>
+          <section
+            className="card"
+            aria-labelledby="acc"
+            style={{
+              padding: "18px 18px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <h2
+              id="acc"
+              style={{ margin: 0, font: "700 15px/1.3 var(--font-sans)" }}
+            >
               Where this team’s access comes from
             </h2>
             <p
@@ -246,32 +378,26 @@ export default async function TeamDetailPage({
             </p>
             <div>
               {mix.map(({ role, count }) => (
-                <div className="ll" key={role.id}>
-                  {/* Access panel: only Product admin is a link
-                      (TeamDetail.html); the rest are plain names. */}
-                  {role.id === "product-admin" ? (
-                    <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
-                  ) : (
-                    <span>{role.name}</span>
-                  )}
-                  <i />
-                  <span className="mono">{count}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                    allows {roleAllows(role)} of 18
-                  </span>
+                <div className="access-mix" key={role.id}>
+                  <div className="ll">
+                    {/* Access panel: only Product admin is a link
+                        (TeamDetail.html); the rest are plain names. */}
+                    {role.id === "product-admin" ? (
+                      <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
+                    ) : (
+                      <span>{role.name}</span>
+                    )}
+                    <i />
+                    <span className="mono">{count}</span>
+                    <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                      allows {roleAllows(role)} of 18
+                    </span>
+                  </div>
+                  <PermissionStrip role={role} full showCount={false} />
                 </div>
               ))}
             </div>
-            <p
-              style={{
-                margin: 0,
-                paddingTop: 10,
-                borderTop: "1px solid var(--rule)",
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: "var(--ink-2)",
-              }}
-            >
+            <p className="access-note">
               Removing someone from this team leaves their role and access
               unchanged. To change what they can do,{" "}
               <Link href="/app/roles">change their role</Link>.
@@ -279,13 +405,14 @@ export default async function TeamDetailPage({
           </section>
 
           {lead ? (
-            <section className="sheet panel-box" aria-labelledby="leadp">
-              <h2 id="leadp" className="panel">
-                What the lead does
-              </h2>
-              <span
-                style={{ fontSize: 13, lineHeight: 1.5, color: "var(--ink-2)" }}
-              >
+            <section className="dpanel" aria-labelledby="leadp" style={{ gap: 10 }}>
+              <div className="lead-head">
+                <span className="av dk-av" aria-hidden="true">
+                  {initialsOf(lead.name)}
+                </span>
+                <h2 id="leadp">What the lead does</h2>
+              </div>
+              <span className="lead-body">
                 {lead.name.split(" ")[0]} gets a copy of every invitation to
                 this team and is asked first when someone requests a role
                 change here. Leading a team is not a permission.
@@ -293,36 +420,22 @@ export default async function TeamDetailPage({
             </section>
           ) : null}
 
-          <section
-            aria-labelledby="ch"
-            style={{
-              padding: "4px 4px 0",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              fontSize: 13,
-              lineHeight: 1.5,
-            }}
-          >
-            <h2
-              id="ch"
-              style={{
-                margin: 0,
-                font: "600 13px/1.3 var(--font-sans)",
-                color: "var(--muted)",
-              }}
-            >
-              Recent changes
-            </h2>
+          <section className="card recent-card" aria-labelledby="ch">
+            <h2 id="ch">Recent changes</h2>
             {recent.map((r, i) => (
-              <span key={i}>
-                <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+              <span className="rrow" key={i}>
+                <span
+                  className="mono"
+                  style={{ fontSize: 12, color: "var(--muted)" }}
+                >
                   {r.when}
                 </span>{" "}
                 · {r.text}
               </span>
             ))}
-            <a href="/app/audit">Open in audit log</a>
+            <Link href="/app/audit" className="rlink">
+              Open in audit log
+            </Link>
           </section>
         </aside>
       </div>
