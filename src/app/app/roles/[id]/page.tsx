@@ -54,29 +54,20 @@ export default async function RoleDetailPage({
 
   const org = getOrg();
   const members = roleMembers(id);
-  const history =
-    id === "product-admin"
-      ? [
-          { when: "Oct 5", text: "Maya Jordan assigned by Sheku Koroma" },
-          { when: "Oct 2", text: "Create teams: Inherit → Allow" },
-          { when: "Sep 18", text: "Role created from Member" },
-        ]
-      : [{ when: "—", text: `Last changed ${role.lastChanged}` }];
 
   return (
     <AppShell current="roles">
       <div className="crumb">
-        <Link href="/app/roles">Roles</Link> / {role.name}
+        <Link href="/app/roles">Roles</Link>{" "}
+        <span className="sep">/</span>{" "}
+        {role.name}
       </div>
-      <div className="cols">
-        <RoleDetailClient
-          role={role}
-          permissions={getPermissions()}
-          groups={org.groups}
-          members={members}
-          history={history}
-        />
-      </div>
+      <RoleDetailClient
+        role={role}
+        permissions={getPermissions()}
+        groups={org.groups}
+        members={members}
+      />
     </AppShell>
   );
 }
