@@ -2,23 +2,11 @@
 
 import { useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getRole, getTeam } from "@/lib/api";
 
 /* The Directory filter bar (P-02). The list renders server-side from the
    URL; this component only writes the URL (§10: UI state in the URL). */
 
-const ROLE_OPTIONS = [
-  { value: "product-admin", label: "Product admin" },
-  { value: "support-lead", label: "Support lead" },
-  { value: "analyst", label: "Analyst" },
-  { value: "member", label: "Member" },
-];
-
-const TEAM_OPTIONS = [
-  { value: "product", label: "Product" },
-  { value: "customer-operations", label: "Customer operations" },
-  { value: "engineering", label: "Engineering" },
-];
+/* Options come from the workspace's real roles/teams (page props). */
 
 export function DirectoryFilters({
   q,
@@ -27,6 +15,8 @@ export function DirectoryFilters({
   team,
   counts,
   params,
+  roles,
+  teams,
 }: {
   q: string;
   status: string;
@@ -35,7 +25,11 @@ export function DirectoryFilters({
   counts: { all: number; active: number; invited: number; deactivated: number };
   /** Every current query param, serialized, so updates keep the rest. */
   params: string;
+  roles: { id: string; name: string }[];
+  teams: { id: string; name: string }[];
 }) {
+  const ROLE_OPTIONS = roles.map((r) => ({ value: r.id, label: r.name }));
+  const TEAM_OPTIONS = teams.map((t) => ({ value: t.id, label: t.name }));
   const router = useRouter();
   const pathname = usePathname() ?? "/app/people";
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,7 +117,7 @@ export function DirectoryFilters({
           <option value="">Any role</option>
           {extraRole ? (
             <option value={extraRole}>
-              {getRole(extraRole)?.name ?? extraRole}
+              {ROLE_OPTIONS.find((o) => o.value === extraRole)?.label ?? extraRole}
             </option>
           ) : null}
           {ROLE_OPTIONS.map((o) => (
@@ -144,7 +138,7 @@ export function DirectoryFilters({
           <option value="">Any team</option>
           {extraTeam ? (
             <option value={extraTeam}>
-              {getTeam(extraTeam)?.name ?? extraTeam}
+              {TEAM_OPTIONS.find((o) => o.value === extraTeam)?.label ?? extraTeam}
             </option>
           ) : null}
           {TEAM_OPTIONS.map((o) => (
