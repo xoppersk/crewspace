@@ -1,10 +1,3 @@
-import orgData from "../../data/org.json";
-import membersData from "../../data/members.json";
-import teamsData from "../../data/teams.json";
-import invitationsData from "../../data/invitations.json";
-import auditData from "../../data/audit.json";
-import overviewData from "../../data/overview.json";
-import importData from "../../data/import.json";
 import type {
   AuditEntry,
   ImportRow,
@@ -18,105 +11,124 @@ import type {
   Team,
 } from "./types";
 
+/**
+ * Pure data helpers — the UI contract.
+ * ==========================================================================
+ * This module NO LONGER reads fixtures. Every function takes the
+ * workspace data explicitly (loaded from Supabase by
+ * `src/lib/data/server.ts`) and derives the shapes in types.ts from it.
+ * Server components load the data and pass it in; client components
+ * receive the pieces they need as props. Nothing here touches the
+ * network, cookies, or `data/*.json`.
+ */
+
+export interface WorkspaceData {
+  org: Org;
+  members: Member[];
+  teams: Team[];
+  invitations: Invitation[];
+  auditEntries: AuditEntry[];
+  needsOwner: NeedsOwnerItem[];
+}
+
 /* ------------------------------------------------------------------ */
-/* Raw fixture access                                                  */
+/* Lookups                                                             */
 /* ------------------------------------------------------------------ */
 
-const org = orgData as Org;
-const members = (membersData as { members: Member[] }).members;
-const teams = (teamsData as { teams: Team[] }).teams;
-const invitations = (invitationsData as { invitations: Invitation[] })
-  .invitations;
-const auditEntries = (auditData as { entries: AuditEntry[] }).entries;
-
-export function getOrg(): Org {
-  return org;
+export function getOrg(data: WorkspaceData): Org {
+  return data.org;
 }
-export function getPermissions(): Permission[] {
-  return org.permissions;
+export function getPermissions(data: WorkspaceData): Permission[] {
+  return data.org.permissions;
 }
-export function getPermission(id: number): Permission {
-  return org.permissions.find((p) => p.id === id)!;
+export function getPermission(data: WorkspaceData, id: number): Permission {
+  return data.org.permissions.find((p) => p.id === id)!;
 }
-export function getRoles(): Role[] {
-  return org.roles;
+export function getRoles(data: WorkspaceData): Role[] {
+  return data.org.roles;
 }
-export function getRole(id: string): Role | undefined {
-  return org.roles.find((r) => r.id === id);
+export function getRole(data: WorkspaceData, id: string): Role | undefined {
+  return data.org.roles.find((r) => r.id === id);
 }
-export function getMembers(): Member[] {
-  return members;
+export function getMembers(data: WorkspaceData): Member[] {
+  return data.members;
 }
-export function getMember(id: string): Member | undefined {
-  return members.find((m) => m.id === id);
+export function getMember(data: WorkspaceData, id: string): Member | undefined {
+  return data.members.find((m) => m.id === id);
 }
-export function getTeams(): Team[] {
-  return teams.filter((t) => !t.unlisted);
+export function getTeams(data: WorkspaceData): Team[] {
+  return data.teams.filter((t) => !t.unlisted);
 }
-export function getTeam(id: string): Team | undefined {
-  return teams.find((t) => t.id === id);
+export function getAllTeams(data: WorkspaceData): Team[] {
+  return data.teams;
 }
-export function getInvitations(): Invitation[] {
-  return invitations;
+export function getTeam(data: WorkspaceData, id: string): Team | undefined {
+  return data.teams.find((t) => t.id === id);
 }
-export function getAuditEntries(): AuditEntry[] {
-  return auditEntries;
+export function getInvitations(data: WorkspaceData): Invitation[] {
+  return data.invitations;
 }
-export function getNeedsOwner(): NeedsOwnerItem[] {
-  return (overviewData as { needsOwner: NeedsOwnerItem[] }).needsOwner;
+export function getAuditEntries(data: WorkspaceData): AuditEntry[] {
+  return data.auditEntries;
 }
-export function getImportRows(): ImportRow[] {
-  return (importData as { rows: ImportRow[] }).rows;
-}
-export function getImportMapping(): { from: string; to: string }[] {
-  return (importData as { columnMapping: { from: string; to: string }[] })
-    .columnMapping;
-}
-export function getImportFileName(): string {
-  return (importData as { fileName: string }).fileName;
+export function getNeedsOwner(data: WorkspaceData): NeedsOwnerItem[] {
+  return data.needsOwner;
 }
 
 /* ------------------------------------------------------------------ */
 /* Permission resolution                                               */
 /* ------------------------------------------------------------------ */
 
-export function baselineAllows(permissionId: number): boolean {
-  return org.baseline.allowedPermissionIds.includes(permissionId);
+export function baselineAllows(data: WorkspaceData, permissionId: number): boolean {
+  return data.org.baseline.allowedPermissionIds.includes(permissionId);
 }
 
-/** The result a setting produces once the baseline is applied. */
-export function settingResult(
+/** The result a setting produces once the baseline is applied.
+    This form takes the baseline explicitly so client components
+    (which receive slices of the data as props) can use it too. */
+export function settingResultFor(
   setting: Setting,
   permissionId: number,
+  baselineIds: number[],
 ): "Allowed" | "Blocked" {
   if (setting === "allow") return "Allowed";
-  if (setting === "inherit") return baselineAllows(permissionId) ? "Allowed" : "Blocked";
+  if (setting === "inherit")
+    return baselineIds.includes(permissionId) ? "Allowed" : "Blocked";
   return "Blocked"; // deny and locked
 }
 
+export function settingResult(
+  data: WorkspaceData,
+  setting: Setting,
+  permissionId: number,
+): "Allowed" | "Blocked" {
+  return settingResultFor(
+    setting,
+    permissionId,
+    data.org.baseline.allowedPermissionIds,
+  );
+}
+
 /** Effective number of permissions a role allows today. */
-export function roleAllows(role: Role): number {
-  return org.permissions.filter(
-    (p) => settingResult(role.settings[String(p.id)]!, p.id) === "Allowed",
+export function roleAllows(data: WorkspaceData, role: Role): number {
+  return data.org.permissions.filter(
+    (p) => settingResult(data, role.settings[String(p.id)]!, p.id) === "Allowed",
   ).length;
 }
 
 /** Allows count if the role's pending changes were applied. */
-export function roleAllowsAfterReview(role: Role): number {
-  if (!role.pendingChanges?.length) return roleAllows(role);
-  const next: Role = {
-    ...role,
-    settings: { ...role.settings },
-  };
+export function roleAllowsAfterReview(data: WorkspaceData, role: Role): number {
+  if (!role.pendingChanges?.length) return roleAllows(data, role);
+  const next: Role = { ...role, settings: { ...role.settings } };
   for (const c of role.pendingChanges) {
     next.settings[String(c.permissionId)] = c.to;
   }
-  return roleAllows(next);
+  return roleAllows(data, next);
 }
 
 /** Settings across the custom roles currently set to Inherit (baseline panel). */
-export function customInheritCount(): number {
-  return org.roles
+export function customInheritCount(data: WorkspaceData): number {
+  return data.org.roles
     .filter((r) => r.type === "Custom")
     .reduce(
       (n, r) =>
@@ -125,32 +137,47 @@ export function customInheritCount(): number {
     );
 }
 
-export function roleMemberCount(roleId: string): number {
-  return members.filter((m) => m.roleId === roleId).length;
+/* ------------------------------------------------------------------ */
+/* Lookups                                                             */
+/* ------------------------------------------------------------------ */
+
+export function roleMemberCount(data: WorkspaceData, roleId: string): number {
+  return data.members.filter((m) => m.roleId === roleId).length;
 }
 
-export function roleMembers(roleId: string): Member[] {
-  return members.filter((m) => m.roleId === roleId);
+export function roleMembers(data: WorkspaceData, roleId: string): Member[] {
+  return data.members.filter((m) => m.roleId === roleId);
 }
 
-/** Can this member do this, through their role? (UI + api enforcement.) */
-export function memberCan(member: Member, permissionId: number): boolean {
-  const role = getRole(member.roleId);
+/** Can this member do this, through their role? (Display only — the
+    server enforces via the has_permission RPC before any write.) */
+export function memberCan(
+  data: WorkspaceData,
+  member: Member,
+  permissionId: number,
+): boolean {
+  const role = getRole(data, member.roleId);
   if (!role) return false;
-  return settingResult(role.settings[String(permissionId)]!, permissionId) === "Allowed";
+  return (
+    settingResult(data, role.settings[String(permissionId)]!, permissionId) ===
+    "Allowed"
+  );
 }
 
-export function memberEffectivePermissions(member: Member): {
+export function memberEffectivePermissions(
+  data: WorkspaceData,
+  member: Member,
+): {
   permission: Permission;
   result: "Allowed" | "Blocked";
   source: "role" | "baseline";
 }[] {
-  const role = getRole(member.roleId)!;
-  return org.permissions.map((p) => {
+  const role = getRole(data, member.roleId)!;
+  return data.org.permissions.map((p) => {
     const setting = role.settings[String(p.id)]!;
     return {
       permission: p,
-      result: settingResult(setting, p.id),
+      result: settingResult(data, setting, p.id),
       source: setting === "inherit" ? ("baseline" as const) : ("role" as const),
     };
   });
@@ -160,21 +187,24 @@ export function memberEffectivePermissions(member: Member): {
 /* Teams — membership organizes people; it never changes permissions   */
 /* ------------------------------------------------------------------ */
 
-export function teamMembers(teamId: string): Member[] {
-  return members.filter((m) => m.teams.some((t) => t.teamId === teamId));
+export function teamMembers(data: WorkspaceData, teamId: string): Member[] {
+  return data.members.filter((m) => m.teams.some((t) => t.teamId === teamId));
 }
 
-export function teamMemberCount(teamId: string): number {
-  return teamMembers(teamId).length;
+export function teamMemberCount(data: WorkspaceData, teamId: string): number {
+  return teamMembers(data, teamId).length;
 }
 
-export function totalPlacements(): number {
-  return members.reduce((n, m) => n + m.teams.length, 0);
+export function totalPlacements(data: WorkspaceData): number {
+  return data.members.reduce((n, m) => n + m.teams.length, 0);
 }
 
-export function teamRoleMix(teamId: string): { role: Role; count: number }[] {
-  const inTeam = teamMembers(teamId);
-  return org.roles
+export function teamRoleMix(
+  data: WorkspaceData,
+  teamId: string,
+): { role: Role; count: number }[] {
+  const inTeam = teamMembers(data, teamId);
+  return data.org.roles
     .map((role) => ({
       role,
       count: inTeam.filter((m) => m.roleId === role.id).length,
@@ -184,8 +214,9 @@ export function teamRoleMix(teamId: string): { role: Role; count: number }[] {
 }
 
 /**
- * Adding a person to a team. Returns the updated member; the member's role —
- * and therefore everything they can do — is untouched by design (§10).
+ * Adding a person to a team (pure preview). Returns the updated member;
+ * the member's role — and therefore everything they can do — is
+ * untouched by design. Persistence lives in the server actions.
  */
 export function addToTeam(member: Member, teamId: string): Member {
   if (member.teams.some((t) => t.teamId === teamId)) return member;
@@ -204,87 +235,47 @@ export type DirectoryEntry =
   | { kind: "member"; member: Member }
   | { kind: "invitation"; invitation: Invitation };
 
-export function openInvitations(): Invitation[] {
-  return invitations.filter((i) => i.status === "open" || i.status === "bounced");
+export function openInvitations(data: WorkspaceData): Invitation[] {
+  return data.invitations.filter(
+    (i) => i.status === "open" || i.status === "bounced",
+  );
 }
 
-export function getDirectoryEntries(): DirectoryEntry[] {
+export function getDirectoryEntries(data: WorkspaceData): DirectoryEntry[] {
   return [
-    ...members.map((member) => ({ kind: "member" as const, member })),
-    ...openInvitations().map((invitation) => ({
+    ...data.members.map((member) => ({ kind: "member" as const, member })),
+    ...openInvitations(data).map((invitation) => ({
       kind: "invitation" as const,
       invitation,
     })),
   ];
 }
 
-export function directoryCounts(): {
+export function directoryCounts(data: WorkspaceData): {
   all: number;
   active: number;
   invited: number;
   deactivated: number;
 } {
   return {
-    all: members.length + openInvitations().length,
-    active: members.filter((m) => m.status === "active").length,
-    invited: openInvitations().length,
-    deactivated: members.filter((m) => m.status === "deactivated").length,
+    all: data.members.length + openInvitations(data).length,
+    active: data.members.filter((m) => m.status === "active").length,
+    invited: openInvitations(data).length,
+    deactivated: data.members.filter((m) => m.status === "deactivated").length,
   };
 }
 
-/**
- * The designed first page of the Directory (P-02): a representative page in
- * register order — the owner, one person per role and state, Maya (newest),
- * then the open invitation row. Filters and search run over all 45 entries.
- */
-export const DIRECTORY_SPOTLIGHT_IDS = [
-  "001",
-  "008",
-  "011",
-  "012",
-  "014",
-  "017",
-  "019",
-  "024",
-  "027",
-  "033",
-  "042",
-];
-
-export function getDirectorySpotlight(): DirectoryEntry[] {
-  const rows: DirectoryEntry[] = DIRECTORY_SPOTLIGHT_IDS.map((id) => ({
-    kind: "member" as const,
-    member: getMember(id)!,
-  }));
-  const priya = invitations.find((i) => i.id === "inv-priya")!;
-  rows.push({ kind: "invitation", invitation: priya });
-  return rows;
-}
-
-/**
- * The register window the offline Directory shows (X-06, SysReconnect):
- * exactly four rows in register order — the person whose offline edit is
- * waiting to save (036) and the three neighbours the design draws
- * around her. The offline view always shows this window, whatever the
- * filters or search hold.
- */
-export const OFFLINE_WINDOW_IDS = ["035", "036", "038", "040"];
-
-export function getOfflineWindow(): Member[] {
-  return OFFLINE_WINDOW_IDS.map((id) => getMember(id)!);
-}
-
-export function invitationTabCounts(): {
+export function invitationTabCounts(data: WorkspaceData): {
   open: number;
   accepted: number;
   expired: number;
   revoked: number;
 } {
   return {
-    open: openInvitations().length,
-    accepted: invitations.filter((i) => i.status === "accepted").length,
-    expired: invitations.filter((i) => i.status === "expired").length,
-    revoked: invitations.filter((i) => i.status === "revoked").length,
+    open: openInvitations(data).length,
+    accepted: data.invitations.filter((i) => i.status === "accepted").length,
+    expired: data.invitations.filter((i) => i.status === "expired").length,
+    revoked: data.invitations.filter((i) => i.status === "revoked").length,
   };
 }
 
@@ -292,37 +283,41 @@ export function invitationTabCounts(): {
 /* Seats + audit                                                       */
 /* ------------------------------------------------------------------ */
 
-export function getSeats(): {
+export function getSeats(data: WorkspaceData): {
   used: number;
   held: number;
   free: number;
   total: number;
 } {
-  const used = members.filter((m) => m.status === "active").length;
-  const held = openInvitations().length;
-  const total = org.plan.seats;
+  const used = data.members.filter((m) => m.status === "active").length;
+  const held = openInvitations(data).length;
+  const total = data.org.plan.seats;
   return { used, held, free: total - used - held, total };
 }
 
-export function auditAccessChangeCount(): number {
-  return auditEntries.filter((e) => e.kind === "access").length;
+export function auditAccessChangeCount(data: WorkspaceData): number {
+  return data.auditEntries.filter((e) => e.kind === "access").length;
 }
 
-export function auditTotals(): { entries: number; accessChanges: number } {
+export function auditTotals(data: WorkspaceData): {
+  entries: number;
+  accessChanges: number;
+} {
   return {
-    entries: (auditData as { totals: { entries: number } }).totals.entries,
-    accessChanges: auditAccessChangeCount(),
+    entries: data.auditEntries.length,
+    accessChanges: auditAccessChangeCount(data),
   };
 }
 
-export function importCounts(): {
+export function importCounts(
+  rows: ImportRow[],
+  seats: { used: number; held: number },
+): {
   ready: number;
   fix: number;
   skipped: number;
   seatsNeeded: number;
 } {
-  const rows = getImportRows();
-  const seats = getSeats();
   const ready = rows.filter((r) => r.status === "ready").length;
   return {
     ready,
@@ -332,10 +327,11 @@ export function importCounts(): {
   };
 }
 
-/** People a Product admin could suspend with "Deactivate members": everyone
-    except the owner and the Product admins themselves (R-04 effect panel). */
-export function deactivateScopeCount(): number {
-  return (
-    members.length - roleMemberCount("owner") - roleMemberCount("product-admin")
-  );
+/** People in scope for "Deactivate members": every active member
+    except the owner, counted from real membership data (the server
+    action re-checks the permission per target). */
+export function deactivateScopeCount(data: WorkspaceData): number {
+  return data.members.filter(
+    (m) => m.roleId !== "owner" && m.status === "active",
+  ).length;
 }
