@@ -1,16 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { importInvitations } from "@/lib/data/actions";
 import { Button, ButtonLink } from "@/components/Button";
 
 interface Row {
   key: number;
   email: string;
-  role: string;
-  team: string;
+  roleId: string;
+  teamId: string;
 }
 
-/* Screen-literal avatar tints for the three seeded rows (Onboarding.html). */
+export interface InviteOption {
+  id: string;
+  name: string;
+}
+
 const AVATAR_TINTS = ["#dce3f4", "#e9e3d6", "#ddebe2"];
 
 function initialsOfEmail(email: string): string {
@@ -27,18 +33,29 @@ function initialsOfEmail(email: string): string {
  * F-05 invitation rows as one live state: Remove deletes a row,
  * "Add another" appends an editable blank row, and the heading count
  * and Send label both derive from the current rows. Roles are limited
- * to Member or Guest, as the screen draws them.
+ * to Member or Guest, as the screen draws them. Send creates real
+ * invitation rows via importInvitations, then continues to step 3
+ * (Check roles).
  */
-export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
-  const nextKey = useRef(initialEmails.length);
+export function InviteRows({
+  roles,
+  teams,
+}: {
+  roles: InviteOption[];
+  teams: InviteOption[];
+}) {
+  const router = useRouter();
+  const nextKey = useRef(3);
   const [rows, setRows] = useState<Row[]>(() =>
-    initialEmails.map((email, i) => ({
+    [0, 1, 2].map((i) => ({
       key: i,
-      email,
-      role: "Member",
-      team: "No team yet",
+      email: "",
+      roleId: roles[0]?.id ?? "member",
+      teamId: "",
     })),
   );
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
   const update = (key: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -47,8 +64,37 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
   const add = () =>
     setRows((rs) => [
       ...rs,
-      { key: nextKey.current++, email: "", role: "Member", team: "No team yet" },
+      {
+        key: nextKey.current++,
+        email: "",
+        roleId: roles[0]?.id ?? "member",
+        teamId: "",
+      },
     ]);
+
+  const filled = rows.filter((r) => r.email.trim() !== "");
+
+  async function send() {
+    setBusy(true);
+    setNote(null);
+    const res = await importInvitations(
+      filled.map((r) => ({
+        email: r.email.trim(),
+        roleId: r.roleId,
+        teamId: r.teamId || undefined,
+      })),
+    );
+    setBusy(false);
+    if (!res.ok) {
+      setNote(res.error);
+      return;
+    }
+    if ((res.created ?? 0) === 0 && filled.length > 0) {
+      setNote("Those addresses are already members or already invited.");
+      return;
+    }
+    router.push("/app/roles");
+  }
 
   return (
     <>
@@ -122,11 +168,14 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                   <select
                     id={`r${i + 1}`}
                     className="in"
-                    value={row.role}
-                    onChange={(e) => update(row.key, { role: e.target.value })}
+                    value={row.roleId}
+                    onChange={(e) => update(row.key, { roleId: e.target.value })}
                   >
-                    <option>Member</option>
-                    <option>Guest</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
                   </select>
                 </span>
                 <span role="cell">
@@ -136,10 +185,15 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
                   <select
                     id={`t${i + 1}`}
                     className="in"
-                    value={row.team}
-                    onChange={(e) => update(row.key, { team: e.target.value })}
+                    value={row.teamId}
+                    onChange={(e) => update(row.key, { teamId: e.target.value })}
                   >
-                    <option>No team yet</option>
+                    <option value="">No team yet</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
                   </select>
                 </span>
                 <span role="cell">
@@ -193,6 +247,11 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
         </div>
       </section>
 
+      {note ? (
+        <p role="status" style={{ fontSize: 13.5, margin: 0 }}>
+          {note}
+        </p>
+      ) : null}
       <div
         style={{
           display: "flex",
@@ -217,14 +276,15 @@ export function InviteRows({ initialEmails }: { initialEmails: string[] }) {
           >
             Skip for now
           </ButtonLink>
-          <ButtonLink
+          <Button
             variant="pri"
             size="h40"
-            href="/app/roles"
+            disabled={busy || filled.length === 0}
+            onClick={() => void send()}
             style={{ fontSize: 14 }}
           >
-            Send {rows.length} invitations
-          </ButtonLink>
+            Send {filled.length} invitation{filled.length === 1 ? "" : "s"}
+          </Button>
         </div>
       </div>
     </>
