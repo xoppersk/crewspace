@@ -1,17 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { getMember, getRole, getTeam, roleAllows, roleMemberCount } from "@/lib/api";
+import { signOutAction } from "@/lib/auth/actions";
+import type { Member, Role, Team } from "@/lib/types";
 import { ButtonLink } from "./Button";
 import { GoogleButton } from "./GoogleButton";
 import { LegalFooter } from "./LegalFooter";
 
-/* Screen-literal avatar tints (SysEmptyTeam / SysReconnect draw these
-   exact hexes per person; they are not token colours). */
-const AVATAR_TINTS: Record<string, string> = {
-  "011": "#DCE3F4", // Owen Clarke
-  "008": "#E9E3D6", // Felix Grant
-  "027": "#DDEBE2", // Rita Alvarez
-};
+/**
+ * State screens — every value on these screens comes from the real
+ * session / database row that produced the state (the signed-in user's
+ * own deactivated membership, a real expired invitation, the actual
+ * role the actor holds). There is no persona or query-string state
+ * machinery: callers pass the real records in as props.
+ */
 
 function initialsOf(name: string): string {
   return name
@@ -21,14 +22,22 @@ function initialsOf(name: string): string {
     .join("");
 }
 
-/* X-01 — a signed-in person who can view a role but not change it.
-   The scenario is persona-bound (HANDOVER §8): a Support lead opens a
-   role's edit page, so it always presents the Support lead case,
-   whichever role route the toggle is attached to. Layout per
-   SysDenied.html: notice card left, dark "Access decision" panel right. */
-export function DeniedState(_props: { roleId?: string } = {}) {
-  const role = getRole("support-lead")!;
-  const count = roleMemberCount("support-lead");
+/* X-01 — a signed-in person who can view a role but not change it:
+   rendered from the REAL permission check (the actor lacks
+   roles:update / "Edit role permissions") on the role they opened. */
+export function DeniedState({
+  role,
+  memberCount,
+  yourRoleName,
+  yourAllows,
+  ownerName,
+}: {
+  role: Role;
+  memberCount: number;
+  yourRoleName?: string;
+  yourAllows?: number;
+  ownerName?: string;
+}) {
   return (
     <div className="sys-two">
       <div className="sys-stack">
@@ -69,8 +78,11 @@ export function DeniedState(_props: { roleId?: string } = {}) {
             <b style={{ fontWeight: 600, color: "var(--ink)" }}>
               Edit role permissions
             </b>
-            . It protects what all {count} {role.name}s can do, including you.
-            Only Sheku Koroma, the organization owner, has it.
+            . It protects what all {memberCount} {role.name}s can do,
+            including you.
+            {ownerName
+              ? ` Only ${ownerName}, the organization owner, has it.`
+              : ""}
           </p>
           <div className="sys-missbox">
             <div className="sys-missrow">
@@ -106,35 +118,43 @@ export function DeniedState(_props: { roleId?: string } = {}) {
             <div>
               <dt>Protected</dt>
               <dd>
-                {role.name} · {count} members
+                {role.name} · {memberCount} members
               </dd>
             </div>
-            <div>
-              <dt>Your role</dt>
-              <dd>
-                {role.name} · allows {roleAllows(role)} of 18
-              </dd>
-            </div>
-            <div>
-              <dt>Ask</dt>
-              <dd>Sheku Koroma · Organization owner</dd>
-            </div>
+            {yourRoleName ? (
+              <div>
+                <dt>Your role</dt>
+                <dd>
+                  {yourRoleName}
+                  {yourAllows !== undefined
+                    ? ` · allows ${yourAllows} of 18`
+                    : ""}
+                </dd>
+              </div>
+            ) : null}
+            {ownerName ? (
+              <div>
+                <dt>Ask</dt>
+                <dd>{ownerName} · Organization owner</dd>
+              </div>
+            ) : null}
           </dl>
-          <ButtonLink variant="white" size="h40" href="#">
-            Ask Sheku to make the change
-          </ButtonLink>
         </section>
       </aside>
     </div>
   );
 }
 
-/* X-02 — a brand-new team with nobody on it. Rendered inside the app shell.
-   Layout per SysEmptyTeam.html: header card + empty card left, suggested
-   people card right. */
-export function EmptyTeamState() {
-  const team = getTeam("partnerships")!;
-  const suggested = ["011", "008", "027"].map((id) => getMember(id)!);
+/* X-02 — a real team with nobody on it yet. Rendered inside the app shell. */
+export function EmptyTeamState({
+  team,
+  orgName,
+  suggestions = [],
+}: {
+  team: Team;
+  orgName: string;
+  suggestions?: { member: Member; roleName: string }[];
+}) {
   return (
     <div className="sys-two">
       <div className="sys-stack">
@@ -154,8 +174,7 @@ export function EmptyTeamState() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <h1 className="sys-h-team">{team.name}</h1>
             <span className="meta">
-              Team <span className="mono">{team.regNumber}</span> · created
-              today by Daniel Okafor · no lead yet
+              Team <span className="mono">{team.regNumber}</span> · no lead yet
             </span>
           </div>
         </header>
@@ -170,7 +189,7 @@ export function EmptyTeamState() {
           </span>
           <h2 className="sys-h-empty">This team has no one on it yet.</h2>
           <p className="sys-lead15" style={{ maxWidth: "40em" }}>
-            Add people who already belong to Sevyn Labs, or invite someone new
+            Add people who already belong to {orgName}, or invite someone new
             straight onto this team. Adding people here doesn’t change their
             role or what they can do.
           </p>
@@ -183,35 +202,28 @@ export function EmptyTeamState() {
         </section>
       </div>
 
-      <aside className="sys-aside">
-        <section className="card sys-suggest" aria-labelledby="sys-sg">
-          <h2 id="sys-sg">Suggested from Customer operations</h2>
-          <div>
-            {suggested.map((p) => (
-              <div className="sys-sug" key={p.id}>
-                <span
-                  className="av"
-                  aria-hidden="true"
-                  style={{ border: 0, background: AVATAR_TINTS[p.id] }}
-                >
-                  {initialsOf(p.name)}
-                </span>
-                <b>{p.name}</b>
-                <span className="role">{getRole(p.roleId)?.name}</span>
-              </div>
-            ))}
-          </div>
-          <p className="sys-sug-note">
-            Suggested because they’re on accounts tagged “partner” this month.
-          </p>
-        </section>
-      </aside>
+      {suggestions.length ? (
+        <aside className="sys-aside">
+          <section className="card sys-suggest" aria-labelledby="sys-sg">
+            <h2 id="sys-sg">People in this workspace</h2>
+            <div>
+              {suggestions.map(({ member: p, roleName }) => (
+                <div className="sys-sug" key={p.id}>
+                  <span className="av" aria-hidden="true" style={{ border: 0 }}>
+                    {initialsOf(p.name)}
+                  </span>
+                  <b>{p.name}</b>
+                  <span className="role">{roleName}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+      ) : null}
     </div>
   );
 }
-
-/* Public state chrome (X-03/X-04/X-05): the screens sit on --ground with
-   a shield-mark header and the shared one-line LegalFooter. */
+/* Public state chrome (X-03/X-04/X-05). */
 function SignedOutChrome({
   headerAction,
   children,
@@ -239,8 +251,28 @@ function SignedOutChrome({
   );
 }
 
-/* X-03 — an invitation link that has expired. */
-export function ExpiredState() {
+function SignOutButton({ className }: { className?: string }) {
+  return (
+    <form action={signOutAction}>
+      <button type="submit" className={className ?? "sys-headlink"}>
+        Sign out
+      </button>
+    </form>
+  );
+}
+
+/* X-03 — a real invitation whose token is expired or revoked. */
+export function ExpiredState({
+  orgName,
+  email,
+  inviterName,
+  expiredLabel,
+}: {
+  orgName?: string;
+  email?: string;
+  inviterName?: string;
+  expiredLabel?: string;
+}) {
   return (
     <SignedOutChrome
       headerAction={
@@ -260,27 +292,25 @@ export function ExpiredState() {
             </span>
             <span className="sys-chip deny">
               <i aria-hidden="true" />
-              Invitation · expired October 1
+              Invitation · expired{expiredLabel ? ` ${expiredLabel}` : ""}
             </span>
           </div>
           <h1 className="sys-h-public">This invitation has expired.</h1>
           <p className="sys-lead16">
-            Daniel Okafor invited{" "}
-            <span className="mono">nina.brooks@sevynlabs.io</span> to Sevyn
-            Labs on September 24. Invitations last 7 days, so this link no
-            longer works. Nothing was created and nobody was charged.
+            {inviterName ? `${inviterName} invited ` : "You were invited "}
+            {email ? <span className="mono">{email}</span> : "this address"}
+            {orgName ? ` to ${orgName}` : ""}. Invitations last 7 days, so
+            this link no longer works. Nothing was created and nobody was
+            charged.
           </p>
           <div className="sys-actions gap10">
-            <ButtonLink variant="pri" href="#" className="sys-h42">
-              Ask Daniel to send a new one
-            </ButtonLink>
             <ButtonLink href="/signin" className="sys-h42">
               Sign in instead
             </ButtonLink>
           </div>
           <span className="sys-pub-note">
-            Asking sends Daniel one email. He decides; you’ll hear back at
-            this address.
+            Ask whoever invited you to send a new invitation — they can
+            resend it from the workspace’s Invitations page.
           </span>
         </section>
       </div>
@@ -288,16 +318,10 @@ export function ExpiredState() {
   );
 }
 
-/* X-04 — signed in with Google, but in no organization. */
-export function NoOrgState() {
+/* X-04 — signed in, but a member of no organization. */
+export function NoOrgState({ email }: { email: string }) {
   return (
-    <SignedOutChrome
-      headerAction={
-        <Link href="#" className="sys-headlink">
-          Sign out
-        </Link>
-      }
-    >
+    <SignedOutChrome headerAction={<SignOutButton />}>
       <div className="sys-pub-center split">
         <section className="card sys-pub-card split">
           <div className="sys-toprow">
@@ -309,7 +333,7 @@ export function NoOrgState() {
             </span>
             <span className="sys-chip ok">
               <i aria-hidden="true" />
-              Signed in · jordan.bell@gmail.com
+              Signed in · {email}
             </span>
           </div>
           <h1 className="sys-h-public">
@@ -318,10 +342,15 @@ export function NoOrgState() {
           <p className="sys-lead16">
             Crewspace only shows a register to people who were invited to it.
             If you were expecting one, the invitation probably went to a
-            different address.
+            different address — or open the invitation link while signed in
+            here to accept it.
           </p>
           <div className="sys-wide-stack">
-            <GoogleButton label="Use a different Google account" height={46} />
+            <GoogleButton
+              label="Use a different Google account"
+              height={46}
+              href="/auth/google"
+            />
             <ButtonLink href="/signup" className="sys-wide sys-flat">
               Start a new organization
             </ButtonLink>
@@ -350,11 +379,28 @@ export function NoOrgState() {
   );
 }
 
-/* X-05 — a deactivated person tries to sign in. */
-export function DeactivatedState() {
-  const victor = getMember("033")!;
+/* X-05 — the signed-in user's own membership is deactivated. */
+export function DeactivatedState({
+  orgName,
+  email,
+  deactivatedBy,
+  deactivatedOn,
+  roleName,
+}: {
+  orgName: string;
+  email: string;
+  deactivatedBy?: string;
+  deactivatedOn?: string;
+  roleName?: string;
+}) {
+  const initials = orgName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
   return (
-    <SignedOutChrome>
+    <SignedOutChrome headerAction={<SignOutButton />}>
       <div className="sys-pub-center split">
         <section className="card sys-pub-card split">
           <div className="sys-toprow">
@@ -366,25 +412,21 @@ export function DeactivatedState() {
             </span>
             <span className="sys-chip">
               <i aria-hidden="true" style={{ background: "var(--deny)" }} />
-              Member {victor.id} · Sevyn Labs
+              {orgName}
             </span>
           </div>
           <h1 className="sys-h-public">
-            Your access to Sevyn Labs was turned off.
+            Your access to {orgName} was turned off.
           </h1>
           <p className="sys-lead16">
-            Sheku Koroma deactivated{" "}
-            <span className="mono">{victor.email}</span> on September 12. You
-            can’t see the register while it’s off. Your history and anything
-            you own were kept, so it can be turned back on.
+            {deactivatedBy ? `${deactivatedBy} deactivated ` : "Your account "}
+            <span className="mono">{email}</span>
+            {deactivatedOn ? ` on ${deactivatedOn}` : ""}. You can’t see the
+            register while it’s off. Your history and anything you own were
+            kept, so it can be turned back on.
           </p>
           <div className="sys-actions gap10">
-            <ButtonLink variant="pri" href="#" className="sys-h42">
-              Ask Sheku to reactivate
-            </ButtonLink>
-            <ButtonLink href="#" className="sys-h42">
-              Sign out
-            </ButtonLink>
+            <SignOutButton className="btn sys-h42" />
           </div>
         </section>
         <aside
@@ -393,27 +435,33 @@ export function DeactivatedState() {
         >
           <div className="sys-orghead">
             <span className="sl" aria-hidden="true">
-              SL
+              {initials || "CS"}
             </span>
-            <b>Sevyn Labs</b>
+            <b>{orgName}</b>
           </div>
           <dl className="sys-dk">
             <div>
               <dt>Organization</dt>
-              <dd>Sevyn Labs</dd>
+              <dd>{orgName}</dd>
             </div>
-            <div>
-              <dt>Deactivated</dt>
-              <dd>Sep 12, 2026</dd>
-            </div>
-            <div>
-              <dt>By</dt>
-              <dd>Sheku Koroma, owner</dd>
-            </div>
-            <div className="bb">
-              <dt>Role kept</dt>
-              <dd>{getRole(victor.roleId)?.name}</dd>
-            </div>
+            {deactivatedOn ? (
+              <div>
+                <dt>Deactivated</dt>
+                <dd>{deactivatedOn}</dd>
+              </div>
+            ) : null}
+            {deactivatedBy ? (
+              <div>
+                <dt>By</dt>
+                <dd>{deactivatedBy}</dd>
+              </div>
+            ) : null}
+            {roleName ? (
+              <div className="bb">
+                <dt>Role kept</dt>
+                <dd>{roleName}</dd>
+              </div>
+            ) : null}
           </dl>
         </aside>
       </div>
