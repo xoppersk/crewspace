@@ -61,7 +61,7 @@ export async function createInvitation(input: {
   if (!ws) return { ok: false, error: "Sign in first." };
   if (!(await checkPermission(ws.orgId, "members:invite"))) return DENIED;
   const email = input.email.trim().toLowerCase();
-  if (!/^[^\s]+@[^\s]+\.[^\s]+$/.test(email))
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
     return { ok: false, error: "That email address doesn't look right." };
   const roleUuid = await resolveRoleUuid(ws.orgId, input.roleId);
   if (!roleUuid) return { ok: false, error: "That role doesn't exist." };
