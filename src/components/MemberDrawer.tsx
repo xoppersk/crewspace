@@ -4,13 +4,13 @@ import Link from "next/link";
 import {
   getInvitations,
   getMember,
-  getOrg,
-  getPermissions,
   getRole,
   getTeam,
   roleAllows,
   settingResult,
+  type WorkspaceData,
 } from "@/lib/api";
+import { setMemberActive } from "@/lib/data/actions";
 import type { Member } from "@/lib/types";
 import { Button, ButtonLink } from "./Button";
 import { Drawer, DrawerClose } from "./Drawer";
@@ -26,19 +26,24 @@ import { initialsOf, tintFor } from "./MemberRow";
  */
 export function MemberDrawer({
   member,
+  data,
   onClose,
   lastActiveText,
   offline = false,
+  canDeactivate = false,
 }: {
   member: Member;
+  /** The workspace data (loaded server-side, passed through). */
+  data: WorkspaceData;
   onClose: () => void;
   lastActiveText?: string;
-  /** X-06: access-changing actions pause while the connection is down. */
   offline?: boolean;
+  /** The viewer's real permission (checked again server-side). */
+  canDeactivate?: boolean;
 }) {
-  const role = getRole(member.roleId)!;
-  const org = getOrg();
-  const perms = getPermissions();
+  const role = getRole(data, member.roleId)!;
+  const org = data.org;
+  const perms = data.org.permissions;
   /* Design DOM order (MemberDrawer.html): Invite, Change member roles,
      Edit member profiles, Create teams, Manage team membership,
      Resend or revoke, Read audit log (§13 register ids below). */
@@ -50,21 +55,20 @@ export function MemberDrawer({
   const allowedNames = [...perms]
     .sort((a, b) => rank(a.id) - rank(b.id))
     .filter(
-      (p) => settingResult(role.settings[String(p.id)]!, p.id) === "Allowed",
+      (p) => settingResult(data, role.settings[String(p.id)]!, p.id) === "Allowed",
     )
     .map((p) => p.name);
   const pending = role.pendingChanges ?? [];
   const newlyAllowed = pending
     .filter(
       (c) =>
-        settingResult(c.to, c.permissionId) === "Allowed" &&
-        settingResult(c.from, c.permissionId) !== "Allowed",
+        settingResult(data, c.to, c.permissionId) === "Allowed" &&
+        settingResult(data, c.from, c.permissionId) !== "Allowed",
     )
     .map((c) => perms.find((p) => p.id === c.permissionId)!.name);
-  const invitation = getInvitations().find((i) => i.email === member.email);
+  const invitation = getInvitations(data).find((i) => i.email === member.email);
   const sessions = member.sessions?.length ?? 1;
   const firstName = member.name.split(" ")[0];
-  const isMaya = member.id === "042";
 
   return (
     <Drawer
@@ -73,21 +77,23 @@ export function MemberDrawer({
       footer={
         <footer className="p-drawer-foot">
           <Button
-            disabled={offline}
-            title={
-              offline
-                ? "Sign-out is paused while you are offline"
-                : undefined
-            }
+            disabled
+            title="Session management for other members isn't available in this workspace yet"
           >
             Sign out everywhere
           </Button>
           <Button
             variant="dest"
-            disabled={offline}
+            disabled={offline || !canDeactivate || member.status !== "active"}
             title={
-              offline ? "Deactivation is paused while you are offline" : undefined
+              !canDeactivate
+                ? "You don't have permission to deactivate members"
+                : undefined
             }
+            onClick={async () => {
+              const res = await setMemberActive(member.id, false);
+              if (res.ok) onClose();
+            }}
           >
             Deactivate
           </Button>
@@ -117,11 +123,7 @@ export function MemberDrawer({
           <span
             className="p-mono52"
             aria-hidden="true"
-            style={
-              isMaya
-                ? { background: "#DCE3F4", color: "var(--seal)" }
-                : { background: tintFor(member.id), color: "var(--ink)" }
-            }
+            style={{ background: tintFor(member.id), color: "var(--ink)" }}
           >
             {initialsOf(member.name)}
           </span>
@@ -176,11 +178,11 @@ export function MemberDrawer({
           <RoleTag role={role} />
           <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
             <b style={{ color: "var(--seal)", fontWeight: 600 }}>
-              allows {roleAllows(role)} of 18
+              allows {roleAllows(data, role)} of 18
             </b>
           </span>
         </span>
-        <PermissionStrip role={role} full />
+        <PermissionStrip role={role} permissions={perms} baselineIds={org.baseline.allowedPermissionIds} full />
         <ul className="can">
           {allowedNames.map((n) => (
             <li key={n}>
@@ -209,8 +211,8 @@ export function MemberDrawer({
         <h3 id="ds-teams">Teams</h3>
         <dl className="kv">
           {member.teams.map((t) => {
-            const team = getTeam(t.teamId)!;
-            const lead = team.leadId ? getMember(team.leadId) : undefined;
+            const team = getTeam(data, t.teamId)!;
+            const lead = team.leadId ? getMember(data, team.leadId) : undefined;
             return (
               <div key={t.teamId} style={{ display: "contents" }}>
                 <dt>{team.name}</dt>
@@ -264,7 +266,7 @@ export function MemberDrawer({
                 {invitation.sent}
               </dt>
               <dd>
-                Invited by {getMember(invitation.invitedById)?.name ?? "—"}
+                Invited by {getMember(data, invitation.invitedById)?.name ?? "—"}
               </dd>
             </>
           ) : (
@@ -272,7 +274,7 @@ export function MemberDrawer({
               <dt className="mono" style={{ fontSize: 12 }}>
                 {member.joined}
               </dt>
-              <dd>Joined {getTeam(member.teams[0]?.teamId ?? "")?.name ?? "the organization"}</dd>
+              <dd>Joined {getTeam(data, member.teams[0]?.teamId ?? "")?.name ?? "the organization"}</dd>
             </>
           )}
         </dl>
