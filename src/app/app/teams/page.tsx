@@ -9,46 +9,21 @@ import {
   teamMemberCount,
   teamRoleMix,
   totalPlacements,
+  type WorkspaceData,
 } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
+import { NewTeamForm } from "./NewTeamForm";
 import type { Role, Team } from "@/lib/types";
 import { AppShell } from "@/components/Shell";
-import { ButtonLink } from "@/components/Button";
+import { tintFor } from "@/components/MemberRow";
 import { IconTeams } from "@/components/icons";
 
 /**
  * R-01 Teams (screens/Teams.html): a 3-column grid of team cards —
  * icon tile, member count, role-mix bar + caption, lead and last
- * change. Counts, leads and mixes are derived from the fixtures.
- * The one-line team descriptions and "last change" strings are the
- * screen's exact copy.
+ * change. Counts, leads, mixes, descriptions and last-change
+ * strings all derive from the workspace's real data.
  */
-const LIST_BLURB: Record<string, string> = {
-  "customer-operations": "Support, onboarding and renewals",
-  product: "Roadmap, design and research",
-  engineering: "Platform and integrations",
-  finance: "Billing, payroll and reporting",
-  marketing: "Brand, content and events",
-  leadership: "Company decisions and approvals",
-};
-
-const LIST_LAST_CHANGE: Record<string, string> = {
-  "customer-operations": "Oct 4",
-  product: "Oct 5 · Maya joined",
-  engineering: "Sep 29",
-  finance: "Sep 22",
-  marketing: "Sep 18",
-  leadership: "Sep 10",
-};
-
-/** Lead avatar tints, exactly as Teams.html draws each team's lead. */
-const LEAD_TINTS: Record<string, string> = {
-  "customer-operations": "#F0DDDA",
-  product: "#E9E3D6",
-  engineering: "#F0DDDA",
-  finance: "#DDEBE2",
-  marketing: "#E3DDF0",
-  leadership: "#F0DDDA",
-};
 
 export const metadata: Metadata = { title: "Crewspace — Teams" };
 
@@ -57,17 +32,17 @@ export const metadata: Metadata = { title: "Crewspace — Teams" };
  * then by allows descending, with Member/Guest last. The same order
  * drives the caption and the bar segments for every team.
  */
-function orderedMix(team: Team): { role: Role; count: number }[] {
-  const leadRoleId = team.leadId ? getMember(team.leadId)?.roleId : undefined;
+function orderedMix(data: WorkspaceData, team: Team): { role: Role; count: number }[] {
+  const leadRoleId = team.leadId ? getMember(data, team.leadId)?.roleId : undefined;
   const isBase = (r: Role) => r.id === "member" || r.id === "guest";
-  return [...teamRoleMix(team.id)].sort((a, b) => {
+  return [...teamRoleMix(data, team.id)].sort((a, b) => {
     const aLead = a.role.id === leadRoleId && !isBase(a.role) ? 0 : 1;
     const bLead = b.role.id === leadRoleId && !isBase(b.role) ? 0 : 1;
     if (aLead !== bLead) return aLead - bLead;
     const aBase = isBase(a.role) ? 1 : 0;
     const bBase = isBase(b.role) ? 1 : 0;
     if (aBase !== bBase) return aBase - bBase;
-    return roleAllows(b.role) - roleAllows(a.role);
+    return roleAllows(data, b.role) - roleAllows(data, a.role);
   });
 }
 
@@ -78,20 +53,20 @@ function orderedMix(team: Team): { role: Role; count: number }[] {
  * roles (Analyst, Finance viewer, Auditor) → --seal-mid;
  * Member/Guest → --control.
  */
-function mixColor(role: Role, firstAdmin: boolean): string {
+function mixColor(data: WorkspaceData, role: Role, firstAdmin: boolean): string {
   if (role.id === "owner") return "var(--ink-bar)";
   if (role.id === "member" || role.id === "guest") return "var(--control)";
-  if (roleAllows(role) >= 3)
+  if (roleAllows(data, role) >= 3)
     return firstAdmin ? "var(--seal)" : "var(--seal-mid)";
   return "var(--seal-mid)";
 }
 
-function isAdminTier(role: Role): boolean {
+function isAdminTier(data: WorkspaceData, role: Role): boolean {
   return (
     role.id !== "owner" &&
     role.id !== "member" &&
     role.id !== "guest" &&
-    roleAllows(role) >= 3
+    roleAllows(data, role) >= 3
   );
 }
 
@@ -103,8 +78,8 @@ function initialsOf(name: string): string {
     .join("");
 }
 
-function mixCaption(team: Team): string {
-  const mix = orderedMix(team);
+function mixCaption(data: WorkspaceData, team: Team): string {
+  const mix = orderedMix(data, team);
   /* Teams.html folds the Guest into "Members" in the caption (the
      Marketing card reads "3 Members" for 2 Members + 1 Guest, and the
      bar draws them as one --control segment). */
@@ -119,18 +94,18 @@ function mixCaption(team: Team): string {
     .join(" · ");
 }
 
-function TeamCard({ team }: { team: Team }) {
-  const lead = team.leadId ? getMember(team.leadId) : undefined;
-  const leadRole = lead ? getRole(lead.roleId) : undefined;
-  const count = teamMemberCount(team.id);
-  const mix = orderedMix(team);
+function TeamCard({ data, team }: { data: WorkspaceData; team: Team }) {
+  const lead = team.leadId ? getMember(data, team.leadId) : undefined;
+  const leadRole = lead ? getRole(data, lead.roleId) : undefined;
+  const count = teamMemberCount(data, team.id);
+  const mix = orderedMix(data, team);
   /* Adjacent segments of the same colour merge into one (Marketing:
      Member and Guest are both --control, drawn as a single 60%). */
   const segments: { color: string; pct: number }[] = [];
   let adminSeen = false;
   for (const { role, count: n } of mix) {
-    const admin = isAdminTier(role);
-    const color = mixColor(role, admin && !adminSeen);
+    const admin = isAdminTier(data, role);
+    const color = mixColor(data, role, admin && !adminSeen);
     if (admin) adminSeen = true;
     const pct = count ? (n / count) * 100 : 0;
     const last = segments[segments.length - 1];
@@ -148,7 +123,7 @@ function TeamCard({ team }: { team: Team }) {
           <span style={{ minWidth: 0 }}>
             <span className="tname">{team.name}</span>
             <span className="tblurb">
-              {LIST_BLURB[team.id] ?? team.blurb}
+              {team.blurb}
             </span>
           </span>
         </span>
@@ -167,7 +142,7 @@ function TeamCard({ team }: { team: Team }) {
             />
           ))}
         </span>
-        <span className="mixcap">{mixCaption(team)}</span>
+        <span className="mixcap">{mixCaption(data, team)}</span>
       </span>
       <span className="tc-foot">
         {lead ? (
@@ -175,7 +150,7 @@ function TeamCard({ team }: { team: Team }) {
             <span
               className="lead-av"
               aria-hidden="true"
-              style={{ background: LEAD_TINTS[team.id] ?? "var(--fill)" }}
+              style={{ background: tintFor(team.id) }}
             >
               {initialsOf(lead.name)}
             </span>
@@ -188,35 +163,45 @@ function TeamCard({ team }: { team: Team }) {
           <span className="lead">No lead yet</span>
         )}
         <span className="lastchg">
-          <span className="lbl">Last change</span>
-          {LIST_LAST_CHANGE[team.id] ?? "—"}
+          <span className="lbl">Last change</span>—
         </span>
       </span>
     </Link>
   );
 }
 
-function PlusIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <path d="M8 3v10M3 8h10" />
-    </svg>
-  );
-}
 
-export default function TeamsPage() {
-  const teams = [...getTeams()].sort(
-    (a, b) => teamMemberCount(b.id) - teamMemberCount(a.id),
-  );
-  const members = getMembers();
+export default async function TeamsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; sort?: string }>;
+}) {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="teams">{null}</AppShell>;
+  }
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim().toLowerCase();
+  let teams = [...getTeams(data)];
+  if (q) {
+    teams = teams.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        getMembers(data).some(
+          (m) =>
+            m.teams.some((x) => x.teamId === t.id) &&
+            m.name.toLowerCase().includes(q),
+        ),
+    );
+  }
+  if (sp.sort === "Name") {
+    teams.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    teams.sort(
+      (a, b) => teamMemberCount(data, b.id) - teamMemberCount(data, a.id),
+    );
+  }
+  const members = getMembers(data);
   const onTwoTeams = members.filter((m) => m.teams.length === 2).length;
 
   return (
@@ -230,14 +215,12 @@ export default function TeamsPage() {
             access on their own: what someone can do comes from their role.
           </p>
         </div>
-        <ButtonLink variant="pri" href="#">
-          <PlusIcon />
-          New team
-        </ButtonLink>
+        <NewTeamForm />
       </header>
 
       <div className="teams-toolbar">
-        <div
+        <form
+          method="get"
           role="search"
           style={{
             display: "flex",
@@ -262,20 +245,24 @@ export default function TeamsPage() {
             </svg>
             <input
               id="q"
+              name="q"
               className="in"
               placeholder="Find a team or person"
+              defaultValue={sp.q ?? ""}
               style={{ width: 270 }}
             />
           </span>
           <label htmlFor="s" className="sr-only">
             Sort
           </label>
-          <select id="s" className="in" defaultValue="Most members">
+          <select id="s" name="sort" className="in" defaultValue={sp.sort ?? "Most members"}>
             <option>Most members</option>
             <option>Name</option>
-            <option>Recently changed</option>
           </select>
-        </div>
+          <button type="submit" className="btn" style={{ height: 38 }}>
+            Search
+          </button>
+        </form>
         <span className="note">
           Bar shows each team’s mix of roles, darkest = most access
         </span>
@@ -283,13 +270,13 @@ export default function TeamsPage() {
 
       <div role="list" aria-label="Teams" className="teams-grid">
         {teams.map((team) => (
-          <TeamCard key={team.id} team={team} />
+          <TeamCard key={team.id} data={data} team={team} />
         ))}
       </div>
 
       <div className="teams-foot">
         <span>
-          {totalPlacements()} placements across {teams.length} teams ·{" "}
+          {totalPlacements(data)} placements across {teams.length} teams ·{" "}
           {members.length} people
         </span>
       </div>
