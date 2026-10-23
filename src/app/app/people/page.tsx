@@ -3,27 +3,34 @@ import type { Metadata } from "next";
 import {
   directoryCounts,
   getDirectoryEntries,
-  getDirectorySpotlight,
   getMember,
-  getOfflineWindow,
   getRoles,
-  getTeam,
   getTeams,
   type DirectoryEntry,
+  type WorkspaceData,
 } from "@/lib/api";
+import {
+  getActiveWorkspace,
+  getMyPermissionKeys,
+  loadActiveWorkspaceData,
+} from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
 import { InvitationRow, MemberRow } from "@/components/MemberRow";
-import { ReconnectBanner } from "@/components/ReconnectBanner";
-import { ConflictSheet } from "./ConflictSheet";
 import { DirectoryDrawer } from "./DirectoryDrawer";
 import { DirectoryFilters } from "./DirectoryFilters";
 
 /**
- * P-02 Directory (+ P-03 drawer via ?open=, + X-06 via ?state=offline).
- * Default: the designed first page (spotlight). Any filter/search — or
- * "Show N more" (?show=all) — runs over all 45 entries.
+ * P-02 Directory (+ P-03 drawer via ?open=).
+ * All rows come from the signed-in user's workspace (RLS-scoped).
+ * Default: the first page of entries in register order; any
+ * filter/search — or "Show N more" (?show=all) — runs over all
+ * entries. Filters are query params evaluated against the real data.
+ * (The old ?state=offline fixture window is gone: there is no
+ * persona/offline fabrication in production.)
  */
+
+const PAGE_SIZE = 12;
 
 type SearchParams = {
   q?: string;
@@ -31,7 +38,6 @@ type SearchParams = {
   role?: string;
   team?: string;
   open?: string;
-  state?: string;
   show?: string;
 };
 
@@ -49,126 +55,20 @@ export async function generateMetadata({
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
   const sp = await searchParams;
-  if (sp.state === "offline") return { title: "Crewspace — Reconnecting" };
   if (sp.open) {
-    const member = getMember(sp.open);
+    const data = await loadActiveWorkspaceData();
+    const member = data ? getMember(data, sp.open) : undefined;
     if (member)
       return { title: `Crewspace — Directory, ${member.name} open` };
   }
   return { title: "Crewspace — Directory" };
 }
 
-/* Screen-literal avatar tints for the X-06 register window
-   (SysReconnect.html draws these exact hexes per person). */
-const OFFLINE_AVATAR_TINTS: Record<string, string> = {
-  "035": "#DCE3F4", // Sofia Duarte
-  "036": "#E9E3D6", // Zoe Adams
-  "038": "#F0DDDA", // Hannah Lee
-  "040": "#DDEBE2", // Yusuf Ali
-};
-
-/**
- * X-06 offline register row (SysReconnect.html): five columns — No.,
- * Person, Role, Teams, Status — with roles as plain text and people as
- * avatar + name; rows are not links because membership actions are paused.
- * Zoe Adams' row is the pending one: row-tint-allow with an inset seal
- * rule, a seal ".chg" "Waiting to save" chip, role "Member · now Analyst",
- * teams "Product" struck through → "Partnerships".
- */
-function OfflineDirectoryRow({ id }: { id: string }) {
-  const member = getMember(id)!;
-  const role = getRoles().find((r) => r.id === member.roleId)!;
-  const pending = id === "036";
-  const statusCell =
-    member.status === "active" ? (
-      <span role="cell" className="ok">
-        Active
-      </span>
-    ) : (
-      <span role="cell" className="off">
-        Deactivated
-      </span>
-    );
-  return (
-    <div
-      role="row"
-      className="omr"
-      style={
-        pending
-          ? {
-              background: "var(--row-tint-allow)",
-              boxShadow: "inset 3px 0 0 var(--seal)",
-            }
-          : undefined
-      }
-    >
-      <span role="cell" className="rg">
-        {member.id}
-      </span>
-      <span
-        role="cell"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          minWidth: 0,
-        }}
-      >
-        <span
-          className="av"
-          aria-hidden="true"
-          style={{ border: 0, background: OFFLINE_AVATAR_TINTS[member.id] }}
-        >
-          {member.name
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")}
-        </span>
-        <span>
-          <b style={{ fontWeight: 600 }}>{member.name}</b>
-          {pending ? (
-            <span
-              className="chg"
-              style={{ margin: "0 0 0 6px", verticalAlign: 1 }}
-            >
-              Waiting to save
-            </span>
-          ) : null}
-        </span>
-      </span>
-      {pending ? (
-        <span role="cell">
-          {role.name}{" "}
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            · now Analyst
-          </span>
-        </span>
-      ) : (
-        <span role="cell">{role.name}</span>
-      )}
-      {pending ? (
-        <span role="cell">
-          <s style={{ color: "var(--muted)" }}>Product</s> → Partnerships
-        </span>
-      ) : (
-        <span role="cell">
-          {member.teams.map((t) => getTeam(t.teamId)!.name).join(", ") ||
-            "—"}
-        </span>
-      )}
-      {statusCell}
-    </div>
-  );
-}
-
 function matchesQuery(entry: DirectoryEntry, q: string): boolean {
   const needle = q.toLowerCase();
   if (entry.kind === "member") {
     const m = entry.member;
-    return `${m.name} ${m.email} ${m.id} Member ${m.id}`
-      .toLowerCase()
-      .includes(needle);
+    return `${m.name} ${m.email} ${m.id}`.toLowerCase().includes(needle);
   }
   const i = entry.invitation;
   return `${i.name} ${i.email}`.toLowerCase().includes(needle);
@@ -180,64 +80,57 @@ export default async function DirectoryPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
-  const offline = sp.state === "offline";
-  const counts = directoryCounts();
+  const data: WorkspaceData | null = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="directory">{null}</AppShell>;
+  }
+  const ws = await getActiveWorkspace();
+  const myKeys = ws ? await getMyPermissionKeys(ws.orgId) : [];
+  const canDeactivate = myKeys.includes("members:deactivate");
+  const counts = directoryCounts(data);
 
   const q = (sp.q ?? "").trim();
   const status = ["active", "invited", "deactivated"].includes(sp.status ?? "")
     ? sp.status!
     : "all";
 
-  /* ?role= / ?team= arrive as ids in the UI; a name typed by hand resolves
-     to the same filter instead of silently matching nothing. */
+  /* ?role= / ?team= arrive as ids; a name typed by hand resolves to
+     the same filter instead of silently matching nothing. */
   const roleParam = sp.role ?? "";
   const roleId =
-    getRoles().find(
+    getRoles(data).find(
       (r) => r.id === roleParam || r.name.toLowerCase() === roleParam.toLowerCase(),
     )?.id ?? roleParam;
   const teamParam = sp.team ?? "";
   const teamId =
-    getTeams().find(
+    getTeams(data).find(
       (t) => t.id === teamParam || t.name.toLowerCase() === teamParam.toLowerCase(),
     )?.id ?? teamParam;
 
   const hasFilter = q !== "" || status !== "all" || roleId !== "" || teamId !== "";
   const expanded = hasFilter || sp.show === "all";
 
-  let entries: DirectoryEntry[];
-  if (!expanded) {
-    entries = getDirectorySpotlight();
-  } else {
-    entries = getDirectoryEntries()
-      .slice()
-      .sort((a, b) => {
-        if (a.kind !== b.kind) return a.kind === "member" ? -1 : 1;
-        if (a.kind === "member" && b.kind === "member")
-          return a.member.id.localeCompare(b.member.id);
-        return 0;
-      })
-      .filter((entry) => {
-        if (q && !matchesQuery(entry, q)) return false;
-        if (entry.kind === "member") {
-          const m = entry.member;
-          if (status === "active" && m.status !== "active") return false;
-          if (status === "deactivated" && m.status !== "deactivated")
-            return false;
-          if (status === "invited") return false;
-          if (roleId && m.roleId !== roleId) return false;
-          if (teamId && !m.teams.some((t) => t.teamId === teamId))
-            return false;
-          return true;
-        }
-        const i = entry.invitation;
-        if (status !== "all" && status !== "invited") return false;
-        if (roleId && i.roleId !== roleId) return false;
-        if (teamId && i.teamId !== teamId) return false;
-        return true;
-      });
-  }
+  const all = getDirectoryEntries(data);
+  const filtered = all.filter((entry) => {
+    if (q && !matchesQuery(entry, q)) return false;
+    if (entry.kind === "member") {
+      const m = entry.member;
+      if (status === "active" && m.status !== "active") return false;
+      if (status === "deactivated" && m.status !== "deactivated") return false;
+      if (status === "invited") return false;
+      if (roleId && m.roleId !== roleId) return false;
+      if (teamId && !m.teams.some((t) => t.teamId === teamId)) return false;
+      return true;
+    }
+    const i = entry.invitation;
+    if (status !== "all" && status !== "invited") return false;
+    if (roleId && i.roleId !== roleId) return false;
+    if (teamId && i.teamId !== teamId) return false;
+    return true;
+  });
+  const entries = expanded ? filtered : filtered.slice(0, PAGE_SIZE);
 
-  const openMember = sp.open ? getMember(sp.open) : undefined;
+  const openMember = sp.open ? getMember(data, sp.open) : undefined;
 
   /* Row links keep the current filter/search state in the URL and add
      ?open=, so the list behind the drawer stays as the reader left it. */
@@ -247,158 +140,84 @@ export default async function DirectoryPage({
     return `/app/people?${params.toString()}`;
   };
 
-  const displayEntries = entries;
-
   const showMoreHref = (() => {
     const params = new URLSearchParams(serialize(sp));
     params.set("show", "all");
     return `/app/people?${params.toString()}`;
   })();
 
-  /* The page head renders verbatim in both branches; only its
-     placement differs (X-06 puts it inside the two-column grid). */
   const headBlock = (
     <div className="page-head" style={{ paddingTop: 26 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <h1 className="p-title">Directory</h1>
-        {offline ? (
-          <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
-            As of <span className="mono">10:41 AM</span>. Changes you make now
-            wait until the connection is back.
-          </span>
-        ) : (
-          <p className="p-lede">
-            Everyone in Sevyn Labs, by register number. Open a person to see
-            what they can do and why, without leaving the list.
-          </p>
-        )}
+        <p className="p-lede">
+          Everyone in {data.org.name}, by register order. Open a person to
+          see what they can do and why, without leaving the list.
+        </p>
       </div>
-      {/* X-06: the offline header is the title and the "As of" line
-          only — SysReconnect.html draws no actions at all. */}
-      {offline ? null : (
-        <div className="head-actions">
-          <ButtonLink href="/app/invitations/import">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M8 10.5V2.5M4.8 5.5 8 2.3l3.2 3.2" />
-              <path d="M2.5 10.5v2.5h11v-2.5" />
-            </svg>
-            Import CSV
-          </ButtonLink>
-          <ButtonLink variant="pri" href="/app/invitations">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-            Invite member
-          </ButtonLink>
-        </div>
-      )}
+      <div className="head-actions">
+        <ButtonLink href="/app/invitations/import">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <path d="M8 10.5V2.5M4.8 5.5 8 2.3l3.2 3.2" />
+            <path d="M2.5 10.5v2.5h11v-2.5" />
+          </svg>
+          Import CSV
+        </ButtonLink>
+        <ButtonLink variant="pri" href="/app/invitations">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          Invite member
+        </ButtonLink>
+      </div>
     </div>
   );
 
   return (
-    <AppShell
-      current="directory"
-      banner={offline ? <ReconnectBanner pausedAt="10:41 AM" /> : undefined}
-    >
-      {offline ? (
-        /* X-06 (SysReconnect.html): the screen's main is a two-column
-           grid — head + roster in the left column, the conflict panel
-           as the 340px right aside — and it draws no filter bar. */
-        <div className="p-cols">
-          <div className="p-stack">
-            {headBlock}
-
-        {/* X-06 (SysReconnect.html): the offline sheet is its own
-            composition — the designed four-row register window on a
-            700px five-column table, the paused-actions note, and no
-            "Showing N of 45" counts footer. */}
-        <section className="sheet" style={{ overflow: "hidden" }}>
-          <div className="rows-scroll">
-            <div
-              role="table"
-              aria-label="People, as of 10:41"
-              style={{ minWidth: 700 }}
-            >
-              <div
-                role="row"
-                className="omr head"
-                style={{
-                  background: "var(--sheet-sunk)",
-                  borderTop: "1px solid var(--rule-strong)",
-                }}
-              >
-                <span role="columnheader">No.</span>
-                <span role="columnheader">Person</span>
-                <span role="columnheader">Role</span>
-                <span role="columnheader">Teams</span>
-                <span role="columnheader">Status</span>
-              </div>
-              {getOfflineWindow().map((member) => (
-                <OfflineDirectoryRow key={member.id} id={member.id} />
-              ))}
+    <AppShell current="directory">
+      {headBlock}
+      <section className="card p-dir" style={{ overflow: "hidden" }}>
+        <DirectoryFilters
+          q={q}
+          status={status}
+          role={roleId}
+          team={teamId}
+          counts={counts}
+          params={serialize(sp)}
+          roles={getRoles(data).map((r) => ({ id: r.id, name: r.name }))}
+          teams={getTeams(data).map((t) => ({ id: t.id, name: t.name }))}
+        />
+        <div className="rows-scroll">
+          <div role="table" aria-label="People" style={{ minWidth: 860 }}>
+            <div role="row" className="mr head">
+              <span role="columnheader">No.</span>
+              <span role="columnheader">Person</span>
+              <span role="columnheader">Role</span>
+              <span role="columnheader">Teams</span>
+              <span role="columnheader">Status</span>
+              <span role="columnheader">Last active</span>
             </div>
-          </div>
-          <p
-            style={{
-              margin: 0,
-              padding: "13px 22px",
-              borderTop: "1px solid var(--rule-strong)",
-              background: "var(--sheet-sunk)",
-              fontSize: 12.5,
-              color: "var(--muted)",
-            }}
-          >
-            Role changes, deactivation and invitations are paused while
-            offline. Reading and searching still work.
-          </p>
-        </section>
-          </div>
-          <aside className="p-aside" style={{ paddingTop: 26 }}>
-            <ConflictSheet />
-          </aside>
-        </div>
-      ) : (
-        <>
-          {headBlock}
-          <section className="card p-dir" style={{ overflow: "hidden" }}>
-          <DirectoryFilters
-            q={q}
-            status={status}
-            role={roleId}
-            team={teamId}
-            counts={counts}
-            params={serialize(sp)}
-          />
-          <div className="rows-scroll">
-            <div role="table" aria-label="People" style={{ minWidth: 860 }}>
-              <div role="row" className="mr head">
-                <span role="columnheader">No.</span>
-                <span role="columnheader">Person</span>
-                <span role="columnheader">Role</span>
-                <span role="columnheader">Teams</span>
-                <span role="columnheader">Status</span>
-                <span role="columnheader">Last active</span>
-              </div>
-            {displayEntries.map((entry) =>
+            {entries.map((entry) =>
               entry.kind === "member" ? (
                 <MemberRow
                   key={entry.member.id}
                   member={entry.member}
+                  roles={data.org.roles}
+                  teams={data.teams}
                   href={rowHref(entry.member.id)}
-                  highlighted={
-                    openMember?.id === entry.member.id ||
-                    entry.member.id === "042"
-                  }
-                  you={entry.member.id === "001"}
+                  highlighted={openMember?.id === entry.member.id}
+                  you={entry.member.id === ws?.membershipId}
                 />
               ) : (
                 <InvitationRow
                   key={entry.invitation.id}
                   invitation={entry.invitation}
+                  roles={data.org.roles}
+                  teams={data.teams}
                 />
               ),
             )}
-            {displayEntries.length === 0 ? (
+            {entries.length === 0 ? (
               <p
                 style={{
                   margin: 0,
@@ -415,29 +234,23 @@ export default async function DirectoryPage({
         </div>
         <div className="p-dirfoot">
           <span>
-            Showing {displayEntries.length} of {counts.all} · {counts.active}{" "}
+            Showing {entries.length} of {counts.all} · {counts.active}{" "}
             active, {counts.deactivated} deactivated, {counts.invited} invited
           </span>
-          {!expanded ? (
+          {!expanded && filtered.length > entries.length ? (
             <Link href={showMoreHref}>
-              Show {counts.all - displayEntries.length} more
+              Show {filtered.length - entries.length} more
             </Link>
           ) : null}
         </div>
-          </section>
-        </>
-      )}
+      </section>
 
       {openMember ? (
         <DirectoryDrawer
           member={openMember}
-          offline={offline}
+          data={data}
+          canDeactivate={canDeactivate}
           returnQuery={serialize(sp, "open")}
-          lastActiveText={
-            openMember.id === "042"
-              ? "Today, 9:12 AM · 2 sessions"
-              : undefined
-          }
         />
       ) : null}
     </AppShell>
