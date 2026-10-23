@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { transferOwnership, updateOrgSettings } from "@/lib/data/actions";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 
@@ -9,7 +11,12 @@ export interface SettingsData {
   orgName: string;
   domain: string;
   domainVerified: string;
+  defaultRoleId: string;
   defaultRoleOptions: { id: string; name: string; allows: number }[];
+  /** Dollars; stored in the DB as seat_price_cents. */
+  seatPrice: number;
+  /** organizations.session_timeout_minutes. */
+  sessionMinutes: number;
   guestCount: number;
   twoStepMissing: number;
   baseline: {
@@ -23,6 +30,12 @@ export interface SettingsData {
 }
 
 const inputStyle: React.CSSProperties = { maxWidth: 380, width: "100%" };
+
+const SESSION_OPTIONS = [
+  { minutes: 10080, label: "7 days" },
+  { minutes: 20160, label: "14 days" },
+  { minutes: 43200, label: "30 days" },
+];
 
 function SectionHead({
   id,
@@ -85,22 +98,55 @@ const WarnIcon = (
   </svg>
 );
 
+interface FormState {
+  orgName: string;
+  domain: string;
+  defaultRoleId: string;
+  seatPrice: string;
+  sessionMinutes: number;
+}
+
 /**
- * G-04 organization settings. The session-length field starts in the
- * designed unsaved state (14 days saved, 7 days chosen): the row tints,
- * shows "Changed · was 14 days" with its consequence, and the header
- * counts 1 unsaved change. Editing back, Discard and Save all clear it;
- * while dirty, leaving the page warns via beforeunload (brief §10).
+ * G-04 organization settings — real reads/writes against the
+ * organizations row through updateOrgSettings (name, work domain,
+ * default role, per-seat price, session timeout). The header Save /
+ * Discard pair tracks every editable field; saving is
+ * permission-checked server-side and audit-logged. Sections with no
+ * storage in the schema (guest policy, 2-step enforcement date, audit
+ * retention) render disabled rather than pretending to save.
+ * Ownership transfer calls the transfer_org_ownership RPC.
  */
 export function SettingsClient({ data }: { data: SettingsData }) {
-  const [savedSession, setSavedSession] = useState("14 days");
-  const [session, setSession] = useState("7 days");
-  const dirty = session !== savedSession;
-  const unsavedCount = dirty ? 1 : 0;
+  const router = useRouter();
+  const initial: FormState = {
+    orgName: data.orgName,
+    domain: data.domain,
+    defaultRoleId: data.defaultRoleId,
+    seatPrice: String(data.seatPrice),
+    sessionMinutes: data.sessionMinutes,
+  };
+  const [saved, setSaved] = useState<FormState>(initial);
+  const [form, setForm] = useState<FormState>(initial);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const changedFields = (Object.keys(form) as (keyof FormState)[]).filter(
+    (k) => form[k] !== saved[k],
+  );
+  const dirty = changedFields.length > 0;
+  const sessionChanged = form.sessionMinutes !== saved.sessionMinutes;
+  const savedSessionLabel =
+    SESSION_OPTIONS.find((o) => o.minutes === saved.sessionMinutes)?.label ??
+    `${Math.round(saved.sessionMinutes / 1440)} days`;
+  const sessionLabel =
+    SESSION_OPTIONS.find((o) => o.minutes === form.sessionMinutes)?.label ??
+    `${Math.round(form.sessionMinutes / 1440)} days`;
 
   const [newOwnerId, setNewOwnerId] = useState(data.productAdmins[0]?.id ?? "");
   const newOwner = data.productAdmins.find((m) => m.id === newOwnerId);
   const ownerFirst = newOwner?.name.split(" ")[0] ?? "";
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferNote, setTransferNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dirty) return;
@@ -111,14 +157,62 @@ export function SettingsClient({ data }: { data: SettingsData }) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
+  async function save() {
+    setBusy(true);
+    setNote(null);
+    const res = await updateOrgSettings({
+      name: form.orgName !== saved.orgName ? form.orgName : undefined,
+      domain: form.domain !== saved.domain ? form.domain : undefined,
+      defaultRoleUiId:
+        form.defaultRoleId !== saved.defaultRoleId
+          ? form.defaultRoleId
+          : undefined,
+      pricePerSeat:
+        form.seatPrice !== saved.seatPrice
+          ? Number(form.seatPrice)
+          : undefined,
+      sessionTimeoutMinutes: sessionChanged ? form.sessionMinutes : undefined,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setNote(res.error);
+      return;
+    }
+    setSaved(form);
+    setNote("Saved. The change is in the audit log.");
+    router.refresh();
+  }
+
+  async function startTransfer() {
+    if (!newOwnerId) return;
+    if (
+      !window.confirm(
+        `Transfer ownership to ${newOwner?.name ?? "this member"}? This moves ownership immediately.`,
+      )
+    ) {
+      return;
+    }
+    setTransferBusy(true);
+    setTransferNote(null);
+    const res = await transferOwnership(newOwnerId);
+    setTransferBusy(false);
+    if (!res.ok) {
+      setTransferNote(res.error);
+      return;
+    }
+    setTransferNote("Ownership transferred.");
+    router.refresh();
+  }
+
   return (
     <>
       <div className="gov-head">
         <div className="stack">
           <h1 className="gov-title">Settings</h1>
           <p className="gov-lede">
-            Rules that apply to everyone in {data.orgName}. Only the owner can
-            change them; every change is in the audit log.
+            Rules that apply to everyone in {data.orgName}. Only people
+            with the settings permission can change them; every change is
+            in the audit log.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -128,21 +222,27 @@ export function SettingsClient({ data }: { data: SettingsData }) {
               className="gov-st pe"
               style={{ fontSize: 13, marginRight: 6 }}
             >
-              {unsavedCount} unsaved change
+              {changedFields.length} unsaved change
+              {changedFields.length === 1 ? "" : "s"}
             </span>
           ) : null}
-          <Button onClick={() => setSession(savedSession)} disabled={!dirty}>
+          <Button onClick={() => setForm(saved)} disabled={!dirty || busy}>
             Discard
           </Button>
           <Button
             variant="pri"
-            onClick={() => setSavedSession(session)}
-            disabled={!dirty}
+            onClick={() => void save()}
+            disabled={!dirty || busy}
           >
             Save
           </Button>
         </div>
       </div>
+      {note ? (
+        <p role="status" style={{ fontSize: 13.5, margin: "0 0 12px" }}>
+          {note}
+        </p>
+      ) : null}
 
       <nav aria-label="Settings sections" className="gov-tabs">
         <Link href="/app/settings" aria-current="page">
@@ -166,52 +266,89 @@ export function SettingsClient({ data }: { data: SettingsData }) {
               id="on"
               className="in h38"
               style={inputStyle}
-              defaultValue={data.orgName}
+              value={form.orgName}
+              onChange={(e) => setForm({ ...form, orgName: e.target.value })}
             />
           </Field>
           <Field
             label="Work domain"
             help="Addresses on it can be invited as members."
+            htmlFor="wd"
           >
-            <span
-              className="gov-rno"
-              style={{ fontSize: 13, height: 26 }}
-            >
-              {data.domain}
-            </span>
-            <span className="gov-st ok">Verified {data.domainVerified}</span>
-            <a href="#" style={{ fontSize: 13, fontWeight: 600 }}>
-              Add a domain
-            </a>
+            <input
+              id="wd"
+              className="in h38"
+              style={inputStyle}
+              value={form.domain}
+              onChange={(e) => setForm({ ...form, domain: e.target.value })}
+            />
+            {data.domainVerified ? (
+              <span className="gov-st ok">Verified {data.domainVerified}</span>
+            ) : null}
           </Field>
           <Field
             label="Role for new members"
             help="Used when an invitation doesn’t name one."
             htmlFor="dr"
           >
-            <select id="dr" className="in h38" style={inputStyle} defaultValue="member">
-              {data.defaultRoleOptions.map((r, i) => (
+            <select
+              id="dr"
+              className="in h38"
+              style={inputStyle}
+              value={form.defaultRoleId}
+              onChange={(e) =>
+                setForm({ ...form, defaultRoleId: e.target.value })
+              }
+            >
+              {data.defaultRoleOptions.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {i === 0 ? `${r.name} · allows ${r.allows} of 18` : r.name}
+                  {r.name} · allows {r.allows} of 18
                 </option>
               ))}
             </select>
           </Field>
+          <Field
+            label="Price per seat"
+            help="Charged per member per month; billing reads this value."
+            htmlFor="ps"
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span aria-hidden="true">$</span>
+              <input
+                id="ps"
+                className="in h38"
+                style={{ maxWidth: 120 }}
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.seatPrice}
+                onChange={(e) =>
+                  setForm({ ...form, seatPrice: e.target.value })
+                }
+              />
+              <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                a month
+              </span>
+            </span>
+          </Field>
           <Field label="Guests" help={`People outside ${data.domain}.`}>
             <span style={{ display: "flex", flexDirection: "column" }}>
               <label className="gov-rd">
-                <input type="radio" name="g" defaultChecked />
+                <input type="radio" name="g" defaultChecked disabled />
                 <span>
                   Allowed, on the teams they’re added to only{" "}
                   <span style={{ color: "var(--muted)" }}>
-                    · {data.guestCount} guest now
+                    · {data.guestCount} guest{data.guestCount === 1 ? "" : "s"} now
                   </span>
                 </span>
               </label>
               <label className="gov-rd">
-                <input type="radio" name="g" />
+                <input type="radio" name="g" disabled />
                 <span>Not allowed</span>
               </label>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                Guest policy is fixed for now.
+              </span>
             </span>
           </Field>
         </section>
@@ -220,47 +357,55 @@ export function SettingsClient({ data }: { data: SettingsData }) {
           <SectionHead id="h2s" title="Sign-in" icon={SignInIcon} />
           <Field label="Methods">
             <span style={{ fontSize: 14 }}>
-              Google accounts on {data.domain} ·{" "}
-              <span style={{ color: "var(--muted)" }}>guests use an email link</span>
+              Email and password, or Google, on {data.domain} ·{" "}
+              <span style={{ color: "var(--muted)" }}>
+                guests sign in with the same methods
+              </span>
             </span>
           </Field>
           <Field label="2-step verification">
             <span style={{ display: "flex", flexDirection: "column" }}>
               <label className="gov-rd">
-                <input type="radio" name="tf" />
-                <span>Optional</span>
-              </label>
-              <label className="gov-rd">
-                <input type="radio" name="tf" defaultChecked />
+                <input type="radio" name="tf" defaultChecked disabled />
                 <span>
-                  Required from <b style={{ fontWeight: 600 }}>November 1</b>{" "}
-                  <span style={{ color: "var(--muted)" }}>
-                    · {data.twoStepMissing} people aren’t set up yet
-                  </span>
+                  Set by each person in their account
+                  {data.twoStepMissing > 0 ? (
+                    <span style={{ color: "var(--muted)" }}>
+                      {" "}
+                      · {data.twoStepMissing} people aren’t set up yet
+                    </span>
+                  ) : null}
                 </span>
               </label>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                Organization-wide enforcement isn’t configurable yet.
+              </span>
             </span>
           </Field>
           <Field
             label="Stay signed in for"
             htmlFor="sl"
-            changed={dirty ? { was: savedSession } : undefined}
+            changed={sessionChanged ? { was: savedSessionLabel } : undefined}
             consequence={
-              dirty
-                ? `After saving, sessions older than ${session.replace(" days", "")} days end at next page load. That signs out 6 people today.`
+              sessionChanged
+                ? `After saving, sessions older than ${sessionLabel.replace(" days", "")} days end at next page load.`
                 : undefined
             }
           >
             <select
               id="sl"
               className="in h38"
-              style={{ ...inputStyle, ...(dirty ? { borderColor: "var(--seal)" } : {}) }}
-              value={session}
-              onChange={(e) => setSession(e.target.value)}
+              style={{ ...inputStyle, ...(sessionChanged ? { borderColor: "var(--seal)" } : {}) }}
+              value={form.sessionMinutes}
+              onChange={(e) =>
+                setForm({ ...form, sessionMinutes: Number(e.target.value) })
+              }
             >
-              <option>7 days</option>
-              <option>14 days</option>
-              <option>30 days</option>
+              {SESSION_OPTIONS.map((o) => (
+                <option key={o.minutes} value={o.minutes}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </Field>
         </section>
@@ -301,7 +446,7 @@ export function SettingsClient({ data }: { data: SettingsData }) {
             </span>
           </Field>
           <Field label="Audit log kept for" htmlFor="ar">
-            <select id="ar" className="in h38" style={inputStyle} defaultValue="2 years">
+            <select id="ar" className="in h38" style={inputStyle} defaultValue="2 years" disabled>
               <option>2 years</option>
               <option>1 year</option>
               <option>7 years</option>
@@ -335,31 +480,41 @@ export function SettingsClient({ data }: { data: SettingsData }) {
               >
                 {data.productAdmins.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name} · Product admin · {m.id}
+                    {m.name} · Product admin
                   </option>
                 ))}
               </select>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                Only Product admins with 2-step on can be chosen.
+                Only Product admins can be chosen.
               </span>
+              {transferNote ? (
+                <span role="status" style={{ fontSize: 12.5 }}>
+                  {transferNote}
+                </span>
+              ) : null}
             </div>
             <ol className="gov-steps-num">
               <li>
                 <span className="n">1</span>
-                <span>You confirm with Google sign-in again.</span>
+                <span>You choose the new owner and confirm.</span>
               </li>
               <li>
                 <span className="n">2</span>
-                <span>{ownerFirst} accepts by email within 48 hours.</span>
+                <span>Ownership moves to {ownerFirst || "them"} immediately and is written to the audit log.</span>
               </li>
               <li>
                 <span className="n">3</span>
-                <span>He becomes Organization owner; you become Product admin.</span>
+                <span>You become Product admin.</span>
               </li>
             </ol>
           </div>
           <div className="gov-transfer-foot">
-            <Button variant="dest" className="gov-dng">
+            <Button
+              variant="dest"
+              className="gov-dng"
+              disabled={transferBusy || !newOwnerId}
+              onClick={() => void startTransfer()}
+            >
               Start transfer
             </Button>
           </div>
