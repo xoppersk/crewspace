@@ -21,41 +21,46 @@ function WarnIcon() {
   );
 }
 
-/**
- * The result a fix choice produces, in the screen's own constructions:
- * the two designed defaults verbatim ("Joins as Guest: sees only …",
- * "Not sent until a role is chosen."), the parallel "Not sent until …"
- * for the work-email fix, and "Joins as <role>." for a chosen role.
- */
-function resultFor(row: ImportRow, choice: string): { text: string; resolved: boolean } {
-  const isPersonal = /personal/i.test(row.issue ?? "");
-  if (isPersonal) {
-    switch (choice) {
-      case "Use a work email":
-        return { text: "Not sent until a work email is given.", resolved: false };
-      case "Leave out":
-        return { text: "Left out: not sent.", resolved: false };
-      case "Invite as Guest":
-      default:
-        return {
-          text: `Joins as Guest: sees only ${row.team}, not the directory.`,
-          resolved: true,
-        };
-    }
-  }
-  if (choice === "Choose a role") {
-    return { text: "Not sent until a role is chosen.", resolved: false };
-  }
-  return { text: `Joins as ${choice}.`, resolved: true };
+export interface RowResolution {
+  send: boolean;
+  /** Role name to invite with when sending (may differ from the CSV). */
+  roleName: string;
 }
 
 /**
- * G-02 decision rows. The fix selects are live: changing one updates its
- * Result cell (and its colour — muted while nothing will be sent).
- * Rows arrive in the screen's order: fix rows first, the skipped row last.
+ * G-02 decision rows for the real CSV check: every fix row offers the
+ * choices that resolve it (invite as Guest / pick a real role / leave
+ * out), and each choice is reported up via onResolve so the Send step
+ * knows exactly which rows go out and as what. Skipped rows (already a
+ * member or already invited) are informational.
  */
-export function DecisionRows({ rows }: { rows: ImportRow[] }) {
+export function DecisionRows({
+  rows,
+  roleNames,
+  guestRoleName,
+  onResolve,
+}: {
+  rows: ImportRow[];
+  roleNames: string[];
+  guestRoleName?: string;
+  onResolve: (row: number, resolution: RowResolution) => void;
+}) {
   const [choices, setChoices] = useState<Record<number, string>>({});
+
+  const apply = (row: ImportRow, choice: string) => {
+    setChoices((c) => ({ ...c, [row.row]: choice }));
+    if (choice === "Leave out") {
+      onResolve(row.row, { send: false, roleName: row.role });
+    } else if (choice === "Invite as Guest") {
+      onResolve(row.row, {
+        send: true,
+        roleName: guestRoleName ?? row.role,
+      });
+    } else {
+      // A role name chosen from the list.
+      onResolve(row.row, { send: true, roleName: choice });
+    }
+  };
 
   return (
     <div role="table" className="tbl-stack" aria-label="Rows that need a decision" style={{ minWidth: 760 }}>
@@ -81,24 +86,36 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
                 <small>{r.email}</small>
               </span>
               <span role="cell" style={{ color: "var(--ink-2)", fontWeight: 600 }}>
-                Already a member
+                {r.issue ?? "Already a member"}
               </span>
               <span role="cell">
                 <span className="gov-chip quiet">Skipped</span>
               </span>
               <span role="cell" style={{ color: "var(--ink-2)", lineHeight: 1.45 }}>
-                Member <span className="mono">012</span>. His role and teams stay
-                as they are.
+                {r.fix ?? "Their role and teams stay as they are."}
               </span>
             </div>
           );
         }
         const isPersonal = /personal/i.test(r.issue ?? "");
         const options = isPersonal
-          ? ["Invite as Guest", "Use a work email", "Leave out"]
-          : ["Choose a role", "Member", "Support lead", "Product admin"];
+          ? [
+              ...(guestRoleName ? ["Invite as Guest"] : []),
+              "Leave out",
+            ]
+          : ["Choose a role", ...roleNames];
         const choice = choices[r.row] ?? options[0]!;
-        const result = resultFor(r, choice);
+        const resultText =
+          choice === "Leave out"
+            ? "Left out: not sent."
+            : choice === "Invite as Guest"
+              ? `Joins as ${guestRoleName ?? "Guest"}: sees only ${r.team || "their team"}, not the directory.`
+              : choice === "Choose a role"
+                ? "Not sent until a role is chosen."
+                : `Joins as ${choice}.`;
+        const resolved =
+          choice === "Invite as Guest" ||
+          (choice !== "Leave out" && choice !== "Choose a role");
         return (
           <div role="row" key={r.row} className="gov-cr">
             <span role="cell" className="rg">
@@ -119,19 +136,17 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
               }}
             >
               <WarnIcon />
-              {isPersonal ? "Personal email" : r.issue}
+              {r.issue}
             </span>
             <span role="cell">
               <label htmlFor={`f${r.row}`} className="sr-only">
-                {isPersonal ? `Fix for row ${r.row}` : `Role for row ${r.row}`}
+                Fix for row {r.row}
               </label>
               <select
                 id={`f${r.row}`}
                 className="in"
                 value={choice}
-                onChange={(e) =>
-                  setChoices((c) => ({ ...c, [r.row]: e.target.value }))
-                }
+                onChange={(e) => apply(r, e.target.value)}
               >
                 {options.map((o) => (
                   <option key={o}>{o}</option>
@@ -141,11 +156,11 @@ export function DecisionRows({ rows }: { rows: ImportRow[] }) {
             <span
               role="cell"
               style={{
-                color: result.resolved ? "var(--ink-2)" : "var(--muted)",
+                color: resolved ? "var(--ink-2)" : "var(--muted)",
                 lineHeight: 1.45,
               }}
             >
-              {result.text}
+              {resultText}
             </span>
           </div>
         );
