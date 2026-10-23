@@ -1,20 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMember, getOrg, getPermissions } from "@/lib/api";
-import { ButtonLink } from "@/components/Button";
-import { GoogleMark } from "@/components/GoogleButton";
-import { IconCheck, IconShieldCheck } from "@/components/icons";
+import { redirect } from "next/navigation";
+import { getCurrentUser, getGateState } from "@/lib/data/server";
+import { PERMISSION_GROUPS } from "@/lib/data/permissions";
+import { GoogleButton } from "@/components/GoogleButton";
+import { IconShieldCheck } from "@/components/icons";
 import { LegalFooter } from "@/components/LegalFooter";
+import { AccountForm, WorkspaceForm } from "./SignupForms";
 
 export const metadata: Metadata = { title: "Crewspace — Start a register" };
 
-/** F-03 — Sign up, step 1 of 3: verified Google account, organization
-    name, work domain; dark side panel "What you'll have" (SignUp.html). */
-export default function SignUpPage() {
-  const org = getOrg();
-  const owner = getMember("001")!;
-  const permissionCount = getPermissions().length;
-  const groupCount = org.groups.length;
+/**
+ * F-03 — Sign up, the designed 3 steps made real:
+ *  1. Account — Supabase Auth signUp (name, email, password), or
+ *     Google. With email confirmation on, this step ends at the
+ *     "check your email" notice and resumes after the callback.
+ *  2. Workspace — create_workspace RPC; the signer becomes owner.
+ *  3. Invite — /app/setup/invite (createWorkspaceAction lands there).
+ * A visitor who already has a workspace goes straight to /app; an
+ * invite `?next=` is honored after sign-up.
+ */
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const sp = await searchParams;
+  const next =
+    sp.next && sp.next.startsWith("/") && !sp.next.startsWith("//")
+      ? sp.next
+      : undefined;
+
+  const gate = await getGateState();
+  if (gate.kind === "active") redirect(next ?? "/app");
+  const user = gate.kind === "signed-out" ? null : await getCurrentUser();
+  const step = user ? 2 : 1;
+  const emailDomain = user?.email?.split("@")[1] ?? "";
 
   return (
     <div className="pub fpub">
@@ -34,128 +55,47 @@ export default function SignUpPage() {
       </header>
 
       <div className="auth-grid">
-        <form
-          className="auth-form fa-form-lg"
-          style={{ flex: "1 1 400px", maxWidth: 480 }}
-        >
+        <div style={{ flex: "1 1 400px", maxWidth: 480 }}>
           <div
-            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              marginBottom: 18,
+            }}
           >
             <div className="fprog" aria-hidden="true">
-              <i className="on" />
-              <i />
+              <i className={step >= 1 ? "on" : undefined} />
+              <i className={step >= 2 ? "on" : undefined} />
               <i />
             </div>
             <span style={{ fontSize: 13, color: "var(--muted)" }}>
-              Step 1 of 3 · then invite people, then assign roles
+              Step {step} of 3 ·{" "}
+              {step === 1
+                ? "then create your workspace, then invite people"
+                : "then invite people, then check roles"}
             </span>
           </div>
-          <h1 className="ft-34">Start your organization’s register</h1>
-
-          <a
-            href="#"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              height: 46,
-              padding: "0 14px",
-              border: "1px solid var(--seal)",
-              boxShadow: "inset 0 0 0 1px var(--seal)",
-              borderRadius: "var(--radius-m)",
-              background: "var(--row-tint-allow)",
-              color: "var(--ink)",
-              textDecoration: "none",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            <GoogleMark />
-            <span style={{ flex: 1, textAlign: "left" }}>{owner.email}</span>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                fontSize: 12,
-                fontWeight: 400,
-                color: "var(--active)",
-              }}
-            >
-              <IconCheck width={12} height={12} />
-              Verified
-            </span>
-          </a>
-
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 7 }}
-          >
-            <label
-              htmlFor="on"
-              style={{ fontSize: 13, fontWeight: 600 }}
-            >
-              Organization name
-            </label>
-            <input
-              id="on"
-              className="in"
-              defaultValue={org.name}
-              style={{ height: 44, width: "100%", fontSize: 15 }}
-            />
-          </div>
-
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 7 }}
-          >
-            <label
-              htmlFor="dm"
-              style={{ fontSize: 13, fontWeight: 600 }}
-            >
-              Work domain
-            </label>
-            <input
-              id="dm"
-              className="in mono"
-              value={org.domain}
-              readOnly
-              style={{
-                height: 44,
-                width: "100%",
-                background: "var(--sheet-sunk)",
-                fontSize: 14,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 12.5,
-                lineHeight: 1.5,
-                color: "var(--muted)",
-              }}
-            >
-              From your Google account. People on this domain can be invited
-              as members; anyone else joins as a guest.
-            </span>
-          </div>
-
-          <ButtonLink
-            variant="pri"
-            href="/app/setup/invite"
-            style={{ width: "100%", height: 46, fontSize: 14 }}
-          >
-            Create {org.name}
-          </ButtonLink>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12,
-              lineHeight: 1.5,
-              color: "var(--muted)",
-            }}
-          >
-            By continuing you agree to the <a href="#">terms</a> and{" "}
-            <a href="#">privacy policy</a>.
-          </p>
-        </form>
+          <h1 className="ft-34" style={{ marginBottom: 18 }}>
+            {step === 1
+              ? "Start your organization’s register"
+              : "Name your workspace"}
+          </h1>
+          {step === 1 ? (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <GoogleButton
+                  label="Continue with Google"
+                  href={`/auth/google?next=${encodeURIComponent(next ?? "/signup")}`}
+                  height={46}
+                />
+              </div>
+              <AccountForm next={next} />
+            </>
+          ) : (
+            <WorkspaceForm email={user!.email ?? ""} emailDomain={emailDomain} />
+          )}
+        </div>
 
         <aside
           className="fdark"
@@ -167,37 +107,6 @@ export default function SignUpPage() {
             gap: 18,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "var(--radius-l)",
-                background: "#fff",
-                color: "var(--ink)",
-                display: "grid",
-                placeItems: "center",
-                flex: "none",
-                font: "800 15px/1 var(--font-sans)",
-              }}
-            >
-              SL
-            </span>
-            <span
-              style={{ display: "flex", flexDirection: "column", gap: 4 }}
-            >
-              <b style={{ font: "700 17px/1.1 var(--font-sans)" }}>
-                {org.name}
-              </b>
-              <span
-                className="mono"
-                style={{ fontSize: 12, color: "var(--panel-muted)" }}
-              >
-                {org.domain}
-              </span>
-            </span>
-          </div>
           <div>
             <h2
               style={{
@@ -209,18 +118,16 @@ export default function SignUpPage() {
             </h2>
             <div className="fdk">
               <span>You, as owner</span>
-              <span className="mono" style={{ fontSize: 13 }}>
-                Member {owner.id}
-              </span>
+              <span>full access</span>
             </div>
             <div className="fdk">
               <span>Ready-made roles</span>
-              <span>Owner, Member, Guest</span>
+              <span>9, from Owner to Guest</span>
             </div>
             <div className="fdk">
               <span>Permissions to set</span>
               <span>
-                {permissionCount}, in {groupCount} groups
+                18, in {PERMISSION_GROUPS.length} groups
               </span>
             </div>
             <div className="fdk last">
@@ -234,7 +141,7 @@ export default function SignUpPage() {
               role="img"
               aria-label="18 permissions in 8 groups, none set yet"
             >
-              {org.groups.map((g) => (
+              {PERMISSION_GROUPS.map((g) => (
                 <span
                   key={g.name}
                   className="fg"
