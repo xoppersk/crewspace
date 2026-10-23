@@ -20,6 +20,9 @@ export interface Role {
   summary: string;
   settings: Record<string, Setting>;
   pendingChanges?: { permissionId: number; from: Setting; to: Setting }[];
+  /** DB ids of the role_permission_changes rows behind pendingChanges
+      (00019) — apply/discard act on these, one RPC call per row. */
+  pendingChangeIds?: string[];
   lastChanged: string;
   createdFrom?: string;
   createdOn?: string;
