@@ -2,60 +2,27 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
-  deactivateScopeCount,
-  getInvitations,
-  getMember,
   getMembers,
   getNeedsOwner,
-  getOrg,
   getRole,
   getRoles,
   getTeams,
   openInvitations,
   roleMemberCount,
 } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
 import { IconEnvelope, IconShieldCheck } from "@/components/icons";
+import { tintFor } from "@/components/MemberRow";
 
 export const metadata: Metadata = { title: "Crewspace — Overview" };
 
-/* P-01 Overview — screens/Overview.html.
-   Needs-owner titles/details/actions below are the screen's exact copy;
-   the overview.json fixture strings differ (reported as a fixture gap),
-   so the copy is keyed by item id while counts come from the API. */
-
-const ROLE_ORDER = [
-  "owner",
-  "product-admin",
-  "support-lead",
-  "billing-admin",
-  "analyst",
-  "auditor",
-  "finance-viewer",
-  "member",
-  "guest",
-];
-
-/* Roles whose "Who has what" bar the screen draws grey instead of seal. */
-const GREY_BAR_ROLES = new Set(["member", "guest"]);
-
-/* Avatar tints the Overview screen draws for the three invitees
-   (screen-literal; the shared per-person map lives in MemberRow). */
-const INVITEE_TINTS: Record<string, string> = {
-  "inv-priya": "#E9E3D6",
-  "inv-noah": "#DDEBE2",
-  "inv-leah": "#F0DDDA",
-};
-
-function initialsOf(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+/* P-01 Overview. Everything on this page derives from the real
+   workspace: needs-owner items are computed from live rows (pending
+   role reviews, bounced/expiring invitations), recent changes are the
+   newest audit_log entries, and "Who has what" counts real members
+   per real role. */
 
 function IconKey() {
   return (
@@ -83,115 +50,46 @@ function IconPlus() {
   );
 }
 
-const NEED_ICONS: Record<string, { cls: string; icon: ReactNode }> = {
-  "role-review": { cls: "is-seal", icon: <IconShieldCheck /> },
-  "leah-invite": { cls: "is-deny", icon: <IconEnvelope /> },
-  "two-step": { cls: "is-pend", icon: <IconKey /> },
-  "priya-expiring": { cls: "is-flat", icon: <IconClock /> },
-};
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
-export default function OverviewPage() {
-  const org = getOrg();
-  const needs = getNeedsOwner();
-  const open = openInvitations();
-  const invitations = getInvitations();
+function needIcon(id: string): { cls: string; icon: ReactNode } {
+  if (id.startsWith("role-review"))
+    return { cls: "is-seal", icon: <IconShieldCheck /> };
+  if (id.startsWith("invite-bounced"))
+    return { cls: "is-deny", icon: <IconEnvelope /> };
+  if (id.startsWith("invite-expiring"))
+    return { cls: "is-flat", icon: <IconClock /> };
+  return { cls: "is-pend", icon: <IconKey /> };
+}
 
-  const productAdmin = getRole("product-admin")!;
-  const pendingCount = productAdmin.pendingChanges?.length ?? 0;
-  const paMembers = roleMemberCount("product-admin");
-  const noTwoStep = getMembers().filter((m) => m.twoStep === false);
-  const leah = invitations.find((i) => i.id === "inv-leah")!;
-  const leahInviter = getMember(leah.invitedById);
-  const priya = invitations.find((i) => i.id === "inv-priya")!;
-  const priyaRole = getRole(priya.roleId)!;
-  const priyaTeam = getTeams().find((t) => t.id === priya.teamId);
+/** "Tuesday, October 6" → "Oct 6" for the recent-changes rail. */
+function shortDay(day: string): string {
+  const parts = day.replace(/^[A-Za-z]+,\s*/, "").split(" ");
+  return `${(parts[0] ?? "").slice(0, 3)} ${parts[1] ?? ""}`.trim();
+}
 
-  const needsCopy: Record<
-    string,
-    { title: string; detail: string; action: string; pri?: boolean }
-  > = {
-    "role-review": {
-      title: `${productAdmin.name} has ${pendingCount} changes waiting for review`,
-      detail: `If applied, ${paMembers} people can deactivate ${deactivateScopeCount()} members. Only you can apply it.`,
-      action: "Review changes",
-      pri: true,
-    },
-    "leah-invite": {
-      title: "Leah Kim’s invitation didn’t arrive",
-      detail: `leah.kim@sevynlabs.io bounced on Oct 4. She was invited as Product admin by ${leahInviter?.name ?? "Daniel Okafor"}.`,
-      action: "Fix the address",
-    },
-    "two-step": {
-      title: `${noTwoStep.length} people still sign in without 2-step verification`,
-      detail: `Sam Patel, Iris Novak (Guest) and Yusuf Ali. Your setting makes it required from Nov 1.`,
-      action: "Remind them",
-    },
-    "priya-expiring": {
-      title: "Priya Shah’s invitation expires in 5 days",
-      detail: `${priyaRole.name} on ${priyaTeam?.name ?? "Product"}. Sent ${priya.sent}, not opened yet.`,
-      action: "Resend",
-    },
-  };
-
-  /* The screen's exact recent-changes prose. The audit fixture carries
-     different summaries and has no entries for several of these rows
-     (reported as a fixture gap), so the rows are the screen copy. */
-  const recent: { day: string; body: ReactNode }[] = [
-    {
-      day: "Oct 5",
-      body: (
-        <>
-          <b style={{ fontWeight: 600 }}>Maya Jordan</b> accepted her
-          invitation and became Member <span className="mono">042</span>,
-          Product admin, on Product.
-        </>
-      ),
-    },
-    {
-      day: "Oct 4",
-      body: (
-        <>
-          <b style={{ fontWeight: 600 }}>Daniel Okafor</b> invited Priya Shah
-          as Analyst and Leah Kim as Product admin.
-        </>
-      ),
-    },
-    {
-      day: "Oct 3",
-      body: (
-        <>
-          <b style={{ fontWeight: 600 }}>You</b> invited Maya Jordan as
-          Product admin.
-        </>
-      ),
-    },
-    {
-      day: "Oct 2",
-      body: (
-        <>
-          <b style={{ fontWeight: 600 }}>You</b> changed Product admin:
-          Create teams, Inherit → Allow. Affected 4 people.
-        </>
-      ),
-    },
-    {
-      day: "Sep 30",
-      body: (
-        <>
-          <b style={{ fontWeight: 600 }}>Owen Clarke</b> signed Felix Grant
-          out of all sessions after a lost laptop.
-        </>
-      ),
-    },
-  ];
-
-  const canChangeAccess =
-    roleMemberCount("owner") +
-    roleMemberCount("product-admin") +
-    roleMemberCount("support-lead");
+export default async function OverviewPage() {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="overview">{null}</AppShell>;
+  }
+  const org = data.org;
+  const needs = getNeedsOwner(data);
+  const open = openInvitations(data);
+  const roles = getRoles(data);
   const maxRoleCount = Math.max(
-    ...ROLE_ORDER.map((id) => roleMemberCount(id)),
+    1,
+    ...roles.map((r) => roleMemberCount(data, r.id)),
   );
+  const rolesWithPending = roles.filter((r) => r.pendingChanges?.length);
+  const recent = data.auditEntries.slice(0, 5);
 
   return (
     <AppShell current="overview">
@@ -202,13 +100,17 @@ export default function OverviewPage() {
           </span>
           <h1 className="p-title">Overview</h1>
           <p className="p-lede">
-            {getMembers().length} members across {getTeams().length} teams
-            and {getRoles().length} roles. {open.length} invitations are
-            open, one role has changes waiting for your review, and{" "}
-            {needs.length} things need an owner today.
+            {getMembers(data).length} members across {getTeams(data).length}{" "}
+            teams and {roles.length} roles. {open.length} invitations are
+            open
+            {rolesWithPending.length
+              ? `, ${rolesWithPending.length} role${rolesWithPending.length === 1 ? " has" : "s have"} changes waiting for review`
+              : ""}
+            , and {needs.length} thing{needs.length === 1 ? "" : "s"} need
+            {needs.length === 1 ? "s" : ""} an owner today.
           </p>
         </div>
-        <ButtonLink variant="pri" href="/app/people">
+        <ButtonLink variant="pri" href="/app/invitations">
           <IconPlus />
           Invite member
         </ButtonLink>
@@ -223,16 +125,20 @@ export default function OverviewPage() {
               </h2>
               <span className="p-sub">Most consequential first</span>
             </div>
+            {needs.length === 0 ? (
+              <p
+                style={{
+                  margin: 0,
+                  padding: "16px 22px 20px",
+                  fontSize: 14,
+                  color: "var(--muted)",
+                }}
+              >
+                Nothing needs an owner right now.
+              </p>
+            ) : null}
             {needs.map((item, i) => {
-              const copy = needsCopy[item.id] ?? {
-                title: item.title,
-                detail: item.detail,
-                action: item.action,
-              };
-              const icon = NEED_ICONS[item.id] ?? {
-                cls: "is-flat",
-                icon: <IconClock />,
-              };
+              const icon = needIcon(item.id);
               return (
                 <div
                   key={item.id}
@@ -242,14 +148,14 @@ export default function OverviewPage() {
                     {icon.icon}
                   </span>
                   <span>
-                    <b>{copy.title}</b>
-                    <small>{copy.detail}</small>
+                    <b>{item.title}</b>
+                    <small>{item.detail}</small>
                   </span>
                   <ButtonLink
-                    variant={copy.pri ? "pri" : "outline"}
+                    variant={item.severity === 1 ? "pri" : "outline"}
                     href={item.href}
                   >
-                    {copy.action}
+                    {item.action}
                   </ButtonLink>
                 </div>
               );
@@ -273,16 +179,22 @@ export default function OverviewPage() {
                 flexDirection: "column",
               }}
             >
-              {recent.map((row, i) => {
+              {recent.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 14, color: "var(--muted)" }}>
+                  No audit entries yet — changes will appear here as they
+                  happen.
+                </p>
+              ) : null}
+              {recent.map((entry, i) => {
                 const last = i === recent.length - 1;
                 return (
-                  <div key={row.day} className={last ? "p-tl last" : "p-tl"}>
-                    <span className="when mono">{row.day}</span>
+                  <div key={entry.id} className={last ? "p-tl last" : "p-tl"}>
+                    <span className="when mono">{shortDay(entry.day)}</span>
                     <span className="rail" aria-hidden="true">
                       <i className={i === 0 ? "dotty" : "dotty grey"} />
                       {last ? null : <i className="line" />}
                     </span>
-                    <span className="body">{row.body}</span>
+                    <span className="body">{entry.summary}</span>
                   </div>
                 );
               })}
@@ -300,19 +212,16 @@ export default function OverviewPage() {
               Who has what
             </h2>
             <div>
-              {ROLE_ORDER.map((id) => {
-                const role = getRole(id)!;
-                const count = roleMemberCount(id);
+              {roles.map((role) => {
+                const count = roleMemberCount(data, role.id);
+                const grey =
+                  role.id === "member" || role.id === "guest";
                 return (
-                  <div className="p-whw" key={id}>
-                    {id === "product-admin" ? (
-                      <Link href="/app/roles/product-admin">{role.name}</Link>
-                    ) : (
-                      <span>{role.name}</span>
-                    )}
+                  <div className="p-whw" key={role.id}>
+                    <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
                     <span className="track" aria-hidden="true">
                       <i
-                        className={GREY_BAR_ROLES.has(id) ? "grey" : undefined}
+                        className={grey ? "grey" : undefined}
                         style={{
                           width: `${Math.max(5, Math.round((count / maxRoleCount) * 100))}%`,
                         }}
@@ -323,21 +232,6 @@ export default function OverviewPage() {
                 );
               })}
             </div>
-            <p
-              style={{
-                margin: "10px 0 0",
-                paddingTop: 12,
-                borderTop: "1px solid var(--rule)",
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: "var(--ink-2)",
-              }}
-            >
-              {canChangeAccess} people can change someone else’s access: you,{" "}
-              {roleMemberCount("product-admin")} Product admins and{" "}
-              {roleMemberCount("support-lead")} Support leads. The draft
-              Weekend support role would add 2.
-            </p>
           </section>
 
           <section
@@ -362,33 +256,34 @@ export default function OverviewPage() {
             </div>
             <div>
               {open.map((inv) => {
-                const role = getRole(inv.roleId)!;
+                const role = getRole(data, inv.roleId);
                 return (
                   <div className="p-inv-row" key={inv.id}>
                     <span className="p-pm">
                       <span
                         className="p-avr sm"
                         aria-hidden="true"
-                        style={{ background: INVITEE_TINTS[inv.id] ?? "var(--fill)" }}
+                        style={{ background: tintFor(inv.id) }}
                       >
                         {initialsOf(inv.name)}
                       </span>
                       <span>
-                        {inv.name} · {role.name}
+                        {inv.name} · {role?.name ?? ""}
                       </span>
                     </span>
                     {inv.status === "bounced" ? (
                       <span className="p-st is-bad">didn’t arrive</span>
-                    ) : inv.openedAt ? (
-                      <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
-                        opened {inv.openedAt}
-                      </span>
                     ) : (
                       <span className="p-st is-pe">expires {inv.expires}</span>
                     )}
                   </div>
                 );
               })}
+              {open.length === 0 ? (
+                <p style={{ fontSize: 13.5, color: "var(--muted)" }}>
+                  No open invitations.
+                </p>
+              ) : null}
             </div>
           </section>
         </aside>
