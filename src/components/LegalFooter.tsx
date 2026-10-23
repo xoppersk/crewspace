@@ -2,10 +2,8 @@ import { IconShieldCheck } from "./icons";
 
 /**
  * One-line legal footer for the public/auth screens, as drawn in
- * SignIn/SignUp/InviteAccept: shield mark + "© 2026 [Company]" on the
- * left, legal links on the right, over a --frame rule. The [Company]
- * placeholder is what the approved screens draw (open question —
- * see batches/foundation.md).
+ * SignIn/SignUp/InviteAccept: shield mark + "© 2026 Sevyn Labs" on the
+ * left, legal links on the right, over a --frame rule.
  */
 export function LegalFooter() {
   return (
@@ -32,7 +30,7 @@ export function LegalFooter() {
           <span className="shieldmark s22" aria-hidden="true">
             <IconShieldCheck />
           </span>
-          © 2026 [Company]
+          © 2026 Sevyn Labs
         </span>
         <nav
           aria-label="Legal"
