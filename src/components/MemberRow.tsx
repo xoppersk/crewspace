@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getRole, getTeam } from "@/lib/api";
-import type { Invitation, Member } from "@/lib/types";
+import type { Invitation, Member, Role, Team } from "@/lib/types";
 import { RoleTag } from "./RoleTag";
 
 /* Avatar tints (Directory.html): the screens draw one stable tint per
@@ -39,7 +38,16 @@ const TINT_ROTATION = [
 ];
 
 export function tintFor(id: string): string {
-  return TINTS[id] ?? TINT_ROTATION[parseInt(id, 10) % TINT_ROTATION.length]!;
+  if (TINTS[id]) return TINTS[id]!;
+  // Real member ids are uuids: rotate deterministically by hash.
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return TINT_ROTATION[h % TINT_ROTATION.length]!;
+}
+
+/** Short register reference for a member id (uuid) in table cells. */
+export function shortId(id: string): string {
+  return id.length > 8 ? id.slice(0, 8) : id;
 }
 
 export function initialsOf(name: string): string {
@@ -51,11 +59,11 @@ export function initialsOf(name: string): string {
     .toUpperCase();
 }
 
-function teamText(member: Member): React.ReactNode {
+function teamText(member: Member, teams: Team[]): React.ReactNode {
   if (member.status === "deactivated") return "—";
   if (member.teams.length === 0) return "—";
   return member.teams.map((t, i) => {
-    const team = getTeam(t.teamId)!;
+    const team = teams.find((x) => x.id === t.teamId)!;
     return (
       <span key={t.teamId}>
         {i > 0 ? ", " : ""}
@@ -69,17 +77,21 @@ function teamText(member: Member): React.ReactNode {
 /** P-02 Directory row for a member. Clicking opens the member drawer. */
 export function MemberRow({
   member,
+  roles,
+  teams,
   highlighted = false,
   you = false,
   href,
 }: {
   member: Member;
+  roles: Role[];
+  teams: Team[];
   highlighted?: boolean;
   you?: boolean;
   /** Row target; the Directory passes one that keeps its filters in the URL. */
   href?: string;
 }) {
-  const role = getRole(member.roleId)!;
+  const role = roles.find((r) => r.id === member.roleId)!;
   const deactivated = member.status === "deactivated";
   return (
     <Link
@@ -87,8 +99,8 @@ export function MemberRow({
       href={href ?? `/app/people?open=${member.id}`}
       className={highlighted ? "mr p-hl" : "mr"}
     >
-      <span role="cell" className="rg">
-        {member.id}
+      <span role="cell" className="rg mono">
+        {shortId(member.id)}
       </span>
       <span role="cell" className="p-pm">
         <span
@@ -127,7 +139,7 @@ export function MemberRow({
         role="cell"
         style={{ color: deactivated ? "var(--muted)" : "var(--ink-2)" }}
       >
-        {teamText(member)}
+        {teamText(member, teams)}
       </span>
       <span role="cell" className={deactivated ? "p-st is-off" : "p-st is-ok"}>
         {deactivated ? "Deactivated" : "Active"}
@@ -143,9 +155,17 @@ export function MemberRow({
 }
 
 /** Directory row for an open invitation: no number yet, dashed tag. */
-export function InvitationRow({ invitation }: { invitation: Invitation }) {
-  const role = getRole(invitation.roleId)!;
-  const team = getTeam(invitation.teamId);
+export function InvitationRow({
+  invitation,
+  roles,
+  teams,
+}: {
+  invitation: Invitation;
+  roles: Role[];
+  teams: Team[];
+}) {
+  const role = roles.find((r) => r.id === invitation.roleId)!;
+  const team = teams.find((t) => t.id === invitation.teamId);
   return (
     <div role="row" className="mr p-invrow">
       <span role="cell" className="rg">
