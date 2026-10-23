@@ -1,10 +1,6 @@
 import Link from "next/link";
-import {
-  deactivateScopeCount,
-  getOrg,
-  getRole,
-  roleMemberCount,
-} from "@/lib/api";
+import { PERMISSION_GROUPS } from "@/lib/data/permissions";
+import type { Permission, Role, Setting } from "@/lib/types";
 import { ButtonLink } from "@/components/Button";
 import { GoogleMark } from "@/components/GoogleButton";
 import { PermissionStrip } from "@/components/PermissionStrip";
@@ -20,13 +16,48 @@ import {
 /**
  * F-01 — Marketing. Public page, always light; the v2 page sits on the
  * grey ground with white cards and dark panels. All copy and geometry
- * from Marketing.html; counts derive from the fixtures.
+ * from Marketing.html. The hero fragment is a static illustration of
+ * the product (an example role card), built locally below — this page
+ * never reads workspace data or the fixture JSON.
  */
+
+/* The illustrated example role: a Product admin mid-review, exactly
+   as Marketing.html draws it (permission 2 changed Deny → Allow and
+   waiting for review). */
+const EXAMPLE_PERMISSIONS: Permission[] = PERMISSION_GROUPS.flatMap((g) =>
+  g.permissionIds.map((id) => ({
+    id,
+    group: g.name,
+    name: "",
+    description: "",
+  })),
+);
+const EXAMPLE_ROLE: Role = {
+  id: "example-product-admin",
+  regNumber: "R-04",
+  name: "Product admin",
+  type: "Custom",
+  summary: "",
+  settings: Object.fromEntries(
+    EXAMPLE_PERMISSIONS.map((p) => [
+      String(p.id),
+      [1, 3, 4, 7, 9, 10, 11].includes(p.id)
+        ? "allow"
+        : p.id === 8 || p.id === 2
+          ? "deny"
+          : "inherit",
+    ]),
+  ) as Record<string, Setting>,
+  pendingChanges: [{ permissionId: 2, from: "deny", to: "allow" }],
+  lastChanged: "",
+};
+const EXAMPLE_MEMBERS = 6;
+const EXAMPLE_SCOPE = 36;
+
 export default function MarketingPage() {
-  const org = getOrg();
-  const role = getRole("product-admin")!;
-  const members = roleMemberCount(role.id);
-  const scope = deactivateScopeCount();
+  const role = EXAMPLE_ROLE;
+  const members = EXAMPLE_MEMBERS;
+  const scope = EXAMPLE_SCOPE;
 
   return (
     <div className="pub fpub">
@@ -161,6 +192,8 @@ export default function MarketingPage() {
               </div>
               <PermissionStrip
                 role={role}
+                permissions={EXAMPLE_PERMISSIONS}
+                baselineIds={[3]}
                 big
                 ariaLabel="Product admin: permissions 1, 3, 4, 7, 9, 10 and 11 allowed; permission 2 changed, waiting for review; permission 8 blocked"
               />
@@ -425,7 +458,7 @@ export default function MarketingPage() {
                   role="img"
                   aria-label="18 permissions in 8 groups"
                 >
-                  {org.groups.map((g) => (
+                  {PERMISSION_GROUPS.map((g) => (
                     <span
                       key={g.name}
                       className="fg"
