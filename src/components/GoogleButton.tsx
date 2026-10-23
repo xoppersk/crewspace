@@ -37,7 +37,10 @@ export function GoogleButton({
   const style = { height, width: "100%", fontSize: 14 } as const;
   if (href) {
     return (
-      <Link href={href} className="btn" style={style}>
+      // prefetch={false}: this link starts a Google OAuth flow via
+      // /auth/google — browsers must never initiate it speculatively
+      // on page view.
+      <Link href={href} prefetch={false} className="btn" style={style}>
         <GoogleMark />
         {label}
       </Link>
