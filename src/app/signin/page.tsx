@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  getAuditEntries,
-  getPermissions,
-  getRole,
-  settingResult,
-} from "@/lib/api";
+import { redirect } from "next/navigation";
+import { getGateState } from "@/lib/data/server";
 import { Button } from "@/components/Button";
 import { GoogleButton } from "@/components/GoogleButton";
 import { IconShieldCheck } from "@/components/icons";
@@ -13,46 +9,43 @@ import { LegalFooter } from "@/components/LegalFooter";
 import { DeactivatedState, NoOrgState } from "@/components/States";
 import { EmailForm } from "./EmailForm";
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<{ state?: string }>;
-}): Promise<Metadata> {
-  const { state } = await searchParams;
-  if (state === "no-org") return { title: "Crewspace — No organization" };
-  if (state === "deactivated")
-    return { title: "Crewspace — Access turned off" };
-  return { title: "Crewspace — Sign in" };
-}
+export const metadata: Metadata = { title: "Crewspace — Sign in" };
 
 /**
- * F-02 — Sign in. The dark side panel quotes a real audit entry (the
- * "Product admin applied to Maya Jordan" entry) over the role's strip,
- * as SignIn.html draws it. Query states: ?state=no-org (X-04) and
- * ?state=deactivated (X-05) render the prebuilt state components.
+ * F-02 — Sign in, for real. States derive from the session, never
+ * from a query parameter:
+ *  - active membership → straight to /app;
+ *  - signed in, no workspace → X-04 no-org screen (workspace creation);
+ *  - own membership deactivated → X-05 deactivated screen;
+ *  - signed out → email + password (signInWithPassword) or Google.
+ * `?next=` carries a same-site return path (invite links); `?error=`
+ * surfaces OAuth/callback failures.
  */
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { state } = await searchParams;
-  if (state === "no-org") return <NoOrgState />;
-  if (state === "deactivated") return <DeactivatedState />;
+  const sp = await searchParams;
+  const next =
+    sp.next && sp.next.startsWith("/") && !sp.next.startsWith("//")
+      ? sp.next
+      : undefined;
 
-  const entry = getAuditEntries().find((e) =>
-    e.summary.startsWith("Product admin applied to Maya Jordan"),
-  )!;
-  const stampDay = entry.day
-    .replace(/^[^,]+, /, "")
-    .replace("October", "Oct");
-  const role = getRole("product-admin")!;
-  const allowed = getPermissions().map(
-    (p) => settingResult(role.settings[String(p.id)]!, p.id) === "Allowed",
-  );
-  const allowedIds = getPermissions()
-    .filter((_, i) => allowed[i])
-    .map((p) => p.id);
+  const gate = await getGateState();
+  if (gate.kind === "active") redirect(next ?? "/app");
+  if (gate.kind === "no-org") return <NoOrgState email={gate.email} />;
+  if (gate.kind === "deactivated") {
+    return (
+      <DeactivatedState
+        orgName={gate.orgName}
+        email={gate.email}
+        deactivatedBy={gate.deactivatedBy}
+        deactivatedOn={gate.deactivatedOn}
+        roleName={gate.roleName}
+      />
+    );
+  }
 
   return (
     <div className="pub fpub">
@@ -63,10 +56,7 @@ export default async function SignInPage({
           </span>
           <span className="fm-name">Crewspace</span>
         </Link>
-        <Link
-          href="/signup"
-          style={{ fontSize: 14, fontWeight: 600 }}
-        >
+        <Link href="/signup" style={{ fontSize: 14, fontWeight: 600 }}>
           Start a register
         </Link>
       </header>
@@ -75,11 +65,16 @@ export default async function SignInPage({
         <EmailForm
           className="auth-form fa-form"
           style={{ flex: "1 1 380px", maxWidth: 460 }}
+          next={next}
         >
           <h1 className="ft-34" style={{ marginBottom: 6 }}>
             Sign in to your register
           </h1>
-          <GoogleButton label="Continue with Google" href="/app" height={46} />
+          <GoogleButton
+            label="Continue with Google"
+            href={next ? `/auth/google?next=${encodeURIComponent(next)}` : "/auth/google"}
+            height={46}
+          />
           <div
             style={{
               display: "flex",
@@ -89,45 +84,60 @@ export default async function SignInPage({
               color: "var(--muted)",
             }}
           >
-            <span
-              style={{
-                flex: 1,
-                height: 1,
-                background: "var(--rule-strong)",
-              }}
-            />
-            or, for guests
-            <span
-              style={{
-                flex: 1,
-                height: 1,
-                background: "var(--rule-strong)",
-              }}
-            />
+            <span style={{ flex: 1, height: 1, background: "var(--rule-strong)" }} />
+            or with email
+            <span style={{ flex: 1, height: 1, background: "var(--rule-strong)" }} />
           </div>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 7 }}
-          >
-            <label
-              htmlFor="em"
-              style={{ fontSize: 13, fontWeight: 600 }}
-            >
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <label htmlFor="em" style={{ fontSize: 13, fontWeight: 600 }}>
               Email
             </label>
             <input
               id="em"
+              name="email"
               className="in"
               type="email"
+              autoComplete="email"
+              required
               placeholder="you@company.com"
               style={{ height: 44, width: "100%", fontSize: 15 }}
             />
           </div>
-          <Button
-            size="h44"
-            style={{ width: "100%", height: 46 }}
-            type="submit"
-          >
-            Email me a sign-in link
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <span
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
+            >
+              <label htmlFor="pw" style={{ fontSize: 13, fontWeight: 600 }}>
+                Password
+              </label>
+              <Link href="/reset-password" style={{ fontSize: 13, fontWeight: 600 }}>
+                Forgot password?
+              </Link>
+            </span>
+            <input
+              id="pw"
+              name="password"
+              className="in"
+              type="password"
+              autoComplete="current-password"
+              required
+              style={{ height: 44, width: "100%", fontSize: 15 }}
+            />
+          </div>
+          {sp.error ? (
+            <p
+              role="alert"
+              style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: "var(--deny)" }}
+            >
+              {sp.error}
+            </p>
+          ) : null}
+          <Button size="h44" style={{ width: "100%", height: 46 }} type="submit">
+            Sign in
           </Button>
           <p
             style={{
@@ -139,9 +149,8 @@ export default async function SignInPage({
               color: "var(--muted)",
             }}
           >
-            Members of an organization sign in with the Google account their
-            invitation was sent to. New here?{" "}
-            <Link href="/signup">Start a register</Link>
+            Sign in with the account your invitation was sent to. New
+            here? <Link href="/signup">Start a register</Link>
           </p>
         </EmailForm>
 
@@ -155,11 +164,8 @@ export default async function SignInPage({
             gap: 18,
           }}
         >
-          <span
-            className="mono"
-            style={{ fontSize: 12, color: "var(--panel-muted)" }}
-          >
-            Audit log · {stampDay}, {entry.time}
+          <span className="mono" style={{ fontSize: 12, color: "var(--panel-muted)" }}>
+            The register
           </span>
           <p
             style={{
@@ -168,7 +174,7 @@ export default async function SignInPage({
               letterSpacing: "-0.01em",
             }}
           >
-            “{entry.summary}.”
+            “Every change to who can do what is written down, and kept.”
           </p>
           <span
             style={{
@@ -177,8 +183,9 @@ export default async function SignInPage({
               color: "var(--panel-muted)",
             }}
           >
-            Every change to who can do what is written down like this, and
-            kept.
+            Crewspace keeps one register of who is in your organization
+            and exactly what each role allows — every invitation, role
+            change and setting, in an audit log that can’t be edited.
           </span>
           <div
             className="fpanel-card"
@@ -214,22 +221,22 @@ export default async function SignInPage({
                 >
                   <IconShieldCheck width={16} height={16} />
                 </span>
-                {role.name}
+                18 permissions, set per role
               </span>
               <span
                 className="mono"
                 style={{ fontSize: 11.5, color: "var(--panel-muted)" }}
               >
-                {role.regNumber}
+                Allow · Block · Inherit
               </span>
             </div>
             <span
               className="fstrip-dark"
               role="img"
-              aria-label={`${role.name} allows permissions ${allowedIds.slice(0, -1).join(", ")} and ${allowedIds[allowedIds.length - 1]} of 18`}
+              aria-label="Illustration: a permission strip with some permissions allowed"
             >
-              {allowed.map((on, i) => (
-                <i key={i} className={on ? "on" : undefined} />
+              {Array.from({ length: 18 }, (_, i) => (
+                <i key={i} className={i % 3 !== 2 ? "on" : undefined} />
               ))}
             </span>
           </div>
