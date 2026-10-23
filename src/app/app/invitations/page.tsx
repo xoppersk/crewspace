@@ -7,6 +7,7 @@ import {
   invitationTabCounts,
   roleAllows,
 } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
 import {
@@ -23,22 +24,26 @@ export default async function InvitationsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab: tabParam } = await searchParams;
-  const counts = invitationTabCounts();
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="invitations">{null}</AppShell>;
+  }
+  const counts = invitationTabCounts(data);
   const initialTab: TabKey =
     tabParam === "accepted" || tabParam === "expired" || tabParam === "revoked"
       ? tabParam
       : "open";
 
-  const views: InvitationView[] = getInvitations().map((inv) => ({
+  const views: InvitationView[] = getInvitations(data).map((inv) => ({
     id: inv.id,
     name: inv.name,
     email: inv.email,
     suggestedEmail: inv.suggestedEmail,
     roleId: inv.roleId,
-    roleName: getRole(inv.roleId)?.name ?? "",
+    roleName: getRole(data, inv.roleId)?.name ?? "",
     teamId: inv.teamId,
-    teamName: getTeam(inv.teamId)?.name ?? "",
-    inviterName: getMember(inv.invitedById)?.name ?? "",
+    teamName: getTeam(data, inv.teamId)?.name ?? "",
+    inviterName: getMember(data, inv.invitedById)?.name ?? "",
     sent: inv.sent,
     status: inv.status,
     openedAt: inv.openedAt,
@@ -46,14 +51,14 @@ export default async function InvitationsPage({
     acceptedOn: inv.acceptedOn,
   }));
 
-  const inviteRoles = ["member", "analyst", "support-lead", "product-admin"]
-    .map((id) => getRole(id)!)
-    .filter(Boolean)
-    .map((r) => ({ id: r.id, name: r.name, allows: roleAllows(r) }));
-  /* The screen designs exactly three teams here, Product first (G-01). */
-  const inviteTeams = ["product", "customer-operations", "engineering"]
-    .map((id) => getTeam(id))
-    .filter((t) => t !== undefined)
+  const bouncedCount = views.filter((v) => v.status === "bounced").length;
+  const inviteRoles = data.org.roles.map((r) => ({
+    id: r.id,
+    name: r.name,
+    allows: roleAllows(data, r),
+  }));
+  const inviteTeams = data.teams
+    .filter((t) => !t.unlisted)
     .map((t) => ({ id: t.id, name: t.name }));
 
   return (
@@ -62,9 +67,12 @@ export default async function InvitationsPage({
         <div className="stack">
           <h1 className="gov-title">Invitations</h1>
           <p className="gov-lede">
-            {counts.open} invitations are open. One didn’t arrive and one
-            expires in 3 days. An invitation becomes a member only when the
-            person signs in with the address it was sent to.
+            {counts.open} invitations are open.
+            {bouncedCount
+              ? ` ${bouncedCount} didn’t arrive.`
+              : ""}{" "}
+            An invitation becomes a member only when the person signs in
+            with the address it was sent to.
           </p>
         </div>
         <div className="head-actions">
