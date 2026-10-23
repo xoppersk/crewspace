@@ -10,6 +10,13 @@ import {
   teamMembers,
   teamRoleMix,
 } from "@/lib/api";
+import {
+  getActiveWorkspace,
+  getMyPermissionKeys,
+  loadActiveWorkspaceData,
+} from "@/lib/data/server";
+import { shortId } from "@/components/MemberRow";
+import { TeamRowActions } from "./TeamRowActions";
 import type { Member, Role } from "@/lib/types";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
@@ -20,17 +27,12 @@ import { IconTeams } from "@/components/icons";
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ state?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const { state } = await searchParams;
-  if (state === "empty" || id === "partnerships") {
-    return { title: "Crewspace — Empty team" };
-  }
-  const team = getTeam(id);
+  const data = await loadActiveWorkspaceData();
+  const team = data ? getTeam(data, id) : undefined;
   return {
     title: team ? `Crewspace — ${team.name} team` : "Crewspace — Teams",
   };
@@ -109,45 +111,60 @@ function DotsIcon() {
 
 export default async function TeamDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ state?: string }>;
 }) {
   const { id } = await params;
-  const { state } = await searchParams;
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="teams">{null}</AppShell>;
+  }
+  const team = getTeam(data, id);
+  if (!team) notFound();
+  const ws = await getActiveWorkspace();
+  const myKeys = ws ? await getMyPermissionKeys(ws.orgId) : [];
+  const canManageTeam = myKeys.includes("teams:manage");
 
-  /* X-02: a brand-new, empty team. */
-  if (state === "empty" || id === "partnerships") {
+  /* X-02: a real team with nobody on it yet. */
+  if (teamMembers(data, id).length === 0) {
     return (
       <AppShell current="teams">
-        <EmptyTeamState />
+        <EmptyTeamState
+          team={team}
+          orgName={data.org.name}
+          suggestions={data.members
+            .filter((m) => m.status === "active")
+            .slice(0, 3)
+            .map((m) => ({
+              member: m,
+              roleName: getRole(data, m.roleId)?.name ?? "",
+            }))}
+        />
       </AppShell>
     );
   }
 
-  const team = getTeam(id);
-  if (!team || team.unlisted) notFound();
-  const lead = team.leadId ? getMember(team.leadId) : undefined;
-  const rows = teamMembers(id)
+  const lead = team.leadId ? getMember(data, team.leadId) : undefined;
+  const rows = teamMembers(data, id)
     .filter((m) => m.status === "active")
     .sort((a, b) => {
       const byRole =
-        roleAllows(getRole(b.roleId)!) - roleAllows(getRole(a.roleId)!);
+        roleAllows(data, getRole(data, b.roleId)!) -
+        roleAllows(data, getRole(data, a.roleId)!);
       return byRole !== 0 ? byRole : a.id.localeCompare(b.id);
     });
   // Designed TeamDetail shows only the open invitation (Priya). A bounced
   // invitation never arrived, so it gets no invited row on the team.
-  const invited = getInvitations().filter(
+  const invited = getInvitations(data).filter(
     (i) => i.teamId === id && i.status === "open",
   );
-  const mix = teamRoleMix(id)
+  const mix = teamRoleMix(data, id)
     .filter((x) =>
-      teamMembers(id).some(
+      teamMembers(data, id).some(
         (m) => m.roleId === x.role.id && m.status === "active",
       ),
     )
-    .sort((a, b) => roleAllows(b.role) - roleAllows(a.role));
+    .sort((a, b) => roleAllows(data, b.role) - roleAllows(data, a.role));
   const mixCaption = mix
     .map(({ role, count }: { role: Role; count: number }) =>
       role.id === "owner"
@@ -155,14 +172,17 @@ export default async function TeamDetailPage({
         : `${count} ${role.name}${count === 1 ? "" : "s"}`,
     )
     .join(" · ");
+  const recentFromAudit = data.auditEntries
+    .filter((e) => e.summary.includes(team.name))
+    .slice(0, 3)
+    .map((e) => ({
+      when: e.day.replace(/^[A-Za-z]+,\s*/, "").replace(/^(\w{3})[a-z]+ /, "$1 "),
+      text: e.summary,
+    }));
   const recent =
-    id === "product"
-      ? [
-          { when: "Oct 5", text: "Maya Jordan joined as Product admin" },
-          { when: "Oct 4", text: "Priya Shah invited as Analyst by Daniel Okafor" },
-          { when: "Sep 2", text: "Yusuf Ali added" },
-        ]
-      : [{ when: "—", text: `Last change recorded in the audit log` }];
+    recentFromAudit.length > 0
+      ? recentFromAudit
+      : [{ when: "—", text: "Last change recorded in the audit log" }];
 
   return (
     <AppShell current="teams">
@@ -191,7 +211,7 @@ export default async function TeamDetailPage({
                 </div>
               </div>
               <div className="head-actions">
-                <ButtonLink href="#">Team settings</ButtonLink>
+                <ButtonLink href="/app/settings">Team settings</ButtonLink>
                 <ButtonLink variant="pri" href="/app/invitations">
                   <PlusIcon />
                   Add people
@@ -236,7 +256,7 @@ export default async function TeamDetailPage({
                   </span>
                 </div>
                 {rows.map((m, i) => {
-                  const role = getRole(m.roleId)!;
+                  const role = getRole(data, m.roleId)!;
                   const alsoOn = m.teams.filter((t) => t.teamId !== id);
                   const isLead = m.teams.find((t) => t.teamId === id)?.lead;
                   return (
@@ -245,8 +265,8 @@ export default async function TeamDetailPage({
                       className={`team-mr${m.isNew ? " hl" : ""}`}
                       key={m.id}
                     >
-                      <span role="cell" className="rg">
-                        {m.id}
+                      <span role="cell" className="rg mono">
+                        {shortId(m.id)}
                       </span>
                       <span role="cell" className="person">
                         <span
@@ -270,10 +290,7 @@ export default async function TeamDetailPage({
                       <span role="cell">
                         {/* TeamDetail.html: only the Product admin tag
                             is a link; every other role tag is a span. */}
-                        <RoleTag
-                          role={role}
-                          link={role.id === "product-admin"}
-                        />
+                        <RoleTag role={role} link />
                       </span>
                       <span
                         role="cell"
@@ -285,7 +302,7 @@ export default async function TeamDetailPage({
                       >
                         {alsoOn.length
                           ? alsoOn
-                              .map((t) => getTeam(t.teamId)?.name)
+                              .map((t) => getTeam(data, t.teamId)?.name)
                               .join(", ")
                           : "—"}
                       </span>
@@ -293,20 +310,28 @@ export default async function TeamDetailPage({
                         {m.joined}
                       </span>
                       <span role="cell">
-                        <button
-                          type="button"
-                          className="mx"
-                          aria-label={`More for ${m.name}`}
-                        >
-                          <DotsIcon />
-                        </button>
+                        {canManageTeam ? (
+                          <TeamRowActions
+                            membershipId={m.id}
+                            teamId={id}
+                            memberName={m.name}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="mx"
+                            aria-label={`More for ${m.name}`}
+                          >
+                            <DotsIcon />
+                          </button>
+                        )}
                       </span>
                     </div>
                   );
                 })}
                 {invited.map((inv) => {
-                  const role = getRole(inv.roleId)!;
-                  const inviter = getMember(inv.invitedById);
+                  const role = getRole(data, inv.roleId)!;
+                  const inviter = getMember(data, inv.invitedById);
                   return (
                     <div role="row" className="team-mr invited-row" key={inv.id}>
                       <span role="cell" className="rg">
@@ -374,7 +399,7 @@ export default async function TeamDetailPage({
               }}
             >
               Being on {team.name} grants nothing by itself. Each person’s
-              role decides what they can do anywhere in Sevyn Labs.
+              role decides what they can do anywhere in {data.org.name}.
             </p>
             <div>
               {mix.map(({ role, count }) => (
@@ -382,18 +407,14 @@ export default async function TeamDetailPage({
                   <div className="ll">
                     {/* Access panel: only Product admin is a link
                         (TeamDetail.html); the rest are plain names. */}
-                    {role.id === "product-admin" ? (
-                      <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
-                    ) : (
-                      <span>{role.name}</span>
-                    )}
+                    <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
                     <i />
                     <span className="mono">{count}</span>
                     <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                      allows {roleAllows(role)} of 18
+                      allows {roleAllows(data, role)} of 18
                     </span>
                   </div>
-                  <PermissionStrip role={role} full showCount={false} />
+                  <PermissionStrip role={role} permissions={data.org.permissions} baselineIds={data.org.baseline.allowedPermissionIds} full showCount={false} />
                 </div>
               ))}
             </div>
