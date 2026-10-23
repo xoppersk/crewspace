@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { auditTotals, getAuditEntries, getMember, getOrg } from "@/lib/api";
+import { auditTotals, getAuditEntries, getMember } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
 import { AuditFilters } from "./AuditFilters";
@@ -20,20 +21,27 @@ export default async function AuditPage({
   const who = sp.who ?? "all";
   const kind = sp.kind ?? "access";
   const range = sp.range ?? "7";
-  const org = getOrg();
-  const totals = auditTotals();
-  /* org.todayFull is "Tuesday, October 6, 2026" (canon §9) — parse its
-     month/day/year into a real Date (the string itself is not parseable). */
-  const MONTHS: Record<string, number> = {
-    January: 0, February: 1, March: 2, April: 3, May: 4, June: 5,
-    July: 6, August: 7, September: 8, October: 9, November: 10, December: 11,
-  };
-  const tm = org.todayFull.match(/(\w+)\s+(\d+),\s*(\d+)/);
-  const today = tm
-    ? new Date(Number(tm[3]), MONTHS[tm[1]!] ?? 9, Number(tm[2]), 12)
-    : new Date(2026, 9, 6, 12);
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="audit">{null}</AppShell>;
+  }
+  const totals = auditTotals(data);
+  /* Range filters are relative to the real current date. */
+  const today = new Date();
 
-  const all = getAuditEntries() as AuditEntryExt[];
+  const all = getAuditEntries(data) as AuditEntryExt[];
+
+  /* "Done by" options: the actors in this log, named from real members. */
+  const whoOptions = [
+    ...new Map(
+      all.map((e) => [
+        e.actorId,
+        e.actorId === "system"
+          ? "System"
+          : (getMember(data, e.actorId)?.name ?? e.actorId),
+      ]),
+    ).entries(),
+  ].map(([value, label]) => ({ value, label }));
 
   function inRange(e: AuditEntryExt): boolean {
     const d = new Date(`${e.dateISO}T12:00:00`);
@@ -95,7 +103,7 @@ export default async function AuditPage({
           actorName:
             e.actorId === "system"
               ? "System"
-              : (getMember(e.actorId)?.name ?? e.actorId),
+              : (getMember(data, e.actorId)?.name ?? e.actorId),
         }),
       ),
     }));
@@ -142,7 +150,7 @@ export default async function AuditPage({
           }}
         >
           <Suspense fallback={null}>
-            <AuditFilters q={q} who={who} kind={kind} range={range} />
+            <AuditFilters q={q} who={who} kind={kind} range={range} whoOptions={whoOptions} />
           </Suspense>
           <span
             className="mono"
