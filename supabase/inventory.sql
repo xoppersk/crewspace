@@ -113,6 +113,7 @@ order by policyname;
 -- ---------------------------------------------------------------------------
 select p.proname as function_name,
        pg_get_function_identity_arguments(p.oid) as arguments,
+       p.pronargs as arg_count,
        p.prosecdef as security_definer,
        l.lanname as language,
        pg_get_functiondef(p.oid) is not null as has_definition
