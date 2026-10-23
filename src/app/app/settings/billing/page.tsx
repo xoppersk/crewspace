@@ -1,25 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  getMember,
-  getOrg,
-  getRole,
-  getSeats,
-  roleMemberCount,
-} from "@/lib/api";
+import { getOrg, getSeats, roleMemberCount } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
-import { ButtonLink } from "@/components/Button";
+import { Button } from "@/components/Button";
 
 export const metadata: Metadata = { title: "Crewspace — Plan and billing" };
-
-/* No invoice or payment-method fixture exists in lib/api.ts — these rows
-   use the approved screen's exact copy (Account.html). */
-const INVOICES = [
-  { date: "Sep 30", for: "50 seats · Oct", amount: "$400.00" },
-  { date: "Sep 2", for: "2 seats added mid-August, prorated", amount: "$7.20" },
-  { date: "Aug 31", for: "50 seats · Sep", amount: "$400.00" },
-  { date: "Jul 31", for: "48 seats · Aug", amount: "$384.00" },
-];
 
 function CardHead({
   id,
@@ -49,17 +35,34 @@ function CardHead({
   );
 }
 
-export default function BillingPage() {
-  const org = getOrg();
+/**
+ * Plan and billing. All numbers are real: seat counts come from the
+ * workspace's memberships and open invitations, and the price is the
+ * configured organizations.seat_price_cents (edited in Settings —
+ * never hard-coded here). There is no invoice or payment-method
+ * storage in the schema yet, so those panels say so instead of
+ * showing invented history.
+ */
+export default async function BillingPage() {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="settings">{null}</AppShell>;
+  }
+  const org = getOrg(data);
   const plan = org.plan;
-  const seats = getSeats();
-  const billingContact = getMember(plan.billingContactId);
-  const billingRole = billingContact ? getRole(billingContact.roleId) : undefined;
-  const monthly = seats.total * plan.pricePerSeat;
+  const seats = getSeats(data);
   const money = (n: number) => `$${n.toFixed(2)}`;
-  const usedPct = (seats.used / seats.total) * 100;
-  const heldPct = (seats.held / seats.total) * 100;
-  const freePct = (seats.free / seats.total) * 100;
+  /* Charged seats are the people actually seated (active members);
+     held invitations aren't charged until they accept. */
+  const monthly = seats.used * plan.pricePerSeat;
+  const denom = Math.max(seats.used + seats.held, 1);
+  const usedPct = (seats.used / denom) * 100;
+  const heldPct = (seats.held / denom) * 100;
+
+  const analysts = data.org.roles.find((r) => r.name === "Analyst");
+  const financeViewers = data.org.roles.find(
+    (r) => r.name === "Finance viewer",
+  );
 
   return (
     <AppShell current="settings">
@@ -67,8 +70,9 @@ export default function BillingPage() {
         <div className="stack">
           <h1 className="gov-title">Settings</h1>
           <p className="gov-lede">
-            {plan.name}, {plan.seats} seats, renews October 31.{" "}
-            {billingContact?.name}, {billingRole?.name}, gets every invoice.
+            {seats.used} seats in use at {money(plan.pricePerSeat)} a seat.{" "}
+            {seats.held} more held by open invitations — they’re charged
+            only when people accept.
           </p>
         </div>
       </div>
@@ -101,7 +105,11 @@ export default function BillingPage() {
             <CardHead
               id="st"
               title="Seats"
-              extra={<ButtonLink href="#">Change seats</ButtonLink>}
+              extra={
+                <Link href="/app/settings" style={{ fontSize: 13, fontWeight: 600 }}>
+                  Change price per seat
+                </Link>
+              }
             />
             <div
               style={{
@@ -113,103 +121,48 @@ export default function BillingPage() {
             >
               <span
                 role="img"
-                aria-label={`${seats.used} used, ${seats.held} held by invitations, ${seats.free} free, of ${seats.total}`}
+                aria-label={`${seats.used} used, ${seats.held} held by invitations`}
                 className="gov-seatbar"
               >
                 <i className="used" style={{ width: `${usedPct}%` }} />
                 <i className="held" style={{ width: `${heldPct}%` }} />
-                <i className="free" style={{ width: `${freePct}%` }} />
               </span>
               <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--ink-2)" }}>
                 <b style={{ fontWeight: 600, color: "var(--ink)" }}>
                   {seats.used} used
                 </b>{" "}
-                by active members · {seats.held} held by open invitations ·{" "}
-                {seats.free} free. Deactivated people don’t use a seat.
+                by active members · {seats.held} held by open invitations.
+                Deactivated people don’t use a seat.
               </span>
             </div>
             <div className="gov-ll2">
               <span>
-                {plan.name} · {plan.seats} seats × ${plan.pricePerSeat}
+                {seats.used} seats × {money(plan.pricePerSeat)}
               </span>
               <i />
               <span className="mono">{money(monthly)} / month</span>
             </div>
-            <div className="gov-ll2">
-              <span>Next invoice</span>
-              <i />
-              <span>
-                {plan.nextInvoice} · <span className="mono">{money(monthly)}</span>
-              </span>
-            </div>
             <div className="gov-ll2" style={{ paddingBottom: 16 }}>
-              <span>If more people accept than you have seats</span>
+              <span>If more people accept</span>
               <i />
-              <span>added at ${plan.pricePerSeat}, prorated</span>
+              <span>added at {money(plan.pricePerSeat)}, prorated</span>
             </div>
           </section>
 
           <section className="card" aria-labelledby="iv" style={{ overflow: "hidden" }}>
-            <CardHead
-              id="iv"
-              title="Invoices"
-              extra={
-                <a
-                  href="#"
-                  style={{
-                    display: "inline-flex",
-                    gap: 6,
-                    alignItems: "center",
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                >
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    aria-hidden="true"
-                  >
-                    <path d="M8 2.5v8M4.8 7.5 8 10.7l3.2-3.2" />
-                    <path d="M2.5 12.5h11" />
-                  </svg>
-                  Download all
-                </a>
-              }
-            />
-            <div className="rows-scroll">
-              <div role="table" className="tbl-stack" aria-label="Invoices" style={{ minWidth: 520 }}>
-                <div role="row" className="gov-iv head">
-                  <span role="columnheader">Date</span>
-                  <span role="columnheader">For</span>
-                  <span role="columnheader" className="amt">
-                    Amount
-                  </span>
-                  <span role="columnheader">Status</span>
-                </div>
-                {INVOICES.map((inv) => (
-                  <div role="row" className="gov-iv" key={inv.date + inv.for}>
-                    <span
-                      role="cell"
-                      className="mono"
-                      style={{ fontSize: 12, color: "var(--ink-2)" }}
-                    >
-                      {inv.date}
-                    </span>
-                    <span role="cell">{inv.for}</span>
-                    <span role="cell" className="mono amt">
-                      {inv.amount}
-                    </span>
-                    <span role="cell">
-                      <span className="gov-st ok">Paid</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CardHead id="iv" title="Invoices" />
+            <p
+              style={{
+                margin: 0,
+                padding: "0 22px 20px",
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--ink-2)",
+              }}
+            >
+              No invoices yet. When billing runs for {org.name}, invoices
+              will appear here with their amounts and status.
+            </p>
           </section>
         </div>
 
@@ -219,47 +172,10 @@ export default function BillingPage() {
             aria-labelledby="pm"
             style={{ fontSize: 13, lineHeight: 1.5, gap: 10 }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-              }}
-            >
-              <h2 id="pm">Payment</h2>
-              <a
-                href="#"
-                style={{ fontWeight: 600, color: "var(--panel-allow)" }}
-              >
-                Update
-              </a>
-            </div>
-            <div
-              className="dchg"
-              style={{ display: "flex", gap: 12, alignItems: "center" }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="var(--panel-allow)"
-                strokeWidth="1.4"
-                aria-hidden="true"
-                style={{ flex: "none" }}
-              >
-                <rect x="1.8" y="3.5" width="12.4" height="9" rx="1.5" />
-                <path d="M1.8 6.5h12.4M4.5 10h2.5" />
-              </svg>
-              <span>
-                Visa ending <span className="mono">1187</span>, expires 04/28
-              </span>
-            </div>
+            <h2 id="pm">Payment</h2>
             <span style={{ color: "#c9d0da" }}>
-              Invoices go to {billingContact?.email}
-            </span>
-            <span style={{ color: "var(--panel-muted)" }}>
-              Billing address: {org.name}, Philadelphia, PA
+              No payment method on file. Add one before the first invoice
+              is due.
             </span>
           </section>
 
@@ -287,10 +203,15 @@ export default function BillingPage() {
               Who can see this
             </h2>
             <span>
-              You and {billingContact?.name.split(" ")[0]} ({billingRole?.name})
-              can change it. {roleMemberCount("analyst")} Analysts and{" "}
-              {roleMemberCount("finance-viewer")} Finance viewers can view it.
-              Product admins can’t.
+              People whose role allows “See billing”
+              {analysts
+                ? ` — ${roleMemberCount(data, analysts.id)} Analysts`
+                : ""}
+              {financeViewers
+                ? ` and ${roleMemberCount(data, financeViewers.id)} Finance viewers`
+                : ""}{" "}
+              can view it. Changing the price takes the settings
+              permission, in Settings.
             </span>
           </section>
 
@@ -303,18 +224,19 @@ export default function BillingPage() {
             </h2>
             <span style={{ color: "var(--ink-2)" }}>
               Everyone loses access at once. The register and audit log are
-              kept for 30 days, then deleted. Billing stops at the end of the
-              month.
+              kept for 30 days, then deleted. Billing stops at the end of
+              the month.
             </span>
             <span>
-              <ButtonLink
+              <Button
                 variant="dest"
                 className="gov-dng"
-                href="#"
+                disabled
+                title="Closing an organization isn't available yet"
                 style={{ background: "var(--sheet)" }}
               >
                 Close {org.name}
-              </ButtonLink>
+              </Button>
             </span>
           </section>
         </aside>
