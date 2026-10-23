@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { getMember, getOrg } from "@/lib/api";
-import { FocusedShell } from "@/components/Shell";
+import { getOrg } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
+import { AppShell, FocusedShell } from "@/components/Shell";
 import { WizardSteps } from "@/components/WizardSteps";
 import { InviteRows } from "./InviteRows";
 
@@ -11,13 +12,22 @@ export const metadata: Metadata = {
 /**
  * F-05 — Onboarding, step 2 of 3: invite your people (Onboarding.html).
  * Roles are limited to Member or Guest here; the dark side panel says
- * why. The invitation rows themselves are live client state (InviteRows).
- * Children are wrapped in a display:contents .fob div so the scoped
- * foundation rules can restyle the shared WizardSteps markup.
+ * why. Rows start blank; Send creates real invitation rows through
+ * the importInvitations server action. Counts in "So far" are the
+ * workspace's real numbers.
  */
-export default function OnboardingInvitePage() {
-  const org = getOrg();
-  const initialEmails = ["017", "014", "011"].map((id) => getMember(id)!.email);
+export default async function OnboardingInvitePage() {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="overview">{null}</AppShell>;
+  }
+  const org = getOrg(data);
+  const inviteRoles = data.org.roles
+    .filter((r) => r.id === "member" || r.id === "guest")
+    .map((r) => ({ id: r.id, name: r.name }));
+  const inviteTeams = data.teams
+    .filter((t) => !t.unlisted)
+    .map((t) => ({ id: t.id, name: t.name }));
 
   return (
     <FocusedShell flowName="Setting up" cancelLabel="Finish later" cancelHref="/app">
@@ -53,7 +63,7 @@ export default function OnboardingInvitePage() {
             </p>
           </div>
 
-          <InviteRows initialEmails={initialEmails} />
+          <InviteRows roles={inviteRoles} teams={inviteTeams} />
         </main>
 
         <aside
@@ -87,9 +97,9 @@ export default function OnboardingInvitePage() {
               Why only Member and Guest?
             </h2>
             <span>
-              A new register has three roles. You’re the owner; everyone else
-              starts as a Member, who can use the workspace but can’t change
-              anyone’s access.
+              You’re the owner. Everyone you invite here starts as a
+              Member — who can use the workspace but can’t change
+              anyone’s access — or as a Guest on a single team.
             </span>
             <span>
               In the next step you’ll make the roles that give out access, like
@@ -111,15 +121,15 @@ export default function OnboardingInvitePage() {
             </h2>
             <div className="frw">
               <span>Members</span>
-              <span className="mono">1</span>
+              <span className="mono">{data.members.length}</span>
             </div>
             <div className="frw">
               <span>Roles</span>
-              <span>3 built-in</span>
+              <span className="mono">{data.org.roles.length}</span>
             </div>
             <div className="frw">
               <span>Audit entries</span>
-              <span className="mono">2</span>
+              <span className="mono">{data.auditEntries.length}</span>
             </div>
           </section>
         </aside>
