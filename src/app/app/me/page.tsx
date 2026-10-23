@@ -3,24 +3,28 @@ import type { Metadata } from "next";
 import {
   getInvitations,
   getMember,
+  getMembers,
   getRole,
   getTeam,
   memberEffectivePermissions,
 } from "@/lib/api";
+import {
+  getActiveWorkspace,
+  loadActiveWorkspaceData,
+} from "@/lib/data/server";
+import { createClient } from "@/lib/supabase/server";
+import { shortId } from "@/components/MemberRow";
 import { AppShell } from "@/components/Shell";
-import { Button } from "@/components/Button";
 import { IconCheck, IconLock, IconShieldCheck } from "@/components/icons";
-import { EmailSettings, ProfileForm } from "./ProfileClient";
+import { DownloadMyData, EmailSettings, ProfileForm } from "./ProfileClient";
 
 export const metadata: Metadata = {
   title: "Crewspace — Your profile and access",
 };
 
-/* P-05 Profile — screens/Profile.html. Maya Jordan's own view (042).
-   The "You can / You can't" lists are plain-word phrases keyed by
-   permission id (§13 register), filtered by
-   memberEffectivePermissions(042), so they always agree with the
-   register. */
+/* P-05 Profile — the REAL signed-in user's own view: their
+   membership, their role, and their effective permissions from the
+   register, so the lists always agree with the register. */
 
 const MONTHS: Record<string, string> = {
   Jan: "January",
@@ -53,10 +57,22 @@ function placeLabel(place: string): string {
   return place.replace(/, US$/, "");
 }
 
-export default function ProfilePage() {
-  const me = getMember("042")!;
-  const role = getRole(me.roleId)!;
-  const effective = memberEffectivePermissions(me);
+export default async function ProfilePage() {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="none" navVariant="profile">{null}</AppShell>;
+  }
+  const ws = await getActiveWorkspace();
+  const me = getMember(data, ws!.membershipId)!;
+  const role = getRole(data, me.roleId)!;
+  const effective = memberEffectivePermissions(data, me);
+  // The profile's timezone lives on profiles (not in the Member shape).
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", ws!.userId)
+    .maybeSingle();
   const allowed = new Set(
     effective.filter((e) => e.result === "Allowed").map((e) => e.permission.id),
   );
@@ -64,15 +80,15 @@ export default function ProfilePage() {
     effective.filter((e) => e.result === "Blocked").map((e) => e.permission.id),
   );
 
-  const team = me.teams[0] ? getTeam(me.teams[0].teamId) : undefined;
-  const lead = team?.leadId ? getMember(team.leadId) : undefined;
-  const invitation = getInvitations().find((i) => i.email === me.email);
-  const giver = invitation ? getMember(invitation.invitedById) : undefined;
-  const owner = getMember("001")!;
+  const team = me.teams[0] ? getTeam(data, me.teams[0].teamId) : undefined;
+  const lead = team?.leadId ? getMember(data, team.leadId) : undefined;
+  const invitation = getInvitations(data).find((i) => i.email === me.email);
+  const giver = invitation ? getMember(data, invitation.invitedById) : undefined;
+  const owner = getMembers(data).find((m) => m.roleId === "owner");
 
   const can: { ids: number[]; text: string }[] = [
     { ids: [1], text: "Invite people and pick their first role" },
-    { ids: [4], text: "Move people between roles, up to Product admin" },
+    { ids: [4], text: "Move people between roles" },
     { ids: [3], text: "Edit anyone’s name, title and team" },
     { ids: [9, 10], text: "Create teams and change who’s on them" },
     { ids: [11], text: "Resend or cancel invitations" },
@@ -91,7 +107,7 @@ export default function ProfilePage() {
   ].filter((row) => row.ids.some((id) => blocked.has(id)));
 
   return (
-    <AppShell current="none" navVariant="profile" personId="042">
+    <AppShell current="none" navVariant="profile">
       <div
         style={{
           display: "flex",
@@ -101,7 +117,7 @@ export default function ProfilePage() {
         }}
       >
         <span className="p-rno" style={{ alignSelf: "flex-start" }}>
-          Member {me.id}
+          Member {shortId(me.id)}
         </span>
         <h1 className="p-title">Your profile and access</h1>
       </div>
@@ -135,8 +151,8 @@ export default function ProfilePage() {
                   You’re a{" "}
                   <b style={{ fontWeight: 600, color: "var(--ink)" }}>
                     {role.name}
-                  </b>{" "}
-                  on the {team?.name} team.
+                  </b>
+                  {team ? <> on the {team.name} team.</> : "."}
                   {giver && invitation?.acceptedOn ? (
                     <>
                       {" "}
@@ -177,17 +193,20 @@ export default function ProfilePage() {
             </div>
             <div className="p-askbar">
               <span>
-                Need something on the right? Ask {owner.name}, the owner.
+                {owner
+                  ? `Need something on the right? Ask ${owner.name}, the owner.`
+                  : "Need something on the right? Ask your organization owner."}
                 {lead ? ` ${lead.name}, your team lead, is copied.` : ""}
               </span>
-              <Button>Ask for access</Button>
             </div>
           </section>
 
           <ProfileForm
             initialName={me.name}
-            initialTitle="Product designer"
+            initialTitle={me.title ?? ""}
+            initialTimezone={profile?.timezone ?? "UTC"}
             email={me.email}
+            orgName={data.org.name}
           />
         </div>
 
@@ -245,39 +264,35 @@ export default function ProfilePage() {
                 );
               })}
             </div>
-            <p
-              style={{
-                margin: "0 0 8px",
-                paddingTop: 10,
-                borderTop: "1px solid var(--rule)",
-                fontSize: 12,
-                lineHeight: 1.45,
-                color: "var(--muted)",
-              }}
-            >
-              Signed in with Google. 2-step verification is on.
-            </p>
+            {!(me.sessions ?? []).length ? (
+              <p
+                style={{
+                  margin: "0 0 8px",
+                  fontSize: 13,
+                  color: "var(--ink-2)",
+                }}
+              >
+                Last active {me.lastActive}. Individual session devices
+                aren’t listed yet.
+              </p>
+            ) : null}
           </section>
 
           <EmailSettings />
 
-          <Link
-            href="#"
-            style={{
-              display: "inline-flex",
-              gap: 8,
-              alignItems: "center",
-              padding: "0 4px",
-              fontSize: 13,
-              fontWeight: 600,
+          <DownloadMyData
+            record={{
+              name: me.name,
+              email: me.email,
+              title: me.title ?? null,
+              role: role.name,
+              teams: me.teams.map(
+                (t) => getTeam(data, t.teamId)?.name ?? t.teamId,
+              ),
+              joined: me.joined,
+              status: me.status,
             }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M8 2.5v8M4.8 7.5 8 10.7l3.2-3.2" />
-              <path d="M2.5 12.5h11" />
-            </svg>
-            Download what Crewspace stores about you
-          </Link>
+          />
         </aside>
       </div>
     </AppShell>
