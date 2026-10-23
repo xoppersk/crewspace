@@ -2,28 +2,30 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  getOrg,
+  deactivateScopeCount,
+  getMembers,
   getPermissions,
   getRole,
+  roleAllows,
   roleMembers,
 } from "@/lib/api";
+import {
+  getActiveWorkspace,
+  getMyPermissionKeys,
+  loadActiveWorkspaceData,
+} from "@/lib/data/server";
 import { AppShell } from "@/components/Shell";
 import { DeniedState } from "@/components/States";
 import { RoleDetailClient } from "./RoleDetailClient";
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ state?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const { state } = await searchParams;
-  if (state === "denied") {
-    return { title: "Crewspace — Permission denied" };
-  }
-  const role = getRole(id);
+  const data = await loadActiveWorkspaceData();
+  const role = data ? getRole(data, id) : undefined;
   return {
     title: role ? `Crewspace — ${role.name} role` : "Crewspace — Roles",
   };
@@ -31,29 +33,39 @@ export async function generateMetadata({
 
 export default async function RoleDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ state?: string }>;
 }) {
   const { id } = await params;
-  const { state } = await searchParams;
-  const role = getRole(id);
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="roles">{null}</AppShell>;
+  }
+  const role = getRole(data, id);
   if (!role) notFound();
 
-  /* X-01: a Support lead (Rita Alvarez, 027) opens the edit page.
-     DeniedState is persona-bound: it always renders the Support-lead
-     scenario, whichever role route the toggle is attached to. */
-  if (state === "denied") {
+  /* X-01 — the denied screen comes from the REAL permission check:
+     the signed-in user lacks roles:update ("Edit role permissions"). */
+  const ws = await getActiveWorkspace();
+  const myKeys = ws ? await getMyPermissionKeys(ws.orgId) : [];
+  if (!myKeys.includes("roles:update")) {
+    const me = getMembers(data).find((m) => m.id === ws?.membershipId);
+    const myRole = me ? getRole(data, me.roleId) : undefined;
+    const owner = getMembers(data).find((m) => m.roleId === "owner");
     return (
-      <AppShell current="roles" personId="027">
-        <DeniedState />
+      <AppShell current="roles">
+        <DeniedState
+          role={role}
+          memberCount={roleMembers(data, id).length}
+          yourRoleName={myRole?.name}
+          yourAllows={myRole ? roleAllows(data, myRole) : undefined}
+          ownerName={owner?.name}
+        />
       </AppShell>
     );
   }
 
-  const org = getOrg();
-  const members = roleMembers(id);
+  const members = roleMembers(data, id);
 
   return (
     <AppShell current="roles">
@@ -64,9 +76,12 @@ export default async function RoleDetailPage({
       </div>
       <RoleDetailClient
         role={role}
-        permissions={getPermissions()}
-        groups={org.groups}
+        permissions={getPermissions(data)}
+        groups={data.org.groups}
         members={members}
+        teams={data.teams.map((t) => ({ id: t.id, name: t.name }))}
+        baselineIds={data.org.baseline.allowedPermissionIds}
+        scopeCount={deactivateScopeCount(data)}
       />
     </AppShell>
   );
