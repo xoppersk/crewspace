@@ -1,5 +1,5 @@
-import { getPermissions, settingResult } from "@/lib/api";
-import type { Role } from "@/lib/types";
+import { settingResultFor } from "@/lib/api";
+import type { Permission, Role } from "@/lib/types";
 
 /**
  * A role's access at a glance: 18 squares in register order.
@@ -10,12 +10,18 @@ import type { Role } from "@/lib/types";
  */
 export function PermissionStrip({
   role,
+  permissions,
+  baselineIds,
   full = false,
   big = false,
   showCount = true,
   ariaLabel,
 }: {
   role: Role;
+  /** The register (18 permissions) + the org baseline, passed by the
+      page — this component renders in both server and client trees. */
+  permissions: Permission[];
+  baselineIds: number[];
   /** Full-width grid variant (member drawer). */
   full?: boolean;
   /** Header-card variant with pending-change states. */
@@ -25,9 +31,11 @@ export function PermissionStrip({
       (Marketing.html's fragment strip carries its own wording). */
   ariaLabel?: string;
 }) {
-  const perms = getPermissions();
+  const perms = permissions;
   const allowed = perms.map(
-    (p) => settingResult(role.settings[String(p.id)]!, p.id) === "Allowed",
+    (p) =>
+      settingResultFor(role.settings[String(p.id)]!, p.id, baselineIds) ===
+      "Allowed",
   );
   const n = allowed.filter(Boolean).length;
 
