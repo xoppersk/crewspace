@@ -1,32 +1,59 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { getOrg } from "@/lib/api";
+import { redirect } from "next/navigation";
+import {
+  getActiveWorkspace,
+  getGateState,
+  loadWorkspaceData,
+} from "@/lib/data/server";
 import { IconShieldCheck } from "./icons";
 import { SideNav, type NavKey } from "./SideNav";
+import { DeactivatedState, NoOrgState } from "./States";
 
-/** The app shell: SideNav on the ground, sheets in the main column. */
-export function AppShell({
+/**
+ * The app shell: SideNav on the ground, sheets in the main column.
+ * ==========================================================================
+ * AppShell is also the /app/** session gate (the middleware is the
+ * first line; this is the per-page server check): signed-out →
+ * /signin; signed-in with no workspace → the real no-org state; the
+ * user's own membership deactivated → the real deactivated state.
+ * Only an active membership renders children.
+ */
+export async function AppShell({
   current,
   children,
   banner,
-  personId,
   navVariant,
 }: {
   current: NavKey | "none";
   children: ReactNode;
   banner?: ReactNode;
+  /** Legacy prop kept for call-site compatibility — the person shown
+      is always the real session user now. */
   personId?: string;
   navVariant?: "profile";
 }) {
+  const gate = await getGateState();
+  if (gate.kind === "signed-out") redirect("/signin");
+  if (gate.kind === "no-org") return <NoOrgState email={gate.email} />;
+  if (gate.kind === "deactivated") {
+    return (
+      <DeactivatedState
+        orgName={gate.orgName}
+        email={gate.email}
+        deactivatedBy={gate.deactivatedBy}
+        deactivatedOn={gate.deactivatedOn}
+        roleName={gate.roleName}
+      />
+    );
+  }
+  const data = gate.data;
+  const me = data.members.find((m) => m.id === gate.ws.membershipId);
   return (
     <div>
       {banner}
       <div className="shell">
-        <SideNav
-          current={current}
-          personId={personId}
-          variant={navVariant}
-        />
+        <SideNav current={current} variant={navVariant} data={data} me={me} />
         <main className="main-col">{children}</main>
       </div>
     </div>
@@ -34,7 +61,7 @@ export function AppShell({
 }
 
 /** Focused flows (wizard, CSV import, onboarding): white top bar, no SideNav. */
-export function FocusedShell({
+export async function FocusedShell({
   flowName,
   cancelLabel,
   cancelHref,
@@ -45,15 +72,24 @@ export function FocusedShell({
   cancelHref: string;
   children: ReactNode;
 }) {
-  const org = getOrg();
+  const data = await loadWorkspaceData();
+  const ws = await getActiveWorkspace();
+  void ws;
+  const orgName = data?.org.name ?? "Crewspace";
+  const initials = orgName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
   return (
     <div style={{ minHeight: "100vh", background: "var(--ground)" }}>
       <div className="topbar">
         <span className="brand">
           <span className="monogram" aria-hidden="true">
-            SL
+            {initials || "CS"}
           </span>
-          <b>{org.name}</b>
+          <b>{orgName}</b>
           <span className="flow">
             <i />
             {flowName}
@@ -69,9 +105,7 @@ export function FocusedShell({
 }
 
 /** Public header: shield wordmark, plus the marketing nav on the full
-    variant (Marketing.html: How it works · Security · Pricing · Docs /
-    Sign in / Start your register). The plain variant is the wordmark
-    with a Sign in link, as the signed-out surfaces draw it. */
+    variant. The plain variant is the wordmark with a Sign in link. */
 export function PublicHeader({ variant = "plain" }: { variant?: "plain" | "marketing" }) {
   return (
     <header
