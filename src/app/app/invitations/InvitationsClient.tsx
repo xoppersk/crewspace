@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  createInvitation,
+  resendInvitation,
+  revokeInvitation,
+} from "@/lib/data/actions";
 import type { InvitationStatus } from "@/lib/types";
 import { Button } from "@/components/Button";
 import {
@@ -29,10 +35,6 @@ export interface InvitationView {
   acceptedOn?: string;
 }
 
-/* Canon "today" is Tuesday, October 6, 2026 (§9); a re-issued or new
-   invitation is sent today and expires 7 days later (§10). */
-const RESENT = { sent: "Oct 6", expires: "Oct 13" };
-
 function StatusCell({ inv }: { inv: InvitationView }) {
   if (inv.status === "bounced") {
     return (
@@ -41,7 +43,8 @@ function StatusCell({ inv }: { inv: InvitationView }) {
           Didn’t arrive
         </span>
         <small>
-          Mail server says the address doesn’t exist. Maybe “lea.kim”?
+          Mail server says the address doesn’t exist.
+          {inv.suggestedEmail ? ` Maybe ${inv.suggestedEmail}?` : ""}
         </small>
       </span>
     );
@@ -104,13 +107,13 @@ function StatusCell({ inv }: { inv: InvitationView }) {
 }
 
 /**
- * G-01 invitations register with §10 behaviour wired up client-side:
- * Resend re-issues the invitation (new link, old one cancelled — the row
- * shows the new sent/expiry), Revoke moves the row to the Revoked tab,
- * Fix address applies the suggested address and clears the bounce, and
- * the invite form adds its invitation straight into the Open tab.
- * Tab state lives in the URL (?tab=) via history.replaceState so it
- * survives a reload without a server round-trip.
+ * G-01 invitations register. Every action is real: Resend re-issues
+ * the invitation through the resend server action (new token hash,
+ * old link dead), Revoke revokes the row, Fix address revokes the
+ * bounced row and sends a fresh invitation to the suggested address,
+ * and the invite form creates a real invitation row. After each
+ * action the route refreshes from the database. Tab state lives in
+ * the URL (?tab=) via history.replaceState so it survives a reload.
  */
 export function InvitationsClient({
   initialInvitations,
@@ -123,8 +126,11 @@ export function InvitationsClient({
   roles: InviteRoleOption[];
   teams: InviteTeamOption[];
 }) {
-  const [invitations, setInvitations] = useState(initialInvitations);
+  const router = useRouter();
+  const invitations = initialInvitations;
   const [tab, setTabState] = useState<TabKey>(initialTab);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   function setTab(next: TabKey) {
     setTabState(next);
@@ -149,70 +155,80 @@ export function InvitationsClient({
 
   let rows: InvitationView[];
   if (tab === "open") {
-    /* Screen order: the bounced invitation first, then opened, then unopened. */
+    /* Bounced first, then the rest in server order. */
     const open = invitations.filter(
       (i) => i.status === "open" || i.status === "bounced",
     );
     rows = [
       ...open.filter((i) => i.status === "bounced"),
-      ...open.filter((i) => i.status === "open" && i.openedAt),
-      ...open.filter((i) => i.status === "open" && !i.openedAt),
+      ...open.filter((i) => i.status === "open"),
     ];
   } else {
     rows = invitations.filter((i) => i.status === tab);
   }
 
-  function update(id: string, patch: Partial<InvitationView>) {
-    setInvitations((list) =>
-      list.map((i) => (i.id === id ? { ...i, ...patch } : i)),
-    );
+  async function run(
+    inv: InvitationView,
+    fn: () => Promise<{ ok: boolean; error?: string; invitePath?: string }>,
+  ) {
+    setBusyId(inv.id);
+    setNote(null);
+    const res = await fn();
+    setBusyId(null);
+    if (!res.ok) {
+      setNote(res.error ?? "That didn't work.");
+      return;
+    }
+    if (res.invitePath) {
+      setNote(`Invitation link: ${window.location.origin}${res.invitePath}`);
+    }
+    router.refresh();
   }
 
   function resend(inv: InvitationView) {
-    update(inv.id, { status: "open", openedAt: null, ...RESENT });
+    void run(inv, () => resendInvitation(inv.id));
   }
   function revoke(inv: InvitationView) {
-    update(inv.id, { status: "revoked" });
+    void run(inv, () => revokeInvitation(inv.id));
   }
   function fixAddress(inv: InvitationView) {
-    update(inv.id, {
-      email: inv.suggestedEmail ?? inv.email,
-      status: "open",
-      openedAt: null,
-      ...RESENT,
+    void run(inv, async () => {
+      const revoked = await revokeInvitation(inv.id);
+      if (!revoked.ok) return revoked;
+      return createInvitation({
+        email: inv.suggestedEmail ?? inv.email,
+        roleId: inv.roleId,
+        teamId: inv.teamId || undefined,
+      });
     });
   }
   function inviteAgain(inv: InvitationView) {
-    update(inv.id, { status: "open", openedAt: null, ...RESENT });
+    void run(inv, () =>
+      createInvitation({
+        email: inv.email,
+        roleId: inv.roleId,
+        teamId: inv.teamId || undefined,
+      }),
+    );
     setTab("open");
   }
-  function addInvite(data: { email: string; roleId: string; teamId: string }) {
-    const role = roles.find((r) => r.id === data.roleId);
-    const team = teams.find((t) => t.id === data.teamId);
-    const local = data.email.split("@")[0] ?? "";
-    const name =
-      local
-        .split(/[._-]+/)
-        .filter(Boolean)
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-        .join(" ") || data.email;
-    setInvitations((list) => [
-      ...list,
-      {
-        id: `inv-new-${list.length}-${data.email}`,
-        name,
-        email: data.email,
-        roleId: data.roleId,
-        roleName: role?.name ?? "",
-        teamId: data.teamId,
-        teamName: team?.name ?? "",
-        inviterName: "Sheku Koroma",
-        status: "open",
-        openedAt: null,
-        ...RESENT,
-      },
-    ]);
-    setTab("open");
+  async function addInvite(data: {
+    email: string;
+    roleId: string;
+    teamId: string;
+    message?: string;
+  }): Promise<{ ok: boolean; error?: string; invitePath?: string }> {
+    const res = await createInvitation({
+      email: data.email,
+      roleId: data.roleId,
+      teamId: data.teamId || undefined,
+      message: data.message,
+    });
+    if (res.ok) {
+      setTab("open");
+      router.refresh();
+    }
+    return res;
   }
 
   function ActionsCell({ inv }: { inv: InvitationView }) {
@@ -225,7 +241,7 @@ export function InvitationsClient({
     if (inv.status === "bounced") {
       return (
         <span role="cell" style={wrap}>
-          <Button variant="pri" className="gov-sm" onClick={() => fixAddress(inv)}>
+          <Button variant="pri" className="gov-sm" disabled={busyId === inv.id} onClick={() => fixAddress(inv)}>
             Fix address
           </Button>
         </span>
@@ -234,10 +250,10 @@ export function InvitationsClient({
     if (inv.status === "open") {
       return (
         <span role="cell" style={wrap}>
-          <Button className="gov-sm" onClick={() => resend(inv)}>
+          <Button className="gov-sm" disabled={busyId === inv.id} onClick={() => resend(inv)}>
             Resend
           </Button>
-          <Button className="gov-sm" onClick={() => revoke(inv)}>
+          <Button className="gov-sm" disabled={busyId === inv.id} onClick={() => revoke(inv)}>
             Revoke
           </Button>
         </span>
@@ -246,7 +262,7 @@ export function InvitationsClient({
     if (inv.status === "expired" || inv.status === "revoked") {
       return (
         <span role="cell" style={wrap}>
-          <Button className="gov-sm" onClick={() => inviteAgain(inv)}>
+          <Button className="gov-sm" disabled={busyId === inv.id} onClick={() => inviteAgain(inv)}>
             Invite again
           </Button>
         </span>
@@ -344,6 +360,15 @@ export function InvitationsClient({
       </section>
 
       <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {note ? (
+          <p
+            className="card"
+            style={{ padding: "12px 14px", fontSize: 13, margin: 0, wordBreak: "break-all" }}
+            role="status"
+          >
+            {note}
+          </p>
+        ) : null}
         <InviteForm roles={roles} teams={teams} onInvite={addInvite} />
       </aside>
     </div>
