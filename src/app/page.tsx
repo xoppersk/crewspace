@@ -537,7 +537,7 @@ export default function MarketingPage() {
                 Crewspace
               </span>
             </span>
-            <span>© 2026 [Company]</span>
+            <span>© 2026 Sevyn Labs</span>
           </div>
           <nav
             aria-label="Product"
