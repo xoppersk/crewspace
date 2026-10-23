@@ -7,27 +7,21 @@ export interface WhoOption {
   label: string;
 }
 
-/** The screen's fixed "Done by" list (AuditLog.html), independent of which
-    actors happen to appear in the fixture. Values are member register ids;
-    "system" matches the fixture's system entries. */
-const WHO_OPTIONS: WhoOption[] = [
-  { value: "001", label: "Sheku Koroma" },
-  { value: "017", label: "Daniel Okafor" },
-  { value: "011", label: "Owen Clarke" },
-  { value: "system", label: "System" },
-];
-
-/** G-03 filter bar: search, who, kind and range — all state lives in the URL. */
+/** G-03 filter bar: search, who, kind and range — all state lives in
+    the URL. The "Done by" options come from the server: the actors who
+    actually appear in this workspace's audit log. */
 export function AuditFilters({
   q,
   who,
   kind,
   range,
+  whoOptions,
 }: {
   q: string;
   who: string;
   kind: string;
   range: string;
+  whoOptions: WhoOption[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -94,7 +88,7 @@ export function AuditFilters({
         onChange={(e) => push({ who: e.target.value })}
       >
         <option value="all">Anyone</option>
-        {WHO_OPTIONS.map((o) => (
+        {whoOptions.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
