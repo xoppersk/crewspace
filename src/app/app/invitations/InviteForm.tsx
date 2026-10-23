@@ -16,9 +16,10 @@ export interface InviteTeamOption {
 
 /**
  * G-01 invite form. The role field always says how much the selected
- * role allows (roleAllows, computed on the server from the fixtures).
- * On submit the invitation is handed to the page (onInvite), which adds
- * it to the Open tab — the design has no success sentence here.
+ * role allows (roleAllows, computed on the server from real data).
+ * On submit the invitation is created by a server action; the fresh
+ * invite link is shown so the inviter can share it (email delivery
+ * runs through the send-invitation Edge Function when configured).
  */
 export function InviteForm({
   roles,
@@ -27,9 +28,16 @@ export function InviteForm({
 }: {
   roles: InviteRoleOption[];
   teams: InviteTeamOption[];
-  onInvite?: (data: { email: string; roleId: string; teamId: string }) => void;
+  onInvite?: (data: {
+    email: string;
+    roleId: string;
+    teamId: string;
+    message?: string;
+  }) => Promise<{ ok: boolean; error?: string; invitePath?: string }>;
 }) {
   const [roleId, setRoleId] = useState(roles[0]?.id ?? "member");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const role = roles.find((r) => r.id === roleId) ?? roles[0];
 
   return (
@@ -42,15 +50,26 @@ export function InviteForm({
         flexDirection: "column",
         gap: 16,
       }}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
         const data = new FormData(form);
-        onInvite?.({
+        setBusy(true);
+        setNote(null);
+        const res = await onInvite?.({
           email: String(data.get("email") ?? ""),
           roleId,
           teamId: String(data.get("team") ?? teams[0]?.id ?? ""),
+          message: String(data.get("note") ?? "") || undefined,
         });
+        setBusy(false);
+        if (res && !res.ok) {
+          setNote(res.error ?? "That invitation didn't send.");
+          return;
+        }
+        if (res?.invitePath) {
+          setNote(`Invitation created. Link: ${window.location.origin}${res.invitePath}`);
+        }
         form.reset();
         setRoleId(roles[0]?.id ?? "member");
       }}
@@ -82,9 +101,9 @@ export function InviteForm({
           className="in"
           type="email"
           required
-          placeholder="name@sevynlabs.io"
+          placeholder="name@company.com"
         />
-        <span className="hint">Other domains join as Guest.</span>
+        <span className="hint">They join with the role you pick below.</span>
       </div>
 
       <div className="gov-f">
@@ -137,9 +156,14 @@ export function InviteForm({
         />
       </div>
 
-      <Button type="submit" variant="pri" size="h40">
+      <Button type="submit" variant="pri" size="h40" disabled={busy}>
         Send invitation
       </Button>
+      {note ? (
+        <span style={{ fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-2)", wordBreak: "break-all" }}>
+          {note}
+        </span>
+      ) : null}
       <span style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)" }}>
         Links expire after 7 days. The invitation and its acceptance are both
         written to the audit log.
