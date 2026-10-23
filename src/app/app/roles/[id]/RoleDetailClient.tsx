@@ -1,9 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { deactivateScopeCount, getTeam, settingResult } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { settingResultFor } from "@/lib/api";
+import {
+  applyRoleChanges,
+  discardRoleChanges,
+  proposeRoleChange,
+} from "@/lib/data/actions";
+import { APP_LAYER_PERMISSION_IDS } from "@/lib/data/permissions";
 import type { Member, Permission, PermissionGroup, Role, Setting } from "@/lib/types";
+import { shortId } from "@/components/MemberRow";
 import { Button, ButtonLink } from "@/components/Button";
 import { Drawer, DrawerClose } from "@/components/Drawer";
 import { PermissionRow, settingLabel } from "@/components/PermissionRow";
@@ -22,13 +30,6 @@ interface Change {
  * other five groups as tiles), and — in place of a ReviewBar — the dark
  * sticky panel that lists every pending change before it applies.
  */
-
-/** The header-card lead: Main.html's string for Product admin; other
-    roles fall back to the fixture summary. */
-const LEAD_TEXT: Record<string, string> = {
-  "product-admin":
-    "Runs the product workspace: invites people, changes roles and organizes teams. Can’t edit what a role allows, change sign-in or billing, or export the audit archive.",
-};
 
 /** Avatar tints in the header stack, exactly as Main.html draws them
     (Daniel, Ama, Lucas, Hannah, Maya), keyed by member id. */
@@ -51,10 +52,10 @@ function initialsOf(name: string): string {
 
 /** "Product · lead" / "Product · joined Oct 5" / "Product": the member's
     first team, its lead flag, and the new-member joined date. */
-function memberSub(m: Member): string {
+function memberSub(m: Member, teams: { id: string; name: string }[]): string {
   const first = m.teams[0];
   if (!first) return "—";
-  const teamName = getTeam(first.teamId)?.name ?? "—";
+  const teamName = teams.find((t) => t.id === first.teamId)?.name ?? "—";
   if (first.lead) return `${teamName} · lead`;
   if (m.isNew) return `${teamName} · joined ${m.joined}`;
   return teamName;
@@ -65,42 +66,77 @@ export function RoleDetailClient({
   permissions,
   groups,
   members,
-  offline = false,
+  teams,
+  baselineIds,
+  scopeCount,
 }: {
   role: Role;
   permissions: Permission[];
   groups: PermissionGroup[];
   members: Member[];
-  offline?: boolean;
+  teams: { id: string; name: string }[];
+  baselineIds: number[];
+  /** deactivateScopeCount from the page (real member data). */
+  scopeCount: number;
 }) {
-  const [committed, setCommitted] = useState<Record<string, Setting>>(
-    role.settings,
-  );
-  const [draft, setDraft] = useState<Record<string, Setting>>(() => {
-    const d = { ...role.settings };
-    for (const c of role.pendingChanges ?? []) d[String(c.permissionId)] = c.to;
-    return d;
-  });
+  const router = useRouter();
   const [reviewOpen, setReviewOpen] = useState(false);
-  /* System roles are fixed (Roles.html: "3 system roles that can't be
-     edited"): their register renders locked and offers no Duplicate. */
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  /* System roles are fixed: their register renders locked. */
   const isSystem = role.type === "System";
 
-  const changes: Change[] = useMemo(
-    () =>
-      permissions
-        .filter((p) => draft[String(p.id)] !== committed[String(p.id)])
-        .map((p) => ({
-          permission: p,
-          from: committed[String(p.id)]!,
-          to: draft[String(p.id)]!,
-        })),
-    [permissions, draft, committed],
-  );
+  /* The draft flow is server-backed (00019): committed settings are
+     role.settings; pending rows in role_permission_changes overlay
+     them. Toggling PROPOSES a change via RPC — nothing committed
+     moves until Apply. */
+  const committed = role.settings;
+  const draft: Record<string, Setting> = { ...role.settings };
+  for (const c of role.pendingChanges ?? []) {
+    draft[String(c.permissionId)] = c.to;
+  }
+  const changes: Change[] = (role.pendingChanges ?? [])
+    .map((c) => ({
+      permission: permissions.find((p) => p.id === c.permissionId)!,
+      from: c.from,
+      to: c.to,
+    }))
+    .filter((c) => c.permission);
+
+  const onToggle = async (pid: number, next: Setting) => {
+    setBusy(true);
+    setError(null);
+    const res = await proposeRoleChange(role.id, pid, next);
+    setBusy(false);
+    if (!res.ok) setError(res.error);
+    else router.refresh();
+  };
+
+  const apply = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await applyRoleChanges(role.id);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+    } else {
+      setReviewOpen(false);
+      router.refresh();
+    }
+  };
+
+  const discard = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await discardRoleChanges(role.id);
+    setBusy(false);
+    if (!res.ok) setError(res.error);
+    else router.refresh();
+  };
 
   const allowsWith = (settings: Record<string, Setting>) =>
     permissions.filter(
-      (p) => settingResult(settings[String(p.id)]!, p.id) === "Allowed",
+      (p) => settingResultFor(settings[String(p.id)]!, p.id, baselineIds) === "Allowed",
     ).length;
   const allowsToday = allowsWith(committed);
   const allowsAfter = allowsWith(draft);
@@ -120,31 +156,26 @@ export function RoleDetailClient({
   const noteFor = (p: Permission): string | undefined => {
     const setting = draft[String(p.id)]!;
     if (p.id === 8 && setting === "deny") return "even if baseline changes";
-    if (p.id === 2 && settingResult(setting, p.id) === "Allowed")
-      return `${deactivateScopeCount()} people in scope`;
+    if (p.id === 2 && settingResultFor(setting, p.id, baselineIds) === "Allowed")
+      return `${scopeCount} people in scope`;
     return undefined;
   };
 
   const groupAllows = (g: PermissionGroup) =>
     g.permissionIds.filter(
-      (pid) => settingResult(draft[String(pid)]!, pid) === "Allowed",
+      (pid) => settingResultFor(draft[String(pid)]!, pid, baselineIds) === "Allowed",
     ).length;
 
   const effectFor = (c: Change): string => {
     if (c.permission.id === 2 && c.to === "allow") {
-      return `${members.length} ${role.name}s can suspend ${deactivateScopeCount()} people: everyone except the owner and other ${role.name}s.`;
+      return `${members.length} ${role.name}s can suspend ${scopeCount} people: everyone except the owner and other ${role.name}s.`;
     }
     if (c.permission.id === 8 && c.to === "deny") {
       return "No change today. Stays blocked even if the baseline later allows exports.";
     }
-    return settingResult(c.to, c.permission.id) === "Allowed"
+    return settingResultFor(c.to, c.permission.id, baselineIds) === "Allowed"
       ? `The ${members.length} people with this role gain this, on their next page load.`
       : `The ${members.length} people with this role lose this, on their next page load.`;
-  };
-
-  const apply = () => {
-    setCommitted(draft);
-    setReviewOpen(false);
   };
 
   const expandedGroups = groups.slice(0, 3);
@@ -172,11 +203,13 @@ export function RoleDetailClient({
                     <span className="rno">{role.regNumber}</span>
                     <span className="type-chip">{role.type}</span>
                   </div>
-                  <p className="summary">{LEAD_TEXT[role.id] ?? role.summary}</p>
+                  <p className="summary">{role.summary}</p>
                 </div>
               </div>
               <div className="head-actions">
-                {isSystem ? null : <Button>Duplicate</Button>}
+                {isSystem ? null : (
+                  <ButtonLink href={`/app/roles/new?from=${role.id}`}>Duplicate</ButtonLink>
+                )}
                 <ButtonLink href="/app/audit">History</ButtonLink>
               </div>
             </div>
@@ -205,6 +238,7 @@ export function RoleDetailClient({
                     </>
                   ) : null}
                 </span>
+
               </div>
               <div className="strip-block">
                 <div className="strip-labels">
@@ -215,7 +249,7 @@ export function RoleDetailClient({
                     <span>{allowsAfter} after review</span>
                   ) : null}
                 </div>
-                <PermissionStrip role={stripRole} big showCount={false} />
+                <PermissionStrip role={stripRole} permissions={permissions} baselineIds={baselineIds} big showCount={false} />
               </div>
             </div>
           </section>
@@ -251,7 +285,7 @@ export function RoleDetailClient({
                             <i
                               key={pid}
                               className={
-                                settingResult(draft[String(pid)]!, pid) ===
+                                settingResultFor(draft[String(pid)]!, pid, baselineIds) ===
                                 "Allowed"
                                   ? "on"
                                   : undefined
@@ -271,19 +305,20 @@ export function RoleDetailClient({
                         <PermissionRow
                           key={pid}
                           permission={p}
+                          baselineIds={baselineIds}
                           setting={draft[String(pid)]!}
                           changedFrom={change ? change.from : null}
                           resultNote={noteFor(p)}
                           disabledReason={
                             isSystem
                               ? "System roles are fixed."
-                              : offline
-                                ? "Access changes are paused while you are offline."
-                                : undefined
+                              : APP_LAYER_PERMISSION_IDS.has(pid)
+                                ? "Managed at the platform layer."
+                                : busy
+                                  ? "Saving…"
+                                  : undefined
                           }
-                          onChange={(next) =>
-                            setDraft((d) => ({ ...d, [String(pid)]: next }))
-                          }
+                          onChange={(next) => void onToggle(pid, next)}
                         />
                       );
                     })}
@@ -299,14 +334,14 @@ export function RoleDetailClient({
                     (pid) => draft[String(pid)] === "locked",
                   );
                   return (
-                    <a key={g.name} href="#" className="grp-tile">
+                    <span key={g.name} className="grp-tile">
                       <span className="gname">{g.name}</span>
                       <span className="mini" aria-hidden="true">
                         {g.permissionIds.map((pid) => (
                           <i
                             key={pid}
                             className={
-                              settingResult(draft[String(pid)]!, pid) ===
+                              settingResultFor(draft[String(pid)]!, pid, baselineIds) ===
                               "Allowed"
                                 ? "on"
                                 : undefined
@@ -318,7 +353,7 @@ export function RoleDetailClient({
                         {groupAllows(g)} of {g.permissionIds.length}
                         {ownerOnly ? " · owner only" : ""}
                       </span>
-                    </a>
+                    </span>
                   );
                 })}
               </div>
@@ -358,7 +393,7 @@ export function RoleDetailClient({
                             ? "deny"
                             : c.to === "allow"
                               ? "allow"
-                              : settingResult(c.to, c.permission.id) ===
+                              : settingResultFor(c.to, c.permission.id, baselineIds) ===
                                   "Allowed"
                                 ? "allow"
                                 : "deny"
@@ -373,19 +408,22 @@ export function RoleDetailClient({
               </div>
               <dl>
                 <dt>Applied by</dt>
-                <dd>You, as owner</dd>
+                <dd>You</dd>
                 <dt>Takes effect</dt>
                 <dd>On next page load</dd>
                 <dt>Recorded</dt>
                 <dd>Audit log, before and after</dd>
-                <dt>Members told</dt>
-                <dd>By email</dd>
               </dl>
+              {error ? (
+                <p style={{ color: "var(--panel-deny, #f2b8b5)", fontSize: 13 }}>
+                  {error}
+                </p>
+              ) : null}
               <div className="action-grid">
-                <Button variant="on-dark" onClick={() => setDraft(committed)}>
+                <Button variant="on-dark" disabled={busy} onClick={() => void discard()}>
                   Discard
                 </Button>
-                <Button variant="white" onClick={() => setReviewOpen(true)}>
+                <Button variant="white" disabled={busy} onClick={() => setReviewOpen(true)}>
                   Review and apply
                 </Button>
               </div>
@@ -422,11 +460,11 @@ export function RoleDetailClient({
                     className="mono"
                     style={{ fontSize: 12, color: "var(--muted)" }}
                   >
-                    {m.id}
+                    {shortId(m.id)}
                   </span>
                   <span className="mname">
                     <b>{m.name}</b>
-                    <span className="msub">{memberSub(m)}</span>
+                    <span className="msub">{memberSub(m, teams)}</span>
                   </span>
                   <span className={m.status === "active" ? "ok" : "off"}>
                     {m.status === "active" ? "Active" : "Deactivated"}
@@ -475,7 +513,7 @@ export function RoleDetailClient({
               }}
             >
               Nothing has changed yet. Applying writes one audit entry per
-              change and emails the {members.length} members with this role.
+              change for the {members.length} members with this role.
             </p>
           </header>
           <section className="ds">
@@ -493,7 +531,7 @@ export function RoleDetailClient({
                 <b style={{ fontWeight: 600 }}>{c.permission.name}</b>
                 <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
                   {settingLabel(c.from)} → {settingLabel(c.to)} · result:{" "}
-                  {settingResult(c.to, c.permission.id)} · affects{" "}
+                  {settingResultFor(c.to, c.permission.id, baselineIds)} · affects{" "}
                   {members.length} members (
                   {members.map((m) => m.name).join(", ")})
                 </span>
@@ -510,7 +548,7 @@ export function RoleDetailClient({
               flexWrap: "wrap",
             }}
           >
-            <Button variant="pri" onClick={apply}>
+            <Button variant="pri" disabled={busy} onClick={() => void apply()}>
               Apply {changes.length} change{changes.length === 1 ? "" : "s"}
             </Button>
             <Button onClick={() => setReviewOpen(false)}>Keep editing</Button>
