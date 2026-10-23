@@ -1,6 +1,6 @@
 "use client";
 
-import { settingResult } from "@/lib/api";
+import { settingResultFor } from "@/lib/api";
 import type { Permission, Setting } from "@/lib/types";
 import { IconCheck, IconLock } from "./icons";
 
@@ -28,6 +28,7 @@ export function settingLabel(s: Setting): string {
  */
 export function PermissionRow({
   permission,
+  baselineIds,
   setting,
   changedFrom,
   resultNote,
@@ -35,6 +36,8 @@ export function PermissionRow({
   onChange,
 }: {
   permission: Permission;
+  /** Org baseline permission ids (for the Inherit result). */
+  baselineIds: number[];
   setting: Setting;
   /** When set, the row shows "Changed · was X" as a changed row. */
   changedFrom?: Setting | null;
@@ -43,7 +46,7 @@ export function PermissionRow({
   disabledReason?: string;
   onChange?: (next: Setting) => void;
 }) {
-  const result = settingResult(setting, permission.id);
+  const result = settingResultFor(setting, permission.id, baselineIds);
   const note =
     resultNote ??
     (setting === "inherit" ? "from baseline" : undefined);
