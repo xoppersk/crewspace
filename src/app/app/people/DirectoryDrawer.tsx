@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { MemberDrawer } from "@/components/MemberDrawer";
+import type { WorkspaceData } from "@/lib/api";
 import type { Member } from "@/lib/types";
 
 /**
@@ -10,16 +11,17 @@ import type { Member } from "@/lib/types";
  */
 export function DirectoryDrawer({
   member,
+  data,
+  canDeactivate = false,
   returnQuery,
   lastActiveText,
-  offline = false,
 }: {
   member: Member;
+  data: WorkspaceData;
+  canDeactivate?: boolean;
   /** Query string for the page without ?open, "" when there is none. */
   returnQuery: string;
   lastActiveText?: string;
-  /** X-06: access-changing actions pause while the connection is down. */
-  offline?: boolean;
 }) {
   const router = useRouter();
   const onClose = () => {
@@ -30,9 +32,10 @@ export function DirectoryDrawer({
   return (
     <MemberDrawer
       member={member}
+      data={data}
+      canDeactivate={canDeactivate}
       onClose={onClose}
       lastActiveText={lastActiveText}
-      offline={offline}
     />
   );
 }
