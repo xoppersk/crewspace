@@ -1,17 +1,23 @@
 "use client";
 
 /**
- * /dev/components — the 12 design-system components, built from the
- * shared fixtures. A build tool, not a designed screen: clean,
- * labelled, token-only.
+ * /dev/components — the 12 design-system components, rendered from
+ * sample data constructed in this file. A build tool, not a designed
+ * screen and not connected to any workspace: clean, labelled,
+ * token-only. (It used to read the fixture API; production code no
+ * longer imports fixtures, so the samples live here.)
  */
 import { useState, type ReactNode } from "react";
-import {
-  getInvitations,
-  getMember,
-  getPermission,
-  getRole,
-} from "@/lib/api";
+import { PERMISSION_GROUPS } from "@/lib/data/permissions";
+import type { WorkspaceData } from "@/lib/api";
+import type {
+  Invitation,
+  Member,
+  Permission,
+  Role,
+  Setting,
+  Team,
+} from "@/lib/types";
 import { Button, ButtonLink } from "@/components/Button";
 import { LegalFooter } from "@/components/LegalFooter";
 import { InvitationRow, MemberRow } from "@/components/MemberRow";
@@ -52,13 +58,104 @@ function Section({
   );
 }
 
+/* ---- sample data (this file only) ---- */
+const SAMPLE_PERMISSIONS: Permission[] = PERMISSION_GROUPS.flatMap((g) =>
+  g.permissionIds.map((id) => ({
+    id,
+    group: g.name,
+    name: `Permission ${id}`,
+    description: `Sample description for permission ${id}.`,
+  })),
+);
+function sampleRole(
+  id: string,
+  name: string,
+  allows: number[],
+  denies: number[] = [],
+): Role {
+  return {
+    id,
+    regNumber: "R-00",
+    name,
+    type: "Custom",
+    summary: "",
+    settings: Object.fromEntries(
+      SAMPLE_PERMISSIONS.map((p) => [
+        String(p.id),
+        allows.includes(p.id)
+          ? "allow"
+          : denies.includes(p.id)
+            ? "deny"
+            : "inherit",
+      ]),
+    ) as Record<string, Setting>,
+    lastChanged: "",
+  };
+}
+const productAdmin = sampleRole(
+  "product-admin",
+  "Product admin",
+  [1, 3, 4, 5, 7, 9, 10, 11, 13, 14],
+  [8, 16, 18],
+);
+const supportLead = sampleRole("support-lead", "Support lead", [1, 3, 10, 14]);
+const analyst = sampleRole("analyst", "Analyst", [3, 7, 15]);
+const memberRole = sampleRole("member", "Member", [3]);
+const SAMPLE_ROLES = [productAdmin, supportLead, analyst, memberRole];
+const SAMPLE_TEAMS: Team[] = [
+  { id: "product", regNumber: "T-01", name: "Product", blurb: "", leadId: "m-maya" },
+];
+const maya: Member = {
+  id: "m-maya",
+  name: "Maya Jordan",
+  email: "maya.jordan@example.com",
+  roleId: "product-admin",
+  status: "active",
+  teams: [{ teamId: "product", lead: true }],
+  joined: "Aug 2026",
+  lastActive: "Now",
+};
+const priya: Invitation = {
+  id: "inv-priya",
+  name: "Priya Shah",
+  email: "priya.shah@example.com",
+  roleId: "analyst",
+  teamId: "product",
+  invitedById: "m-maya",
+  sent: "Oct 5",
+  status: "open",
+  openedAt: null,
+  expires: "Oct 12",
+};
+const SAMPLE_DATA: WorkspaceData = {
+  org: {
+    name: "Example Org",
+    domain: "example.com",
+    domainVerified: "",
+    today: "",
+    todayFull: "",
+    plan: {
+      name: "",
+      seats: 2,
+      pricePerSeat: 8,
+      renews: "",
+      nextInvoice: "",
+      billingContactId: "",
+    },
+    baseline: { allowedPermissionIds: [3] },
+    groups: PERMISSION_GROUPS,
+    permissions: SAMPLE_PERMISSIONS,
+    roles: SAMPLE_ROLES,
+  },
+  members: [maya],
+  teams: SAMPLE_TEAMS,
+  invitations: [priya],
+  auditEntries: [],
+  needsOwner: [],
+};
+const perm = (id: number) => SAMPLE_PERMISSIONS.find((p) => p.id === id)!;
+
 export default function ComponentsPage() {
-  const productAdmin = getRole("product-admin")!;
-  const supportLead = getRole("support-lead")!;
-  const analyst = getRole("analyst")!;
-  const memberRole = getRole("member")!;
-  const maya = getMember("042")!;
-  const priya = getInvitations().find((i) => i.id === "inv-priya")!;
 
   const [reviewCount, setReviewCount] = useState(2);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -78,7 +175,7 @@ export default function ComponentsPage() {
         <header>
           <h1 className="title">Crewspace design system</h1>
           <p className="lead" style={{ marginTop: 6 }}>
-            The 12 components, live from the shared fixtures.
+            The 12 components, live from sample data defined in this file.
           </p>
         </header>
 
@@ -106,21 +203,25 @@ export default function ComponentsPage() {
         <Section name="PermissionRow">
           <div className="sheet" role="table" aria-label="Permission rows">
             <PermissionRow
-              permission={getPermission(1)}
+              permission={perm(1)}
+              baselineIds={[3]}
               setting={productAdmin.settings["1"]!}
             />
             <PermissionRow
-              permission={getPermission(14)}
+              permission={perm(14)}
+              baselineIds={[3]}
               setting={productAdmin.settings["14"]!}
             />
             <PermissionRow
-              permission={getPermission(2)}
+              permission={perm(2)}
+              baselineIds={[3]}
               setting="allow"
               changedFrom="deny"
               resultNote="36 people in scope"
             />
             <PermissionRow
-              permission={getPermission(18)}
+              permission={perm(18)}
+              baselineIds={[3]}
               setting={productAdmin.settings["18"]!}
             />
           </div>
@@ -146,11 +247,11 @@ export default function ComponentsPage() {
                 style={{ display: "flex", alignItems: "center", gap: 14 }}
               >
                 <span style={{ width: 120, fontSize: 13 }}>{x.label}</span>
-                <PermissionStrip role={x.role} />
+                <PermissionStrip role={x.role} permissions={SAMPLE_PERMISSIONS} baselineIds={[3]} />
               </div>
             ))}
             <div style={{ marginTop: 6 }}>
-              <PermissionStrip role={productAdmin} full />
+              <PermissionStrip role={productAdmin} permissions={SAMPLE_PERMISSIONS} baselineIds={[3]} full />
             </div>
           </div>
         </Section>
@@ -177,8 +278,8 @@ export default function ComponentsPage() {
 
         <Section name="MemberRow">
           <div className="sheet" role="table" aria-label="Member rows">
-            <MemberRow member={maya} />
-            <InvitationRow invitation={priya} />
+            <MemberRow member={maya} roles={SAMPLE_ROLES} teams={SAMPLE_TEAMS} />
+            <InvitationRow invitation={priya} roles={SAMPLE_ROLES} teams={SAMPLE_TEAMS} />
           </div>
         </Section>
 
@@ -213,7 +314,7 @@ export default function ComponentsPage() {
               overflow: "hidden",
             }}
           >
-            <SideNav current="roles" />
+            <SideNav current="roles" data={SAMPLE_DATA} me={maya} />
           </div>
         </Section>
 
@@ -229,14 +330,14 @@ export default function ComponentsPage() {
             }}
           >
             <span style={{ fontSize: 13 }}>
-              Maya Jordan’s record, over a scrim. Escape closes it.
+              The sample member’s record, over a scrim. Escape closes it.
             </span>
             <Button variant="pri" onClick={() => setDrawerOpen(true)}>
               Open drawer
             </Button>
           </div>
           {drawerOpen ? (
-            <MemberDrawer member={maya} onClose={() => setDrawerOpen(false)} />
+            <MemberDrawer member={maya} data={SAMPLE_DATA} onClose={() => setDrawerOpen(false)} />
           ) : null}
         </Section>
 
@@ -247,9 +348,9 @@ export default function ComponentsPage() {
             facts={[
               "Missing — Edit role permissions",
               "Protected — Support lead · 4 members",
-              "Ask — Sheku Koroma, organization owner",
+              "Ask — the organization owner",
             ]}
-            action={{ label: "Ask Sheku to make the change", href: "#" }}
+            action={{ label: "Ask the owner to make the change", href: "#" }}
             wayOut={{ label: "Review my access", href: "/app/me" }}
             alert
           >
@@ -257,7 +358,7 @@ export default function ComponentsPage() {
             <b style={{ fontWeight: 600, color: "var(--ink)" }}>
               Edit role permissions
             </b>
-            . Only Sheku Koroma has it.
+            . Only the organization owner has it.
           </StateNotice>
         </Section>
 
