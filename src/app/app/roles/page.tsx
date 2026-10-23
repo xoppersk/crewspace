@@ -3,14 +3,14 @@ import Link from "next/link";
 import {
   customInheritCount,
   getMembers,
-  getOrg,
   getPermission,
   getPermissions,
-  getRole,
   getRoles,
   roleAllows,
   roleMemberCount,
+  type WorkspaceData,
 } from "@/lib/api";
+import { loadActiveWorkspaceData } from "@/lib/data/server";
 import type { Role } from "@/lib/types";
 import { AppShell } from "@/components/Shell";
 import { ButtonLink } from "@/components/Button";
@@ -25,43 +25,7 @@ import { IconDocument, IconLock, IconShieldCheck } from "@/components/icons";
  */
 export const metadata: Metadata = { title: "Crewspace — Roles" };
 
-const ROW_ORDER = [
-  "owner",
-  "product-admin",
-  "support-lead",
-  "billing-admin",
-  "analyst",
-  "auditor",
-  "finance-viewer",
-  "member",
-  "guest",
-];
 
-const LIST_SUMMARY: Record<string, string> = {
-  owner: "Everything, including transferring ownership.",
-  "product-admin":
-    "Runs the product workspace: people, roles, teams. 2 changes waiting for review.",
-  "support-lead":
-    "Helps members with profiles, invitations and lost sessions.",
-  "billing-admin": "Owns the plan, seats and payment.",
-  analyst: "Reads the audit log and billing for reporting.",
-  auditor: "Reads and exports the audit archive. Nothing else.",
-  "finance-viewer": "Sees billing and invoices.",
-  member: "Uses the workspace; sees the directory and their own access.",
-  guest: "Sees only the teams they’re added to. Can’t see the directory.",
-};
-
-const LIST_LAST_CHANGE: Record<string, string> = {
-  owner: "—",
-  "product-admin": "Oct 2",
-  "support-lead": "Sep 24",
-  "billing-admin": "Aug 30",
-  analyst: "Sep 18",
-  auditor: "Jul 7",
-  "finance-viewer": "Jun 12",
-  member: "—",
-  guest: "—",
-};
 
 const ROW_GRID: React.CSSProperties = {
   display: "grid",
@@ -104,9 +68,9 @@ function PlusIcon() {
   );
 }
 
-function RoleRow({ role }: { role: Role }) {
-  const highlighted = role.id === "product-admin";
-  const zero = roleAllows(role) === 0;
+function RoleRow({ data, role }: { data: WorkspaceData; role: Role }) {
+  const highlighted = (role.pendingChanges?.length ?? 0) > 0;
+  const zero = roleAllows(data, role) === 0;
   return (
     <Link
       role="row"
@@ -128,7 +92,7 @@ function RoleRow({ role }: { role: Role }) {
             lineHeight: 1.4,
           }}
         >
-          {LIST_SUMMARY[role.id] ?? role.summary}
+          {role.summary}
         </small>
       </span>
       <span role="cell">
@@ -140,28 +104,32 @@ function RoleRow({ role }: { role: Role }) {
         </span>
       </span>
       <span role="cell" className="mono">
-        {roleMemberCount(role.id)}
+        {roleMemberCount(data, role.id)}
       </span>
       <span role="cell" className={zero ? "strip-zero" : undefined}>
-        <PermissionStrip role={role} />
+        <PermissionStrip role={role} permissions={data.org.permissions} baselineIds={data.org.baseline.allowedPermissionIds} />
       </span>
       <span role="cell" style={{ color: "var(--ink-2)" }}>
-        {LIST_LAST_CHANGE[role.id] ?? role.lastChanged}
+        {role.lastChanged}
       </span>
     </Link>
   );
 }
 
-export default function RolesPage() {
-  const org = getOrg();
-  const roles = getRoles();
-  const ordered = ROW_ORDER.map((id) => getRole(id)!).filter(Boolean);
+export default async function RolesPage() {
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="roles">{null}</AppShell>;
+  }
+  const org = data.org;
+  const roles = getRoles(data);
+  const ordered = roles;
   const systemCount = roles.filter((r) => r.type === "System").length;
   const customCount = roles.filter((r) => r.type === "Custom").length;
-  const memberCount = getMembers().length;
+  const memberCount = getMembers(data).length;
   const baselineIds = org.baseline.allowedPermissionIds;
-  const baselineNames = baselineIds.map((id) => getPermission(id).name);
-  const permissions = getPermissions();
+  const baselineNames = baselineIds.map((id) => getPermission(data, id).name);
+  const permissions = getPermissions(data);
 
   return (
     <AppShell current="roles">
@@ -176,7 +144,6 @@ export default function RolesPage() {
           </p>
         </div>
         <div className="head-actions">
-          <ButtonLink href="#">Compare two roles</ButtonLink>
           <ButtonLink variant="pri" href="/app/roles/new">
             <PlusIcon />
             New role
@@ -201,7 +168,7 @@ export default function RolesPage() {
                 <span role="columnheader">Last change</span>
               </div>
               {ordered.map((role) => (
-                <RoleRow key={role.id} role={role} />
+                <RoleRow key={role.id} data={data} role={role} />
               ))}
             </div>
           </div>
@@ -235,7 +202,7 @@ export default function RolesPage() {
               }}
             >
               <h2 id="bl">Organization baseline</h2>
-              <a href="#" className="edit-link">
+              <a href="/app/settings" className="edit-link">
                 Edit
               </a>
             </div>
@@ -262,11 +229,9 @@ export default function RolesPage() {
             </span>
             <dl className="baseline-dl">
               <dt>Settings set to Inherit</dt>
-              <dd className="mono">{customInheritCount()}</dd>
+              <dd className="mono">{customInheritCount(data)}</dd>
               <dt>Custom roles affected by a baseline change</dt>
               <dd className="mono">{customCount}</dd>
-              <dt>Last changed</dt>
-              <dd>Aug 14 · Sheku</dd>
             </dl>
           </section>
 
