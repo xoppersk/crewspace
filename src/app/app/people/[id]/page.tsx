@@ -4,14 +4,20 @@ import { notFound } from "next/navigation";
 import {
   getInvitations,
   getMember,
-  getOrg,
   getRole,
   getTeam,
   memberEffectivePermissions,
   settingResult,
 } from "@/lib/api";
+import {
+  getActiveWorkspace,
+  getMyPermissionKeys,
+  loadActiveWorkspaceData,
+} from "@/lib/data/server";
+import { shortId } from "@/components/MemberRow";
+import { MemberActions } from "./MemberActions";
 import { AppShell } from "@/components/Shell";
-import { Button } from "@/components/Button";
+import { ButtonLink } from "@/components/Button";
 import { PermissionStrip } from "@/components/PermissionStrip";
 import { IconCheck, IconLock } from "@/components/icons";
 import { initialsOf, tintFor } from "@/components/MemberRow";
@@ -30,7 +36,8 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const member = getMember(id);
+  const data = await loadActiveWorkspaceData();
+  const member = data ? getMember(data, id) : undefined;
   return {
     title: member ? `Crewspace — ${member.name}` : "Crewspace — Directory",
   };
@@ -95,39 +102,44 @@ export default async function MemberDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const member = getMember(id);
+  const data = await loadActiveWorkspaceData();
+  if (!data) {
+    return <AppShell current="directory">{null}</AppShell>;
+  }
+  const member = getMember(data, id);
   if (!member) notFound();
 
-  const org = getOrg();
-  const role = getRole(member.roleId)!;
+  const org = data.org;
+  const role = getRole(data, member.roleId)!;
   const firstName = member.name.split(" ")[0]!;
-  const isMaya = member.id === "042";
-  /* The screen gives Maya the title "Product designer"; her fixture
-     record has no title (reported as a fixture gap). */
-  const title = member.title ?? (isMaya ? "Product designer" : undefined);
-  const effective = memberEffectivePermissions(member);
+  const title = member.title;
+  const effective = memberEffectivePermissions(data, member);
+  const ws = await getActiveWorkspace();
+  const myKeys = ws ? await getMyPermissionKeys(ws.orgId) : [];
+  const canChangeRole = myKeys.includes("members:change_role");
+  const canDeactivate = myKeys.includes("members:deactivate");
   const allowedCount = effective.filter((e) => e.result === "Allowed").length;
   const pending = role.pendingChanges ?? [];
   const firstTeam = member.teams[0]
-    ? getTeam(member.teams[0].teamId)
+    ? getTeam(data, member.teams[0].teamId)
     : undefined;
   const lead =
     firstTeam?.leadId && firstTeam.leadId !== member.id
-      ? getMember(firstTeam.leadId)
+      ? getMember(data, firstTeam.leadId)
       : undefined;
-  const invitation = getInvitations().find((i) => i.email === member.email);
-  const inviter = invitation ? getMember(invitation.invitedById) : undefined;
+  const invitation = getInvitations(data).find((i) => i.email === member.email);
+  const inviter = invitation ? getMember(data, invitation.invitedById) : undefined;
   const deactivated = member.status === "deactivated";
 
   const history: { when: string; text: string }[] = [];
   if (invitation?.acceptedOn) {
     history.push({
       when: invitation.acceptedOn,
-      text: `${role.name} applied to Member ${member.id}`,
+      text: `${role.name} applied to Member ${shortId(member.id)}`,
     });
     history.push({
       when: invitation.acceptedOn,
-      text: "Accepted with the invited work email; identity verified by Google",
+      text: "Accepted with the invited work email",
     });
   }
   if (invitation) {
@@ -146,7 +158,7 @@ export default async function MemberDetailPage({
     const setting = role.settings[String(permission.id)]!;
     const change = pending.find((c) => c.permissionId === permission.id);
     const nextResult = change
-      ? settingResult(change.to, permission.id)
+      ? settingResult(data, change.to, permission.id)
       : result;
     const sourceText =
       setting === "locked"
@@ -174,7 +186,7 @@ export default async function MemberDetailPage({
         </span>
         <span role="cell" className="why">
           {sourceText}
-          {permission.id === 4 && allowed ? " · up to Product admin" : ""}
+          
           {change ? (
             <>
               {" · "}
@@ -233,11 +245,7 @@ export default async function MemberDetailPage({
                 <span
                   className="p-mono52"
                   aria-hidden="true"
-                  style={
-                    isMaya
-                      ? { background: "#DCE3F4", color: "var(--seal)" }
-                      : { background: tintFor(member.id), color: "var(--ink)" }
-                  }
+                  style={{ background: tintFor(member.id), color: "var(--ink)" }}
                 >
                   {initialsOf(member.name)}
                 </span>
@@ -248,7 +256,7 @@ export default async function MemberDetailPage({
                     style={{ display: "flex", alignItems: "center", gap: 10 }}
                   >
                     <h1 className="p-title">{member.name}</h1>
-                    <span className="p-rno big">Member {member.id}</span>
+                    <span className="p-rno big">Member {shortId(member.id)}</span>
                   </div>
                   <span style={{ fontSize: 14, color: "var(--ink-2)" }}>
                     {title ? `${title} · ` : ""}
@@ -274,8 +282,9 @@ export default async function MemberDetailPage({
                 </div>
               </div>
               <div className="head-actions">
-                <Button>Sign out everywhere</Button>
-                <Button variant="pri">Change role</Button>
+                <ButtonLink variant="pri" href="#actions">
+                  Change role
+                </ButtonLink>
               </div>
             </div>
             <div
@@ -287,39 +296,27 @@ export default async function MemberDetailPage({
                 borderTop: "1px solid var(--rule)",
               }}
             >
-              {isMaya ? (
-                <p
-                  style={{
-                    margin: 0,
-                    maxWidth: 660,
-                    fontSize: 14.5,
-                    lineHeight: 1.55,
-                    color: "var(--ink-2)",
-                  }}
-                >
-                  Maya is a{" "}
-                  <Link href="/app/roles/product-admin">Product admin</Link>{" "}
-                  on the Product team. She can invite people, change roles and
-                  organize teams. She can’t edit what roles allow, deactivate
-                  anyone, or see billing.
-                </p>
-              ) : (
-                <p
-                  style={{
-                    margin: 0,
-                    maxWidth: 660,
-                    fontSize: 14.5,
-                    lineHeight: 1.55,
-                    color: "var(--ink-2)",
-                  }}
-                >
-                  {firstName} is a{" "}
-                  <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
-                  {firstTeam ? <> on the {firstTeam.name} team</> : null}.{" "}
-                  {role.summary}
-                </p>
-              )}
-              <PermissionStrip role={role} big showCount={false} />
+              <p
+                style={{
+                  margin: 0,
+                  maxWidth: 660,
+                  fontSize: 14.5,
+                  lineHeight: 1.55,
+                  color: "var(--ink-2)",
+                }}
+              >
+                {firstName} is a{" "}
+                <Link href={`/app/roles/${role.id}`}>{role.name}</Link>
+                {firstTeam ? <> on the {firstTeam.name} team</> : null}.{" "}
+                {role.summary}
+              </p>
+              <PermissionStrip
+                role={role}
+                permissions={org.permissions}
+                baselineIds={org.baseline.allowedPermissionIds}
+                big
+                showCount={false}
+              />
             </div>
           </header>
 
@@ -396,7 +393,7 @@ export default async function MemberDetailPage({
               <dd>
                 {member.teams.length > 0
                   ? member.teams.map((t, i) => {
-                      const team = getTeam(t.teamId)!;
+                      const team = getTeam(data, t.teamId)!;
                       return (
                         <span key={t.teamId}>
                           {i > 0 ? ", " : ""}
@@ -428,9 +425,15 @@ export default async function MemberDetailPage({
             </h2>
             <dl className="kv p-kv96">
               <dt>Method</dt>
-              <dd>Google, {org.domain}</dd>
+              <dd>{org.domain}</dd>
               <dt>2-step</dt>
-              <dd>{member.twoStep === false ? "Off" : "On, authenticator app"}</dd>
+              <dd>
+                {member.twoStep === undefined
+                  ? "—"
+                  : member.twoStep === false
+                    ? "Off"
+                    : "On, authenticator app"}
+              </dd>
             </dl>
             <div>
               {(member.sessions ?? []).map((s) => {
@@ -499,29 +502,21 @@ export default async function MemberDetailPage({
             </div>
           </section>
 
-          <section className="p-deact">
-            {deactivated ? (
-              <>
-                <Button>Reactivate {firstName}</Button>
-                <span>
-                  {firstName} was deactivated
-                  {member.deactivatedOn ? ` on ${member.deactivatedOn}` : ""}
-                  {member.deactivatedBy ? ` by ${member.deactivatedBy}` : ""}.
-                  Their history is kept, and reactivating restores the{" "}
-                  {role.name} role.
-                </span>
-              </>
-            ) : (
-              <>
-                <Button variant="dest">Deactivate {firstName}</Button>
-                <span>
-                  Deactivating blocks sign-in at once.{" "}
-                  {isMaya ? "Her" : "Their"} teams, history and anything{" "}
-                  {isMaya ? "she owns" : "they own"} stay, and you can
-                  reactivate {isMaya ? "her" : "them"} later.
-                </span>
-              </>
-            )}
+          <section className="p-deact" id="actions">
+            <MemberActions
+              memberId={member.id}
+              firstName={firstName}
+              status={member.status}
+              currentRoleId={role.id}
+              roles={org.roles.map((r) => ({ id: r.id, name: r.name }))}
+              canChangeRole={canChangeRole}
+              canDeactivate={canDeactivate}
+            />
+            <span>
+              {deactivated
+                ? `${firstName} was deactivated${member.deactivatedOn ? ` on ${member.deactivatedOn}` : ""}${member.deactivatedBy ? ` by ${member.deactivatedBy}` : ""}. Their history is kept, and reactivating restores the ${role.name} role.`
+                : "Deactivating blocks sign-in at once. Their teams, history and anything they own stay, and you can reactivate them later."}
+            </span>
           </section>
         </aside>
       </div>
