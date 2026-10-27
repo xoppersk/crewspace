@@ -583,6 +583,9 @@ export default function MarketingPage() {
             <Link href="#" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
               hello@sevynlabs.io
             </Link>
+            <a href="tel:+12762702729" style={{ color: "var(--ink-2)", textDecoration: "none" }}>
+              (276) 270-2729
+            </a>
           </nav>
         </div>
       </footer>
